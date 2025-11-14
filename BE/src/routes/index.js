@@ -1,8 +1,33 @@
 import express from "express";
-import eventRoutes from "./eventRoutes.js";
+import authRoutes from "./authRoutes.js";
+// import eventRoutes from './eventRoutes.js';
+// import userRoutes from './userRoutes.js';
+// import postRoutes from './postRoutes.js';
 
 const router = express.Router();
 
-router.use("/events", eventRoutes);
+// Sử dụng các route
+router.use("/auth", authRoutes);
+// router.use('/events', eventRoutes);
+// router.use('/users', userRoutes);
+// router.use('/posts', postRoutes);
+
+// Route mặc định để test
+router.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "VolunteerHub API đang hoạt động!",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Route health check
+router.get("/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "Server đang hoạt động tốt",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 export default router;
