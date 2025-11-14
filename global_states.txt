@@ -1,0 +1,86 @@
+1. authSlice {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  role: 'VOLUNTEER' | 'MANAGER' | 'ADMIN' | null;
+  accessToken: string | null;
+  refreshToken: string | null; // nếu backend có
+  isAuthenticated: boolean;  // true nếu đã login
+  loading: boolean;          // đang gọi API login/refresh
+  error: string | null;      // lỗi login
+}
+
+2. eventsSlice {
+  list: Event[];          // danh sách cho page Events, admin, manager
+  filters: {
+    keyword: string;
+    dateRange: [string | null, string | null];
+    category: string | null;
+  };
+
+  selectedEvent: Event | null; // event đang xem / edit
+
+  loadingList: boolean;
+  loadingDetail: boolean;
+  error: string | null;
+}
+
+3. participationSlice {
+  // lịch sử / trạng thái của chính user hiện tại
+  myParticipations: Participation[]; 
+
+  // danh sách đăng ký theo event cho manager
+  registrationsByEventId: {
+    [eventId: string]: {
+      items: Participation[];
+      loading: boolean;
+      error: string | null;
+    }
+  };
+
+  loadingMy: boolean;
+  errorMy: string | null;
+}
+
+4. wallSice {
+  postsByEventId: {
+    [eventId: string]: {
+      items: Post[];
+      loading: boolean;
+      error: string | null;
+      hasMore: boolean;     // nếu bạn phân trang
+    }
+  }
+}
+
+5. notificationSlice {
+  items: NotificationItem[];
+  unreadCount: number;
+
+  loading: boolean;
+  error: string | null;
+}
+
+6. userManagementSlice {
+  users: User[];
+  loading: boolean;
+  error: string | null;
+}
+
+
+7.dashboardSlice {
+  volunteerStats?: {
+    totalRegistered: number;
+    totalCompleted: number;
+    upcomingCount: number;
+    totalHours: number;
+  };
+
+  managerStats?: { ... }; // số event quản lý, số đăng ký cần duyệt,...
+  adminStats?: { ... };   // tổng user, tổng event,...
+
+  loading: boolean;
+  error: string | null;
+}
