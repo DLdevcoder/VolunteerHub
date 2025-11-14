@@ -10,7 +10,7 @@
 
 .loginForm-box {
   width: 50%;
-  height: 50%;
+  min-height: 50%;
   box-sizing: border-box;
   padding: 20px;
   background-color: #ffffff;
