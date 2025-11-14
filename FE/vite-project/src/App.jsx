@@ -1,7 +1,10 @@
+import "./App.css";
+import LoginForm from "./components/LoginForm/LoginForm.jsx";
+
 const App = () => {
   return (
     <div>
-      <h1>Hello, Vite + React!</h1>
+      <LoginForm />
     </div>
   );
 };
