@@ -1,0 +1,8 @@
+.app-sider-container {
+  width: 25%;
+}
+
+.ant-menu-item-selected {
+  background-color: #e6f7ff !important;
+  font-weight: 600;
+}
