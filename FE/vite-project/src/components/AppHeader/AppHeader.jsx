@@ -2,8 +2,18 @@ import "./AppHeader.css";
 import { Input, Button, Avatar, Badge, Dropdown } from "antd";
 import { BellOutlined } from "@ant-design/icons";
 import { SlLogout } from "react-icons/sl";
+import { useNavigate } from "react-router-dom";
 
 const AppHeader = () => {
+  const navigate = useNavigate();
+  const handleDropdownClicked = ({ key }) => {
+    if (key == 1) {
+      navigate("/profile");
+    } else if (key == 2) {
+      navigate("/login");
+    }
+  };
+
   return (
     <div className="appHeader-container">
       <div className="appHeader-logo">VolunteerHub</div>
@@ -32,6 +42,7 @@ const AppHeader = () => {
                 },
                 { key: "2", label: "Logout", icon: <SlLogout />, danger: true },
               ],
+              onClick: handleDropdownClicked,
             }}
           >
             <img src="images/avatar.png" />

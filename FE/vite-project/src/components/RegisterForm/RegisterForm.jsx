@@ -1,7 +1,14 @@
 import "./RegisterForm.css";
 import { Button, Form, Input } from "antd";
+import { useNavigate } from "react-router-dom";
 
 const RegisterForm = () => {
+  const navigate = useNavigate();
+
+  const handleLoginOptionClicked = () => {
+    navigate("/login");
+  };
+
   return (
     <div className="registerForm-container">
       <div className="registerForm-box">
@@ -22,6 +29,12 @@ const RegisterForm = () => {
             </Button>
           </Form.Item>
         </Form>
+        <div className="registerForm-options">
+          <div className="login-option">
+            Already have an account?{" "}
+            <span onClick={handleLoginOptionClicked}>Login</span>
+          </div>
+        </div>
       </div>
     </div>
   );

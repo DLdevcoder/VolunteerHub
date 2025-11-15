@@ -1,7 +1,18 @@
 import "./LoginForm.css";
 import { Button, Form, Input } from "antd";
+import { useNavigate } from "react-router-dom";
 
 const LoginForm = () => {
+  const navigate = useNavigate();
+
+  const handleForgotPasswordOptionClicked = () => {
+    navigate("/reset-password");
+  };
+
+  const handleRegisterOptionClicked = () => {
+    navigate("/register");
+  };
+
   return (
     <div className="loginFrom-container">
       <div className="loginForm-box">
@@ -25,6 +36,18 @@ const LoginForm = () => {
               </Button>
             </Form.Item>
           </Form>
+          <div className="loginForm-options-wrapper">
+            <div
+              className="forgot-password-option"
+              onClick={handleForgotPasswordOptionClicked}
+            >
+              Forgot Password?
+            </div>
+            <div className="register-option">
+              Don't have an account?{" "}
+              <span onClick={handleRegisterOptionClicked}>Register</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
