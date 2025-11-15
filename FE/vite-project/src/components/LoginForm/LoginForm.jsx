@@ -7,7 +7,7 @@ const LoginForm = () => {
       <div className="loginForm-box">
         <div className="loginForm-box-left">
           <div className="image-wrapper">
-            <img src="../../../public/images/image.png" alt="Login" />
+            <img src="images/loginBackground.png" alt="Login" />
           </div>
         </div>
         <div className="loginForm-box-right">
