@@ -25,8 +25,8 @@ CREATE TABLE `Users` (
     `full_name` VARCHAR(100) NOT NULL,
     `role_id` INT NOT NULL,
     `status` ENUM('Active', 'Locked', 'Suspended') DEFAULT 'Active' NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     FOREIGN KEY (`role_id`) REFERENCES `Roles`(`role_id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB COMMENT='Tài khoản người dùng';
@@ -50,19 +50,18 @@ CREATE TABLE `Events` (
     `description` TEXT NOT NULL,
     `target_participants` INT UNSIGNED NULL COMMENT 'Số lượng tình nguyện viên mục tiêu', 
     `current_participants` INT UNSIGNED DEFAULT 0 COMMENT 'Số lượng thành viên đã được duyệt (maintained by Trigger)',
-    `start_date` TIMESTAMP NOT NULL,
-    `end_date` TIMESTAMP NOT NULL,
+    `start_date` DATETIME NOT NULL,
+    `end_date` DATETIME NOT NULL,
     `location` VARCHAR(255) NOT NULL,
     `manager_id` INT NOT NULL,
     `category_id` INT NULL,
     `approval_status` ENUM('pending','approved','rejected') DEFAULT 'pending' NOT NULL,
     `approved_by` INT,
     `approval_date` DATETIME NULL COMMENT 'Ngày duyệt sự kiện',
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Cờ xóa mềm',
     
-    -- Constraints
     CONSTRAINT `chk_event_dates` CHECK (`start_date` <= `end_date`),
 
     FOREIGN KEY (`manager_id`) REFERENCES `Users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -75,12 +74,12 @@ CREATE TABLE `Registrations` (
     `registration_id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT NOT NULL,
     `event_id` INT NOT NULL,
-    `registration_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `registration_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `status` ENUM('pending','approved','rejected','completed','cancelled') DEFAULT 'pending' NOT NULL,
     `rejection_reason` VARCHAR(255) NULL COMMENT 'Lý do bị từ chối',
     `completed_by_manager_id` INT,
     `completion_date` DATETIME NULL,
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE(user_id, event_id),
     
     FOREIGN KEY (`user_id`) REFERENCES `Users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -98,8 +97,8 @@ CREATE TABLE `Posts` (
     `event_id` INT NOT NULL,
     `user_id` INT NOT NULL,
     `content` TEXT NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     FOREIGN KEY (`event_id`) REFERENCES `Events`(`event_id`) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (`user_id`) REFERENCES `Users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE
@@ -111,8 +110,8 @@ CREATE TABLE `Comments` (
     `post_id` INT NOT NULL,
     `user_id` INT NOT NULL,
     `content` TEXT NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     FOREIGN KEY (`post_id`) REFERENCES `Posts`(`post_id`) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (`user_id`) REFERENCES `Users`(`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE
@@ -123,7 +122,7 @@ CREATE TABLE `PostReactions` (
     `user_id` INT NOT NULL,
     `post_id` INT NOT NULL,
     `reaction_type` ENUM('like','love','haha','sad','angry') NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     
     PRIMARY KEY (`user_id`, `post_id`),
     FOREIGN KEY (`user_id`) REFERENCES `Users`(`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -135,7 +134,7 @@ CREATE TABLE `CommentReactions` (
     `user_id` INT NOT NULL,
     `comment_id` INT NOT NULL,
     `reaction_type` ENUM('like','love','haha','sad','angry') NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (`user_id`, `comment_id`),
     
@@ -153,8 +152,8 @@ CREATE TABLE `Notifications` (
     ) NOT NULL,
     `payload` JSON COMMENT 'Dữ liệu bổ sung (event_id, message, etc.)',
     `is_read` BOOLEAN DEFAULT FALSE NOT NULL,
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     FOREIGN KEY (`user_id`) REFERENCES `Users`(`user_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB COMMENT='Thông báo người dùng';
@@ -206,7 +205,6 @@ CREATE INDEX idx_notifications_created ON `Notifications`(`created_at` DESC);
 -- VI. VIEWS
 -- ====================================================================
 
--- View 1: Active Events
 CREATE VIEW `v_active_events` AS
 SELECT 
     e.event_id, e.title, e.description, e.start_date, e.end_date, e.location,
@@ -219,7 +217,6 @@ LEFT JOIN `Users` u ON e.manager_id = u.user_id
 WHERE e.approval_status = 'approved'
   AND e.end_date >= NOW();
 
--- View 2: User Event History
 CREATE VIEW `v_user_event_history` AS
 SELECT 
     r.user_id, u.full_name, u.email, e.event_id, e.title AS event_title,
@@ -231,7 +228,6 @@ JOIN `Users` u ON r.user_id = u.user_id
 JOIN `Events` e ON r.event_id = e.event_id
 WHERE u.status = 'Active';
 
--- View 3: Event Engagement
 CREATE VIEW `v_event_engagement` AS
 SELECT 
     e.event_id, e.title, e.start_date, e.approval_date,
@@ -248,7 +244,6 @@ WHERE e.approval_status = 'approved'
 GROUP BY e.event_id
 ORDER BY engagement_score DESC;
 
--- View 4: Recent Activity
 CREATE VIEW `v_recent_activity` AS
 SELECT 'new_event' AS activity_type, e.event_id AS related_id, e.title AS title, e.approval_date AS activity_time
 FROM `Events` e
@@ -261,7 +256,6 @@ WHERE p.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
 ORDER BY activity_time DESC
 LIMIT 20;
 
--- View 5: User Statistics
 CREATE VIEW `v_user_statistics` AS
 SELECT 
     u.user_id, u.full_name, u.email, r.name AS role_name,
@@ -283,7 +277,6 @@ GROUP BY u.user_id;
 
 DELIMITER //
 
--- Procedure 1: Approve Event
 CREATE PROCEDURE `sp_approve_event`(
     IN p_event_id INT,
     IN p_admin_id INT
@@ -298,7 +291,6 @@ BEGIN
     SELECT 'Event approved successfully' AS message;
 END//
 
--- Procedure 2: Complete Registration
 CREATE PROCEDURE `sp_complete_registration`(
     IN p_user_id INT,
     IN p_event_id INT,
@@ -314,13 +306,12 @@ BEGIN
     SELECT 'Registration completed successfully' AS message;
 END//
 
--- Procedure 3: Cancel Registration
 CREATE PROCEDURE `sp_cancel_registration`(
     IN p_user_id INT,
     IN p_event_id INT
 )
 BEGIN
-    DECLARE v_start_date TIMESTAMP;
+    DECLARE v_start_date DATETIME;
     
     SELECT `start_date` INTO v_start_date FROM `Events` WHERE `event_id` = p_event_id;
     
@@ -336,7 +327,6 @@ BEGIN
     SELECT 'Registration cancelled successfully' AS message;
 END//
 
--- Procedure 4: Reject Registration
 CREATE PROCEDURE `sp_reject_registration`(
     IN p_user_id INT,
     IN p_event_id INT,
@@ -352,12 +342,11 @@ END//
 DELIMITER ;
 
 -- ====================================================================
--- VIII. TRIGGERS - TỰ ĐỘNG HÓA VÀ CẬP NHẬT
+-- VIII. TRIGGERS
 -- ====================================================================
 
 DELIMITER //
 
--- Trigger A: Gửi thông báo khi event được approve/reject
 CREATE TRIGGER `trg_event_approval_notify`
 AFTER UPDATE ON `Events`
 FOR EACH ROW
@@ -375,7 +364,6 @@ BEGIN
     END IF;
 END//
 
--- Trigger B: Cập nhật current_participants khi có đăng ký mới
 CREATE TRIGGER `trg_registration_after_insert`
 AFTER INSERT ON `Registrations`
 FOR EACH ROW
@@ -387,38 +375,31 @@ BEGIN
     END IF;
 END//
 
--- Trigger C: Cập nhật current_participants VÀ Gửi thông báo khi trạng thái thay đổi
 CREATE TRIGGER `trg_registration_after_update`
 AFTER UPDATE ON `Registrations`
 FOR EACH ROW
 BEGIN
-    -- LOGIC CẬP NHẬT current_participants
-    -- 1. Tăng count: status từ KHÔNG approved -> approved
     IF OLD.status != 'approved' AND NEW.status = 'approved' THEN
         UPDATE `Events` 
         SET `current_participants` = `current_participants` + 1
         WHERE `event_id` = NEW.event_id;
     END IF;
     
-    -- 2. Giảm count: status từ approved -> trạng thái khác (rejected, cancelled, completed)
     IF OLD.status = 'approved' AND NEW.status != 'approved' THEN
         UPDATE `Events` 
         SET `current_participants` = GREATEST(`current_participants` - 1, 0)
         WHERE `event_id` = NEW.event_id;
     END IF;
 
-    -- LOGIC THÔNG BÁO
     IF OLD.status != NEW.status THEN
         IF NEW.status = 'approved' THEN
             INSERT INTO `Notifications` (`user_id`, `type`, `payload`)
             VALUES (NEW.user_id, 'registration_approved', 
                     JSON_OBJECT('event_id', NEW.event_id));
-        -- Gửi lý do từ chối nếu status là rejected
         ELSEIF NEW.status = 'rejected' THEN 
             INSERT INTO `Notifications` (`user_id`, `type`, `payload`)
             VALUES (NEW.user_id, 'registration_rejected', 
                     JSON_OBJECT('event_id', NEW.event_id, 'reason', NEW.rejection_reason));
-        -- Xử lý thông báo completed (Từ SP sang Trigger)
         ELSEIF NEW.status = 'completed' THEN 
             INSERT INTO `Notifications` (`user_id`, `type`, `payload`)
             VALUES (NEW.user_id, 'registration_completed', 
@@ -427,7 +408,6 @@ BEGIN
     END IF;
 END//
 
--- Trigger D: Cập nhật current_participants khi bản ghi bị xóa
 CREATE TRIGGER `trg_registration_after_delete`
 AFTER DELETE ON `Registrations`
 FOR EACH ROW
