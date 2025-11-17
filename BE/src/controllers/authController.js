@@ -1,19 +1,23 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import pool from "../config/db.js"; // Đường dẫn đến file db.js của bạn
+import pool from "../config/db.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_secret_key_2024";
+const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_secret_key";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
-const REFRESH_TOKEN_SECRET =
-  process.env.REFRESH_TOKEN_SECRET || "volunteerhub_refresh_secret_2024";
 
 const authController = {
   // Đăng ký tài khoản
   async register(req, res) {
     try {
-      const { email, password, full_name, role = "user" } = req.body;
+      const {
+        email,
+        password,
+        full_name,
+        phone,
+        role_name = "Volunteer",
+      } = req.body;
 
-      // Kiểm tra input cơ bản
+      // Kiểm tra input
       if (!email || !password || !full_name) {
         return res.status(400).json({
           success: false,
@@ -30,7 +34,7 @@ const authController = {
         });
       }
 
-      // Kiểm tra mật khẩu (ít nhất 6 ký tự)
+      // Kiểm tra mật khẩu
       if (password.length < 6) {
         return res.status(400).json({
           success: false,
@@ -38,7 +42,22 @@ const authController = {
         });
       }
 
-      // Kiểm tra email đã tồn tại chưa
+      // Tìm role_id từ role_name
+      const [roles] = await pool.execute(
+        "SELECT role_id FROM Roles WHERE name = ?",
+        [role_name]
+      );
+
+      if (roles.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Role không hợp lệ",
+        });
+      }
+
+      const role_id = roles[0].role_id;
+
+      // Kiểm tra email đã tồn tại
       const [existingUsers] = await pool.execute(
         "SELECT user_id FROM Users WHERE email = ?",
         [email]
@@ -57,16 +76,27 @@ const authController = {
 
       // Tạo user mới
       const [result] = await pool.execute(
-        "INSERT INTO Users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)",
-        [email, password_hash, full_name, role]
+        "INSERT INTO Users (email, password_hash, full_name, phone, role_id) VALUES (?, ?, ?, ?, ?)",
+        [email, password_hash, full_name, phone, role_id]
       );
+
+      // Lấy thông tin user vừa tạo với role name
+      const [newUsers] = await pool.execute(
+        `SELECT u.user_id, u.email, u.full_name, u.phone, u.avatar_url, r.name as role_name, u.status 
+                 FROM Users u 
+                 JOIN Roles r ON u.role_id = r.role_id 
+                 WHERE u.user_id = ?`,
+        [result.insertId]
+      );
+
+      const newUser = newUsers[0];
 
       // Tạo JWT token
       const token = jwt.sign(
         {
-          user_id: result.insertId,
-          email: email,
-          role: role,
+          user_id: newUser.user_id,
+          email: newUser.email,
+          role_name: newUser.role_name,
         },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
@@ -76,10 +106,7 @@ const authController = {
         success: true,
         message: "Đăng ký thành công",
         data: {
-          user_id: result.insertId,
-          email: email,
-          full_name: full_name,
-          role: role,
+          user: newUser,
           token: token,
         },
       });
@@ -105,10 +132,13 @@ const authController = {
         });
       }
 
-      // Tìm user theo email
+      // Tìm user với role name
       const [users] = await pool.execute(
-        `SELECT user_id, email, password_hash, full_name, role, account_status 
-                 FROM Users WHERE email = ?`,
+        `SELECT u.user_id, u.email, u.password_hash, u.full_name, u.phone, 
+                        u.avatar_url, r.name as role_name, u.status 
+                 FROM Users u 
+                 JOIN Roles r ON u.role_id = r.role_id 
+                 WHERE u.email = ?`,
         [email]
       );
 
@@ -122,10 +152,12 @@ const authController = {
       const user = users[0];
 
       // Kiểm tra tài khoản có bị khóa không
-      if (user.account_status === "locked") {
+      if (user.status !== "Active") {
         return res.status(403).json({
           success: false,
-          message: "Tài khoản đã bị khóa",
+          message: `Tài khoản đã bị ${
+            user.status === "Locked" ? "khóa" : "tạm ngưng"
+          }`,
         });
       }
 
@@ -146,20 +178,20 @@ const authController = {
         {
           user_id: user.user_id,
           email: user.email,
-          role: user.role,
+          role_name: user.role_name,
         },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
 
+      // Loại bỏ password_hash trước khi trả về
+      const { password_hash, ...userWithoutPassword } = user;
+
       res.json({
         success: true,
         message: "Đăng nhập thành công",
         data: {
-          user_id: user.user_id,
-          email: user.email,
-          full_name: user.full_name,
-          role: user.role,
+          user: userWithoutPassword,
           token: token,
         },
       });
@@ -172,7 +204,7 @@ const authController = {
     }
   },
 
-  // Refresh token (tùy chọn)
+  // Refresh token
   async refreshToken(req, res) {
     try {
       const { refresh_token } = req.body;
@@ -185,14 +217,14 @@ const authController = {
       }
 
       // Xác thực refresh token
-      const decoded = jwt.verify(refresh_token, REFRESH_TOKEN_SECRET);
+      const decoded = jwt.verify(refresh_token, JWT_SECRET);
 
       // Tạo token mới
       const newToken = jwt.sign(
         {
           user_id: decoded.user_id,
           email: decoded.email,
-          role: decoded.role,
+          role_name: decoded.role_name,
         },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
@@ -214,12 +246,49 @@ const authController = {
     }
   },
 
-  // Đăng xuất (tùy chọn - trên client sẽ xóa token)
+  // Đăng xuất
   async logout(req, res) {
     res.json({
       success: true,
       message: "Đăng xuất thành công",
     });
+  },
+
+  // Lấy thông tin user hiện tại
+  async getMe(req, res) {
+    try {
+      const user_id = req.user.user_id;
+
+      const [users] = await pool.execute(
+        `SELECT u.user_id, u.email, u.full_name, u.phone, 
+                        u.avatar_url, r.name as role_name, u.status, u.created_at
+                 FROM Users u 
+                 JOIN Roles r ON u.role_id = r.role_id 
+                 WHERE u.user_id = ?`,
+        [user_id]
+      );
+
+      if (users.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "User không tồn tại",
+        });
+      }
+
+      const user = users[0];
+      res.json({
+        success: true,
+        data: {
+          user: user,
+        },
+      });
+    } catch (error) {
+      console.error("Get me error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi lấy thông tin user",
+      });
+    }
   },
 };
 

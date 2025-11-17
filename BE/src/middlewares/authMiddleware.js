@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_secret_key_2024";
+const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_secret_key";
 
 const authMiddleware = {
   // Xác thực token cơ bản
@@ -28,7 +28,7 @@ const authMiddleware = {
   },
 
   // Kiểm tra role
-  requireRole: (role) => {
+  requireRole: (allowedRoles) => {
     return (req, res, next) => {
       if (!req.user) {
         return res.status(401).json({
@@ -37,7 +37,7 @@ const authMiddleware = {
         });
       }
 
-      if (req.user.role !== role) {
+      if (!allowedRoles.includes(req.user.role_name)) {
         return res.status(403).json({
           success: false,
           message: "Không có quyền truy cập",
@@ -46,6 +46,28 @@ const authMiddleware = {
 
       next();
     };
+  },
+
+  // Kiểm tra admin
+  requireAdmin: (req, res, next) => {
+    if (!req.user || req.user.role_name !== "Admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Yêu cầu quyền Admin",
+      });
+    }
+    next();
+  },
+
+  // Kiểm tra manager hoặc admin
+  requireManagerOrAdmin: (req, res, next) => {
+    if (!req.user || !["Admin", "Manager"].includes(req.user.role_name)) {
+      return res.status(403).json({
+        success: false,
+        message: "Yêu cầu quyền Manager hoặc Admin",
+      });
+    }
+    next();
   },
 };
 
