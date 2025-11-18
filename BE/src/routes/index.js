@@ -1,16 +1,12 @@
 import express from "express";
 import authRoutes from "./authRoutes.js";
-// import eventRoutes from './eventRoutes.js';
-// import userRoutes from './userRoutes.js';
-// import postRoutes from './postRoutes.js';
+import userRoutes from "./userRoutes.js";
 
 const router = express.Router();
 
 // Sử dụng các route
 router.use("/auth", authRoutes);
-// router.use('/events', eventRoutes);
-// router.use('/users', userRoutes);
-// router.use('/posts', postRoutes);
+router.use("/users", userRoutes);
 
 // Route mặc định để test
 router.get("/", (req, res) => {
