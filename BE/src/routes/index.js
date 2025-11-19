@@ -1,12 +1,14 @@
 import express from "express";
 import authRoutes from "./authRoutes.js";
 import userRoutes from "./userRoutes.js";
+import notificationRoutes from "./notificationRoutes.js";
 
 const router = express.Router();
 
 // Sử dụng các route
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
+router.use("/notifications", notificationRoutes);
 
 // Route mặc định để test
 router.get("/", (req, res) => {
