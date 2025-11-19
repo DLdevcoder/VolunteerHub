@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import User from "../models/Usertmp.js";
+import User from "../models/User.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_secret_key";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
