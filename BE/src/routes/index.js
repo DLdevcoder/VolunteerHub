@@ -1,6 +1,6 @@
 import express from "express";
 import authRoutes from "./authRoutes.js";
-// import eventRoutes from './eventRoutes.js';
+import eventRoutes from './eventRoutes.js';
 // import userRoutes from './userRoutes.js';
 // import postRoutes from './postRoutes.js';
 
@@ -8,7 +8,7 @@ const router = express.Router();
 
 // Sử dụng các route
 router.use("/auth", authRoutes);
-// router.use('/events', eventRoutes);
+router.use('/events', eventRoutes);
 // router.use('/users', userRoutes);
 // router.use('/posts', postRoutes);
 
