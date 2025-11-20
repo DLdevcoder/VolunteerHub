@@ -1,29 +1,19 @@
-import pool from "../config/db.js";
+import User from "../models/User.js";
 
 const userController = {
   // User: Xem thông tin cá nhân
   async getMe(req, res) {
     try {
       const user_id = req.user.user_id;
+      const user = await User.findById(user_id);
 
-      const [users] = await pool.execute(
-        `SELECT 
-                    u.user_id, u.email, u.full_name, u.phone, u.avatar_url,
-                    r.name as role_name, u.status, u.created_at, u.updated_at
-                 FROM Users u 
-                 JOIN Roles r ON u.role_id = r.role_id 
-                 WHERE u.user_id = ?`,
-        [user_id]
-      );
-
-      if (users.length === 0) {
+      if (!user) {
         return res.status(404).json({
           success: false,
           message: "User không tồn tại",
         });
       }
 
-      const user = users[0];
       res.json({
         success: true,
         data: {
@@ -54,14 +44,13 @@ const userController = {
       }
 
       // Cập nhật thông tin
-      const [result] = await pool.execute(
-        `UPDATE Users 
-                 SET full_name = ?, phone = ?, avatar_url = ?, updated_at = CURRENT_TIMESTAMP
-                 WHERE user_id = ?`,
-        [full_name, phone, avatar_url, user_id]
-      );
+      const isUpdated = await User.update(user_id, {
+        full_name,
+        phone,
+        avatar_url,
+      });
 
-      if (result.affectedRows === 0) {
+      if (!isUpdated) {
         return res.status(404).json({
           success: false,
           message: "User không tồn tại",
@@ -69,17 +58,7 @@ const userController = {
       }
 
       // Lấy thông tin user sau khi cập nhật
-      const [users] = await pool.execute(
-        `SELECT 
-                    u.user_id, u.email, u.full_name, u.phone, u.avatar_url,
-                    r.name as role_name, u.status, u.created_at, u.updated_at
-                 FROM Users u 
-                 JOIN Roles r ON u.role_id = r.role_id 
-                 WHERE u.user_id = ?`,
-        [user_id]
-      );
-
-      const updatedUser = users[0];
+      const updatedUser = await User.findById(user_id);
 
       res.json({
         success: true,
@@ -108,68 +87,19 @@ const userController = {
         status = "",
       } = req.query;
 
-      const offset = (page - 1) * limit;
-
-      // Xây dựng query động
-      let whereConditions = [];
-      let queryParams = [];
-
-      if (search) {
-        whereConditions.push("(u.full_name LIKE ? OR u.email LIKE ?)");
-        queryParams.push(`%${search}%`, `%${search}%`);
-      }
-
-      if (role) {
-        whereConditions.push("r.name = ?");
-        queryParams.push(role);
-      }
-
-      if (status) {
-        whereConditions.push("u.status = ?");
-        queryParams.push(status);
-      }
-
-      const whereClause =
-        whereConditions.length > 0
-          ? `WHERE ${whereConditions.join(" AND ")}`
-          : "";
-
-      // Query chính
-      const [users] = await pool.execute(
-        `SELECT 
-                    u.user_id, u.email, u.full_name, u.phone, u.avatar_url,
-                    r.name as role_name, u.status, u.created_at, u.updated_at
-                 FROM Users u 
-                 JOIN Roles r ON u.role_id = r.role_id 
-                 ${whereClause}
-                 ORDER BY u.created_at DESC
-                 LIMIT ? OFFSET ?`,
-        [...queryParams, parseInt(limit), offset]
-      );
-
-      // Query tổng số records
-      const [countResult] = await pool.execute(
-        `SELECT COUNT(*) as total
-                 FROM Users u 
-                 JOIN Roles r ON u.role_id = r.role_id 
-                 ${whereClause}`,
-        queryParams
-      );
-
-      const total = countResult[0].total;
-      const totalPages = Math.ceil(total / limit);
+      const result = await User.findAll({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        search,
+        role,
+        status,
+      });
 
       res.json({
         success: true,
         data: {
-          users: users,
-          pagination: {
-            current_page: parseInt(page),
-            total_pages: totalPages,
-            total_records: total,
-            has_next: page < totalPages,
-            has_prev: page > 1,
-          },
+          users: result.users,
+          pagination: result.pagination,
         },
       });
     } catch (error) {
@@ -204,14 +134,9 @@ const userController = {
       }
 
       // Cập nhật status
-      const [result] = await pool.execute(
-        `UPDATE Users 
-                 SET status = ?, updated_at = CURRENT_TIMESTAMP
-                 WHERE user_id = ?`,
-        [status, user_id]
-      );
+      const isUpdated = await User.updateStatus(user_id, status);
 
-      if (result.affectedRows === 0) {
+      if (!isUpdated) {
         return res.status(404).json({
           success: false,
           message: "User không tồn tại",
@@ -219,17 +144,7 @@ const userController = {
       }
 
       // Lấy thông tin user sau khi cập nhật
-      const [users] = await pool.execute(
-        `SELECT 
-                    u.user_id, u.email, u.full_name, u.phone, u.avatar_url,
-                    r.name as role_name, u.status, u.created_at, u.updated_at
-                 FROM Users u 
-                 JOIN Roles r ON u.role_id = r.role_id 
-                 WHERE u.user_id = ?`,
-        [user_id]
-      );
-
-      const updatedUser = users[0];
+      const updatedUser = await User.findById(user_id);
 
       res.json({
         success: true,
@@ -251,25 +166,14 @@ const userController = {
   async getUserById(req, res) {
     try {
       const { user_id } = req.params;
+      const user = await User.findById(user_id);
 
-      const [users] = await pool.execute(
-        `SELECT 
-                    u.user_id, u.email, u.full_name, u.phone, u.avatar_url,
-                    r.name as role_name, u.status, u.created_at, u.updated_at
-                 FROM Users u 
-                 JOIN Roles r ON u.role_id = r.role_id 
-                 WHERE u.user_id = ?`,
-        [user_id]
-      );
-
-      if (users.length === 0) {
+      if (!user) {
         return res.status(404).json({
           success: false,
           message: "User không tồn tại",
         });
       }
-
-      const user = users[0];
 
       res.json({
         success: true,

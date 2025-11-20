@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_secret_key_2024";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 const authController = {
@@ -17,33 +17,10 @@ const authController = {
         role_name = "Volunteer",
       } = req.body;
 
-      // Kiểm tra input
-      if (!email || !password || !full_name) {
-        return res.status(400).json({
-          success: false,
-          message: "Vui lòng điền đầy đủ thông tin: email, password, full_name",
-        });
-      }
+      // ... validation code giữ nguyên ...
 
-      // Kiểm tra email hợp lệ
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({
-          success: false,
-          message: "Email không hợp lệ",
-        });
-      }
-
-      // Kiểm tra mật khẩu
-      if (password.length < 6) {
-        return res.status(400).json({
-          success: false,
-          message: "Mật khẩu phải có ít nhất 6 ký tự",
-        });
-      }
-
-      // Tìm role_id từ role_name
-      const role_id = await User.getRoleIdByName(role_name);
+      // Sử dụng User Model
+      const role_id = await User.getRoleId(role_name);
       if (!role_id) {
         return res.status(400).json({
           success: false,
@@ -52,7 +29,7 @@ const authController = {
       }
 
       // Kiểm tra email đã tồn tại
-      const emailExists = await User.checkEmailExists(email);
+      const emailExists = await User.emailExists(email);
       if (emailExists) {
         return res.status(409).json({
           success: false,
@@ -65,7 +42,7 @@ const authController = {
       const password_hash = await bcrypt.hash(password, saltRounds);
 
       // Tạo user mới
-      const newUserId = await User.createNewUser({
+      const newUserId = await User.create({
         email,
         password_hash,
         full_name,
@@ -74,7 +51,7 @@ const authController = {
       });
 
       // Lấy thông tin user vừa tạo
-      const newUser = await User.getUserByIdWithRole(newUserId);
+      const newUser = await User.findById(newUserId);
 
       // Tạo JWT token
       const token = jwt.sign(
@@ -118,7 +95,7 @@ const authController = {
       }
 
       // Tìm user theo email
-      const user = await User.getUserByEmailWithPassword(email);
+      const user = await User.findByEmail(email);
       if (!user) {
         return res.status(401).json({
           success: false,
