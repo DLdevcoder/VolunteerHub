@@ -3,6 +3,7 @@ import authRoutes from "./authRoutes.js";
 import userRoutes from "./userRoutes.js";
 import notificationRoutes from "./notificationRoutes.js";
 import eventRoutes from "./eventRoutes.js";
+import dashboardRoutes from "./dashboardRoutes.js";
 // import userRoutes from './userRoutes.js';
 // import postRoutes from './postRoutes.js';
 
@@ -13,6 +14,7 @@ router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/events", eventRoutes);
+router.use("/dashboard", dashboardRoutes);
 // router.use('/users', userRoutes);
 // router.use('/posts', postRoutes);
 
