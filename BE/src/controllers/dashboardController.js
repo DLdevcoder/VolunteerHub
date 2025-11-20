@@ -1,7 +1,55 @@
 import Dashboard from "../models/Dashboard.js";
 
 const dashboardController = {
-  // Dashboard tổng quan
+  // ==================== MAIN DASHBOARD ENDPOINT ====================
+  // API chung để lấy dashboard dựa trên Role của user
+  async getDashboard(req, res) {
+    try {
+      // Giả sử middleware xác thực đã gán thông tin vào req.user
+      const user_id = req.user.user_id;
+      const user_role = req.user.role_name;
+
+      let dashboardData;
+
+      switch (user_role) {
+        case "Volunteer":
+          // Cần đảm bảo method này tồn tại bên Model Dashboard
+          dashboardData = await Dashboard.getVolunteerDashboard(user_id);
+          break;
+        case "Manager":
+          // Cần đảm bảo method này tồn tại bên Model Dashboard
+          dashboardData = await Dashboard.getManagerDashboard(user_id);
+          break;
+        case "Admin":
+          // Admin có thể lấy data tổng hợp (hoặc gọi getFullDashboard logic)
+          dashboardData = await Dashboard.getAdminDashboard();
+          break;
+        default:
+          return res.status(403).json({
+            success: false,
+            message: "Role không được hỗ trợ",
+          });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          ...dashboardData,
+          user_role: user_role,
+        },
+      });
+    } catch (error) {
+      console.error("Get dashboard error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi lấy dashboard",
+      });
+    }
+  },
+
+  // ==================== DETAILED ANALYTICS (ADMIN/MANAGER) ====================
+
+  // Dashboard tổng quan (Stats cards)
   async getOverview(req, res) {
     try {
       const overviewStats = await Dashboard.getOverviewStats();
@@ -19,7 +67,7 @@ const dashboardController = {
     }
   },
 
-  // Thống kê events theo thời gian
+  // Thống kê events theo thời gian (Line chart)
   async getEventTimeSeries(req, res) {
     try {
       const { time_range = "7d" } = req.query;
@@ -50,7 +98,7 @@ const dashboardController = {
     }
   },
 
-  // Top events có engagement cao
+  // Top events có engagement cao (Table/List)
   async getTopEngagedEvents(req, res) {
     try {
       const { limit = 10 } = req.query;
@@ -71,7 +119,7 @@ const dashboardController = {
     }
   },
 
-  // Thống kê events theo category
+  // Thống kê events theo category (Pie/Donut chart)
   async getEventCategoryStats(req, res) {
     try {
       const categoryStats = await Dashboard.getEventCategoryStats();
@@ -112,7 +160,7 @@ const dashboardController = {
     }
   },
 
-  // Xu hướng đăng ký
+  // Xu hướng đăng ký (Bar/Line chart)
   async getRegistrationTrends(req, res) {
     try {
       const { time_range = "7d" } = req.query;
@@ -143,7 +191,7 @@ const dashboardController = {
     }
   },
 
-  // System health
+  // System health (Server status)
   async getSystemHealth(req, res) {
     try {
       const systemHealth = await Dashboard.getSystemHealth();
@@ -161,7 +209,7 @@ const dashboardController = {
     }
   },
 
-  // Dashboard tổng hợp (all in one)
+  // Dashboard tổng hợp (all in one - Dành cho Admin View cũ nếu cần)
   async getFullDashboard(req, res) {
     try {
       const {
