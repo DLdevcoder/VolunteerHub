@@ -1,17 +1,18 @@
 import pool from "../config/db.js";
+import Notification from "../models/Notification.js";
 
 class NotificationService {
   // Tạo thông báo từ trigger
   static async createNotificationFromTrigger(user_id, type, payload) {
     try {
-      const [result] = await pool.execute(
-        `INSERT INTO Notifications (user_id, type, payload) 
-                 VALUES (?, ?, ?)`,
-        [user_id, type, JSON.stringify(payload)]
-      );
+      const notification = await Notification.create({
+        user_id,
+        type,
+        payload,
+      });
 
       console.log(`Đã tạo thông báo: ${type} cho user ${user_id}`);
-      return result.insertId;
+      return notification.notification_id;
     } catch (error) {
       console.error("Lỗi tạo thông báo từ trigger:", error);
       throw error;
@@ -60,7 +61,6 @@ class NotificationService {
 
   // Gửi thông báo new post trong event
   static async notifyNewPost(event_id, post_id, author_id, content_preview) {
-    // Lấy tất cả user đã đăng ký event
     const [users] = await pool.execute(
       `SELECT DISTINCT user_id FROM Registrations 
              WHERE event_id = ? AND status = 'approved' AND user_id != ?`,
@@ -82,6 +82,7 @@ class NotificationService {
   // Gửi thông báo event reminder (24h trước khi event bắt đầu)
   static async sendEventReminders() {
     try {
+      // Giữ nguyên pool để quét sự kiện
       const [events] = await pool.execute(
         `SELECT e.event_id, e.title, e.start_date
                  FROM Events e

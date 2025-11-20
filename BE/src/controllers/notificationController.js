@@ -1,4 +1,4 @@
-import pool from "../config/db.js";
+import Notification from "../models/Notification.js";
 
 const notificationController = {
   // Lấy danh sách thông báo của user hiện tại
@@ -7,65 +7,21 @@ const notificationController = {
       const user_id = req.user.user_id;
       const { page = 1, limit = 20, is_read } = req.query;
 
-      const offset = (page - 1) * limit;
-
-      let whereConditions = ["user_id = ?"];
-      let queryParams = [user_id];
-
-      if (is_read !== undefined) {
-        whereConditions.push("is_read = ?");
-        queryParams.push(is_read === "true");
-      }
-
-      const whereClause =
-        whereConditions.length > 0
-          ? `WHERE ${whereConditions.join(" AND ")}`
-          : "";
-
-      // Lấy danh sách thông báo
-      const [notifications] = await pool.execute(
-        `SELECT 
-                    notification_id, type, payload, is_read, created_at, updated_at
-                 FROM Notifications 
-                 ${whereClause}
-                 ORDER BY created_at DESC
-                 LIMIT ? OFFSET ?`,
-        [...queryParams, parseInt(limit), offset]
-      );
-
-      // Đếm tổng số thông báo
-      const [countResult] = await pool.execute(
-        `SELECT COUNT(*) as total
-                 FROM Notifications 
-                 ${whereClause}`,
-        queryParams
-      );
-
-      const total = countResult[0].total;
-      const totalPages = Math.ceil(total / limit);
+      const result = await Notification.findByUserId(user_id, {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        is_read,
+      });
 
       // Đếm số thông báo chưa đọc
-      const [unreadCountResult] = await pool.execute(
-        `SELECT COUNT(*) as unread_count
-                 FROM Notifications 
-                 WHERE user_id = ? AND is_read = FALSE`,
-        [user_id]
-      );
-
-      const unread_count = unreadCountResult[0].unread_count;
+      const unread_count = await Notification.countUnread(user_id);
 
       res.json({
         success: true,
         data: {
-          notifications: notifications,
+          notifications: result.notifications,
           unread_count: unread_count,
-          pagination: {
-            current_page: parseInt(page),
-            total_pages: totalPages,
-            total_records: total,
-            has_next: page < totalPages,
-            has_prev: page > 1,
-          },
+          pagination: result.pagination,
         },
       });
     } catch (error) {
@@ -84,13 +40,11 @@ const notificationController = {
       const { notification_id } = req.params;
 
       // Kiểm tra thông báo thuộc về user
-      const [notifications] = await pool.execute(
-        `SELECT notification_id FROM Notifications 
-                 WHERE notification_id = ? AND user_id = ?`,
-        [notification_id, user_id]
+      const belongsToUser = await Notification.belongsToUser(
+        notification_id,
+        user_id
       );
-
-      if (notifications.length === 0) {
+      if (!belongsToUser) {
         return res.status(404).json({
           success: false,
           message: "Thông báo không tồn tại",
@@ -98,12 +52,7 @@ const notificationController = {
       }
 
       // Cập nhật trạng thái đã đọc
-      const [result] = await pool.execute(
-        `UPDATE Notifications 
-                 SET is_read = TRUE, updated_at = CURRENT_TIMESTAMP
-                 WHERE notification_id = ? AND user_id = ?`,
-        [notification_id, user_id]
-      );
+      const isUpdated = await Notification.markAsRead(notification_id, user_id);
 
       res.json({
         success: true,
@@ -123,16 +72,11 @@ const notificationController = {
     try {
       const user_id = req.user.user_id;
 
-      const [result] = await pool.execute(
-        `UPDATE Notifications 
-                 SET is_read = TRUE, updated_at = CURRENT_TIMESTAMP
-                 WHERE user_id = ? AND is_read = FALSE`,
-        [user_id]
-      );
+      const affectedRows = await Notification.markAllAsRead(user_id);
 
       res.json({
         success: true,
-        message: `Đã đánh dấu ${result.affectedRows} thông báo là đã đọc`,
+        message: `Đã đánh dấu ${affectedRows} thông báo là đã đọc`,
       });
     } catch (error) {
       console.error("Mark all as read error:", error);
@@ -150,13 +94,11 @@ const notificationController = {
       const { notification_id } = req.params;
 
       // Kiểm tra thông báo thuộc về user
-      const [notifications] = await pool.execute(
-        `SELECT notification_id FROM Notifications 
-                 WHERE notification_id = ? AND user_id = ?`,
-        [notification_id, user_id]
+      const belongsToUser = await Notification.belongsToUser(
+        notification_id,
+        user_id
       );
-
-      if (notifications.length === 0) {
+      if (!belongsToUser) {
         return res.status(404).json({
           success: false,
           message: "Thông báo không tồn tại",
@@ -164,11 +106,7 @@ const notificationController = {
       }
 
       // Xóa thông báo
-      const [result] = await pool.execute(
-        `DELETE FROM Notifications 
-                 WHERE notification_id = ? AND user_id = ?`,
-        [notification_id, user_id]
-      );
+      const isDeleted = await Notification.delete(notification_id, user_id);
 
       res.json({
         success: true,
@@ -188,14 +126,7 @@ const notificationController = {
     try {
       const user_id = req.user.user_id;
 
-      const [result] = await pool.execute(
-        `SELECT COUNT(*) as unread_count
-                 FROM Notifications 
-                 WHERE user_id = ? AND is_read = FALSE`,
-        [user_id]
-      );
-
-      const unread_count = result[0].unread_count;
+      const unread_count = await Notification.countUnread(user_id);
 
       res.json({
         success: true,
@@ -225,19 +156,8 @@ const notificationController = {
         });
       }
 
-      const validTypes = [
-        "event_approved",
-        "event_rejected",
-        "registration_approved",
-        "registration_rejected",
-        "registration_completed",
-        "event_reminder",
-        "new_post",
-        "new_comment",
-        "reaction_received",
-      ];
-
-      if (!validTypes.includes(type)) {
+      // Validate type
+      if (!Notification.isValidType(type)) {
         return res.status(400).json({
           success: false,
           message: "Loại thông báo không hợp lệ",
@@ -245,23 +165,17 @@ const notificationController = {
       }
 
       // Tạo thông báo
-      const [result] = await pool.execute(
-        `INSERT INTO Notifications (user_id, type, payload) 
-                 VALUES (?, ?, ?)`,
-        [user_id, type, JSON.stringify(payload)]
-      );
-
-      // Lấy thông báo vừa tạo
-      const [notifications] = await pool.execute(
-        `SELECT * FROM Notifications WHERE notification_id = ?`,
-        [result.insertId]
-      );
+      const notification = await Notification.create({
+        user_id,
+        type,
+        payload,
+      });
 
       res.status(201).json({
         success: true,
         message: "Đã tạo thông báo",
         data: {
-          notification: notifications[0],
+          notification: notification,
         },
       });
     } catch (error) {
