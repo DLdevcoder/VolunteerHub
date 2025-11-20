@@ -56,6 +56,7 @@ CREATE TABLE `Events` (
     `manager_id` INT NOT NULL,
     `category_id` INT NULL,
     `approval_status` ENUM('pending','approved','rejected') DEFAULT 'pending' NOT NULL,
+    `rejection_reason` VARCHAR(255),
     `approved_by` INT,
     `approval_date` DATETIME NULL COMMENT 'Ngày duyệt sự kiện',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,

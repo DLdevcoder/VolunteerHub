@@ -41,7 +41,6 @@ router.get(
 
 // Cập nhật sự kiện
 // Dành cho: ONLY Manager (chủ sở hữu) - Admin KHÔNG được sửa
-// Chỉ cập nhật được sự kiện chưa bắt đầu
 router.put(
   "/:event_id",
   authMiddleware.authenticateToken,

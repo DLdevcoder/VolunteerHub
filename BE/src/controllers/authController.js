@@ -18,10 +18,10 @@ const authController = {
       } = req.body;
 
       // Kiểm tra input
-      if (!email || !password || !full_name) {
+      if (!email || !password || !full_name || !phone) {
         return res.status(400).json({
           success: false,
-          message: "Vui lòng điền đầy đủ thông tin: email, password, full_name",
+          message: "Vui lòng điền đầy đủ thông tin: email, password, full_name, phone",
         });
       }
 

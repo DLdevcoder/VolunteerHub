@@ -42,15 +42,19 @@ const Event = {
     return rows.length > 0;
   },
 
-  // Lấy sự kiện theo ID
+  // Lấy sự kiện theo ID (lấy tất cả, trừ sự kiện bị xoá mềm)
   async getEventById(event_id) {
     const [events] = await pool.execute(
-      `SELECT e.*, c.name as category_name, u.full_name as manager_name, u.email as manager_email,
-              approver.full_name as approved_by_name
+      `SELECT 
+          e.event_id, e.title, e.description, e.target_participants, 
+          e.current_participants, e.start_date, e.end_date, e.location, 
+          e.category_id, e.created_at, e.approval_status,
+          e.rejection_reason,
+          c.name as category_name, 
+          u.full_name as manager_name 
        FROM Events e
        LEFT JOIN Categories c ON e.category_id = c.category_id
        LEFT JOIN Users u ON e.manager_id = u.user_id
-       LEFT JOIN Users approver ON e.approved_by = approver.user_id
        WHERE e.event_id = ? AND e.is_deleted = FALSE`,
       [event_id]
     );
@@ -71,11 +75,18 @@ const Event = {
       start_date_to,
       sort_by = "created_at",
       sort_order = "DESC",
+      is_deleted,
     } = filters;
 
     const offset = (page - 1) * limit;
-    let whereConditions = ["e.is_deleted = FALSE"];
+    let whereConditions = [];
     let params = [];
+
+    if (is_deleted === true || is_deleted === "true") {
+      whereConditions.push("e.is_deleted = TRUE");
+    } else {
+      whereConditions.push("e.is_deleted = FALSE");
+    }
 
     // Thêm điều kiện lọc
     if (approval_status) {
@@ -130,7 +141,7 @@ const Event = {
     const total = countResult[0].total;
 
     // Lấy dữ liệu (bổ sung thông tin người duyệt)
-    const [events] = await pool.execute(
+    const [events] = await pool.query(
       `SELECT e.*, c.name as category_name, u.full_name as manager_name, u.email as manager_email,
               approver.full_name as approved_by_name
        FROM Events e
@@ -140,7 +151,7 @@ const Event = {
        ${whereClause}
        ORDER BY e.${sortField} ${sortDirection}
        LIMIT ? OFFSET ?`,
-      [...params, limit, offset]
+      [...params, Number(limit), Number(offset)]
     );
 
     return {
@@ -292,12 +303,13 @@ const Event = {
   },
 
   // Từ chối sự kiện (cập nhật trạng thái, trigger sẽ tự động tạo thông báo)
-  async rejectEvent(event_id, admin_id) {
+  async rejectEvent(event_id, admin_id, reason) {
     const [result] = await pool.execute(
       `UPDATE Events 
-       SET approval_status = 'rejected', approved_by = ?, approval_date = NOW()
+       SET approval_status = 'rejected', approved_by = ?, approval_date = NOW(), rejection_reason = ?
        WHERE event_id = ? AND is_deleted = FALSE`,
-      [admin_id, event_id]
+
+      [admin_id, reason, event_id]
     );
 
     return result.affectedRows > 0;
