@@ -17,10 +17,34 @@ const authController = {
         role_name = "Volunteer",
       } = req.body;
 
-      // ... validation code giữ nguyên ...
+      // Kiểm tra input
+      if (!email || !password || !full_name || !phone) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Vui lòng điền đầy đủ thông tin: email, password, full_name, phone",
+        });
+      }
 
-      // Sử dụng User Model
-      const role_id = await User.getRoleId(role_name);
+      // Kiểm tra email hợp lệ
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          message: "Email không hợp lệ",
+        });
+      }
+
+      // Kiểm tra mật khẩu
+      if (password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: "Mật khẩu phải có ít nhất 6 ký tự",
+        });
+      }
+
+      // Tìm role_id từ role_name
+      const role_id = await User.getRoleIdByName(role_name);
       if (!role_id) {
         return res.status(400).json({
           success: false,
