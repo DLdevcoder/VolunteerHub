@@ -56,6 +56,7 @@ CREATE TABLE `Events` (
     `manager_id` INT NOT NULL,
     `category_id` INT NULL,
     `approval_status` ENUM('pending','approved','rejected') DEFAULT 'pending' NOT NULL,
+    `rejection_reason` VARCHAR(255),
     `approved_by` INT,
     `approval_date` DATETIME NULL COMMENT 'Ngày duyệt sự kiện',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -271,6 +272,13 @@ LEFT JOIN `Comments` c ON u.user_id = c.user_id
 WHERE u.status = 'Active'
 GROUP BY u.user_id;
 
+-- Thêm type mới vào bảng Notifications
+ALTER TABLE Notifications 
+MODIFY COLUMN type ENUM(
+    'event_approved', 'event_rejected', 'registration_approved', 'registration_rejected',
+    'registration_completed', 'event_reminder', 'new_post', 'new_comment', 'reaction_received',
+    'new_registration'  -- THÊM MỚI
+) NOT NULL;
 -- ====================================================================
 -- VII. STORED PROCEDURES
 -- ====================================================================
