@@ -49,7 +49,7 @@ const Event = {
           e.event_id, e.title, e.description, e.target_participants, 
           e.current_participants, e.start_date, e.end_date, e.location, 
           e.category_id, e.created_at, e.approval_status,
-          e.rejection_reason,
+          e.rejection_reason, e.manager_id,
           c.name as category_name, 
           u.full_name as manager_name 
        FROM Events e
@@ -240,44 +240,34 @@ const Event = {
   },
 
   // Cập nhật thông tin sự kiện (chỉ cập nhật các trường được gửi lên)
-  async updateEvent(event_id, eventData) {
-    // Lọc bỏ các trường undefined/null
-    const fieldsToUpdate = {};
+  async updateEvent(event_id, data) {
+    // Danh sách các trường ĐƯỢC PHÉP cập nhật (Whitelist)
+    // Quan trọng: Phải bao gồm cả các trường trạng thái để Controller reset về Pending
     const allowedFields = [
-      'title',
-      'description',
-      'target_participants',
-      'start_date',
-      'end_date',
-      'location',
-      'category_id'
+      // Thông tin cơ bản
+      'title', 'description', 'target_participants', 
+      'start_date', 'end_date', 'location', 'category_id',
+      'approval_status', 'approved_by', 'approval_date', 'rejection_reason'
     ];
 
-    // Chỉ thêm các trường được gửi lên
-    allowedFields.forEach(field => {
-      if (eventData[field] !== undefined && eventData[field] !== null) {
-        fieldsToUpdate[field] = eventData[field];
+    const fields = [];
+    const values = [];
+
+    Object.keys(data).forEach(key => {
+      // Chỉ lấy những key nằm trong whitelist và giá trị không phải undefined
+      if (allowedFields.includes(key) && data[key] !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(data[key]);
       }
     });
 
-    // Nếu không có trường nào để cập nhật
-    if (Object.keys(fieldsToUpdate).length === 0) {
-      return false;
-    }
+    if (fields.length === 0) return 0;
 
-    // Tạo dynamic SQL
-    const setClause = Object.keys(fieldsToUpdate)
-      .map(field => `${field} = ?`)
-      .join(', ');
-    
-    const values = [...Object.values(fieldsToUpdate), event_id];
+    let sql = `UPDATE Events SET ${fields.join(", ")} WHERE event_id = ? AND is_deleted = FALSE`;
+    values.push(event_id);
 
-    const [result] = await pool.execute(
-      `UPDATE Events SET ${setClause} WHERE event_id = ? AND is_deleted = FALSE`,
-      values
-    );
-
-    return result.affectedRows > 0;
+    const [result] = await pool.execute(sql, values);
+    return result.affectedRows;
   },
 
   // Xóa mềm sự kiện (soft delete)

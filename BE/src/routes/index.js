@@ -5,6 +5,7 @@ import notificationRoutes from "./notificationRoutes.js";
 import eventRoutes from "./eventRoutes.js";
 import dashboardRoutes from "./dashboardRoutes.js";
 import exportRoutes from "./exportRoutes.js";
+import registrationRoutes from "./registrationRoutes.js";
 // import userRoutes from './userRoutes.js';
 // import postRoutes from './postRoutes.js';
 
@@ -17,6 +18,7 @@ router.use("/notifications", notificationRoutes);
 router.use("/events", eventRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/export", exportRoutes);
+router.use("/registrations", registrationRoutes);
 // router.use('/users', userRoutes);
 // router.use('/posts', postRoutes);
 
