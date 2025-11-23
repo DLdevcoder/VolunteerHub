@@ -47,7 +47,7 @@ const User = {
   },
 
   // Lấy role_id từ tên role
-  async getRoleIdByName(role_name) {
+  async getRoleId(role_name) {
     const [roles] = await pool.execute(
       "SELECT role_id FROM Roles WHERE name = ?",
       [role_name]

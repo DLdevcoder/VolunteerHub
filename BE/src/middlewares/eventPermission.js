@@ -111,14 +111,6 @@ const eventPermission = {
           message: "Không tìm thấy sự kiện",
         });
       }
-
-      if (new Date(event.start_date) <= new Date()) {
-        return res.status(400).json({
-          success: false,
-          message: "Không thể chỉnh sửa sự kiện đã bắt đầu hoặc đã kết thúc",
-        });
-      }
-
       // Lưu event vào req để tái sử dụng trong controller (tránh query lại DB)
       req.event = event;
       next();

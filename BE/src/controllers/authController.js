@@ -43,7 +43,7 @@ const authController = {
       }
 
       // Tìm role_id từ role_name
-      const role_id = await User.getRoleIdByName(role_name);
+      const role_id = await User.getRoleId(role_name);
       if (!role_id) {
         return res.status(400).json({
           success: false,
