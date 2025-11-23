@@ -2,7 +2,10 @@ import pool from "../config/db.js";
 
 class Notification {
   // Lấy danh sách thông báo của user
-  static async findByUserId(user_id, { page = 1, limit = 20, is_read } = {}) {
+  static async findByUserId(
+    user_id,
+    { page = 1, limit = 20, is_read, type } = {}
+  ) {
     try {
       const offset = (page - 1) * limit;
 
@@ -12,6 +15,11 @@ class Notification {
       if (is_read !== undefined) {
         whereConditions.push("is_read = ?");
         queryParams.push(is_read === "true");
+      }
+
+      if (type) {
+        whereConditions.push("type = ?");
+        queryParams.push(type);
       }
 
       const whereClause =
@@ -74,13 +82,39 @@ class Notification {
 
   // Tạo thông báo mới
   static async create(notificationData) {
-    const { user_id, type, payload } = notificationData;
+    let { user_id, type, payload } = notificationData;
+
+    console.log("=== DEBUG NOTIFICATION CREATE ===");
+    console.log("user_id:", user_id, "type:", type);
+    console.log("payload:", payload);
+    console.log("payload type:", typeof payload);
+
+    // CHỈ STRINGIFY NẾU PAYLOAD LÀ OBJECT VÀ CHƯA STRINGIFY
+    if (payload && typeof payload === "object") {
+      payload = JSON.stringify(payload);
+      console.log("payload after stringify:", payload);
+    }
+
+    // VALIDATE KHÔNG CÓ UNDEFINED
+    if (user_id === undefined || type === undefined || payload === undefined) {
+      console.log(
+        "UNDEFINED FOUND - user_id:",
+        user_id,
+        "type:",
+        type,
+        "payload:",
+        payload
+      );
+      throw new Error(
+        `Cannot have undefined values: user_id=${user_id}, type=${type}, payload=${payload}`
+      );
+    }
 
     try {
       const [result] = await pool.execute(
         `INSERT INTO Notifications (user_id, type, payload) 
          VALUES (?, ?, ?)`,
-        [user_id, type, JSON.stringify(payload)]
+        [user_id, type, payload]
       );
 
       // Lấy thông báo vừa tạo
@@ -171,7 +205,7 @@ class Notification {
     }
   }
 
-  // Validate notification type
+  // Validate notification type - PHẢI KHỚP VỚI ENUM TRONG DB
   static isValidType(type) {
     const validTypes = [
       "event_approved",
@@ -183,9 +217,56 @@ class Notification {
       "new_post",
       "new_comment",
       "reaction_received",
+      "new_registration",
     ];
 
     return validTypes.includes(type);
+  }
+
+  // Các method hỗ trợ Web Push (tùy chọn - nếu triển khai sau)
+  static async createAndPush(notificationData) {
+    try {
+      const notification = await this.create(notificationData);
+
+      return notification;
+    } catch (error) {
+      console.error("Error in createAndPush:", error);
+      throw error;
+    }
+  }
+
+  // Helper cho nội dung thông báo
+  static getNotificationTitle(type) {
+    const titles = {
+      event_approved: "Sự kiện đã được duyệt",
+      event_rejected: "Sự kiện bị từ chối",
+      registration_approved: "Đăng ký được chấp nhận",
+      registration_rejected: "Đăng ký bị từ chối",
+      registration_completed: "Hoàn thành sự kiện",
+      event_reminder: "Nhắc nhở sự kiện",
+      new_post: "Bài viết mới",
+      new_comment: "Bình luận mới",
+      reaction_received: "Có tương tác mới",
+    };
+
+    return titles[type] || "Thông báo mới";
+  }
+
+  static getNotificationBody(type, payload) {
+    const defaultBodies = {
+      event_approved: "Sự kiện của bạn đã được phê duyệt",
+      event_rejected: "Sự kiện của bạn đã bị từ chối",
+      registration_approved:
+        "Đăng ký tham gia sự kiện của bạn đã được chấp nhận",
+      registration_rejected: "Đăng ký tham gia sự kiện của bạn đã bị từ chối",
+      registration_completed: "Bạn đã hoàn thành sự kiện thành công",
+      event_reminder: "Sự kiện sắp diễn ra",
+      new_post: "Có bài viết mới trong sự kiện",
+      new_comment: "Có bình luận mới trong bài viết",
+      reaction_received: "Bài viết của bạn nhận được tương tác mới",
+    };
+
+    return defaultBodies[type] || "Bạn có thông báo mới";
   }
 }
 
