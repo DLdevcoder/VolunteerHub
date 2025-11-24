@@ -14,6 +14,14 @@ const RegisterForm = () => {
       <div className="registerForm-box">
         <h2>Register</h2>
         <Form layout="vertical">
+          <Form.Item label="Full name" name="fullName">
+            <Input placeholder="Enter your full name" />
+          </Form.Item>
+
+          <Form.Item label="Phone number" name="phoneNumber">
+            <Input placeholder="Enter your phone number" />
+          </Form.Item>
+
           <Form.Item label="Email" name="email">
             <Input placeholder="Enter your email" />
           </Form.Item>

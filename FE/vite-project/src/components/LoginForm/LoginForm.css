@@ -51,6 +51,12 @@ img {
   color: #555555;
 }
 
+.register-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .loginForm-options-wrapper .forgot-password-option,
 .loginForm-options-wrapper .register-option > span {
   cursor: pointer;
