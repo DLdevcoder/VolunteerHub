@@ -149,7 +149,7 @@ CREATE TABLE `Notifications` (
     `user_id` INT NOT NULL,
     `type` ENUM(
         'event_approved', 'event_rejected', 'registration_approved', 'registration_rejected',
-        'registration_completed', 'event_reminder', 'new_post', 'new_comment', 'reaction_received'
+        'registration_completed', 'event_reminder', 'new_post', 'new_comment', 'reaction_received', 'new_registration'
     ) NOT NULL,
     `payload` JSON COMMENT 'Dữ liệu bổ sung (event_id, message, etc.)',
     `is_read` BOOLEAN DEFAULT FALSE NOT NULL,
