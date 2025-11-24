@@ -1,6 +1,7 @@
 import "./RegisterForm.css";
-import { Button, Form, Input } from "antd";
+import { Button, Form, Input, message } from "antd";
 import { useNavigate } from "react-router-dom";
+import authApi from "../../../apis/authApi";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -9,11 +10,37 @@ const RegisterForm = () => {
     navigate("/login");
   };
 
+  const handleRegister = async (values) => {
+    // console.log("Register button clicked", values);
+    const payload = {
+      email: values.email,
+      password: values.password,
+      full_name: values.fullName,
+      phone: values.phoneNumber,
+      role_name: "Volunteer",
+    };
+
+    try {
+      const res = await authApi.register(payload);
+
+      if (res.success) {
+        message.success("Register successfully! Please log in.");
+        navigate("/login");
+      } else {
+        message.error(res.message || "Register failed");
+      }
+    } catch (err) {
+      console.error(err);
+      const msg = err?.response?.data?.message || "Error while registering";
+      message.error(msg);
+    }
+  };
+
   return (
     <div className="registerForm-container">
       <div className="registerForm-box">
         <h2>Register</h2>
-        <Form layout="vertical">
+        <Form layout="vertical" onFinish={handleRegister}>
           <Form.Item label="Full name" name="fullName">
             <Input placeholder="Enter your full name" />
           </Form.Item>
