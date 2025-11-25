@@ -3,13 +3,18 @@ import { Input, Button, Avatar, Badge, Dropdown } from "antd";
 import { BellOutlined } from "@ant-design/icons";
 import { SlLogout } from "react-icons/sl";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import authSlice from "../../redux/slices/authSlice";
 
 const AppHeader = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const handleDropdownClicked = ({ key }) => {
     if (key == 1) {
       navigate("/profile");
     } else if (key == 2) {
+      dispatch(authSlice.actions.logout());
       navigate("/login");
     }
   };
