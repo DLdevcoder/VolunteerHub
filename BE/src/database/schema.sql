@@ -286,10 +286,11 @@ BEGIN
     UPDATE `Events`
     SET `approval_status` = 'approved',
         `approved_by` = p_admin_id,
-        `approval_date` = NOW()
-    WHERE `event_id` = p_event_id;
-    
-    SELECT 'Event approved successfully' AS message;
+        `approval_date` = NOW(),
+        `rejection_reason` = NULL 
+    WHERE `event_id` = p_event_id 
+      AND `is_deleted` = FALSE; 
+    SELECT ROW_COUNT() as affected;
 END//
 
 CREATE PROCEDURE `sp_complete_registration`(
