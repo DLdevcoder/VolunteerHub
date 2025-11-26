@@ -123,36 +123,58 @@ const eventPermission = {
     }
   },
 
-  // Kiểm tra sự kiện đang chờ duyệt (cho Admin duyệt/từ chối)
-  checkEventPending: async (req, res, next) => {
+  // src/middlewares/eventPermission.js
+  
+  // Dùng cho Admin khi muốn Duyệt
+  checkEventNotApproved: async (req, res, next) => {
     try {
       const { event_id } = req.params;
-
-      const event = await Event.getEventById(event_id);
+      // Nếu middleware trước đã lấy event rồi thì dùng luôn
+      let event = req.event; 
+      
       if (!event) {
-        return res.status(404).json({
-          success: false,
-          message: "Không tìm thấy sự kiện",
-        });
+         event = await Event.getEventById(event_id);
       }
 
-      if (event.approval_status !== "pending") {
+      if (!event) {
+        return res.status(404).json({ success: false, message: "Sự kiện không tồn tại" });
+      }
+
+      // CHỈ CHẶN NẾU ĐÃ APPROVED
+      if (event.approval_status === "approved") {
         return res.status(400).json({
           success: false,
-          message: `Sự kiện đã được ${
-            event.approval_status === "approved" ? "duyệt" : "từ chối"
-          } trước đó`,
+          message: "Sự kiện này đã được duyệt rồi, không thể thao tác lại.",
         });
       }
 
       req.event = event;
       next();
     } catch (error) {
-      console.error("Check event pending error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Lỗi server khi kiểm tra trạng thái sự kiện",
-      });
+      console.error("Check status error:", error);
+      res.status(500).json({ success: false, message: "Lỗi server" });
+    }
+  },
+
+  // Dùng cho Admin khi muốn Từ chối 
+  checkEventNotRejected: async (req, res, next) => {
+    try {
+      const { event_id } = req.params;
+      const event = req.event || await Event.getEventById(event_id); 
+
+      if (!event) return res.status(404).json({ success: false, message: "Sự kiện không tồn tại" });
+
+      if (event.approval_status === "rejected") {
+        return res.status(400).json({
+          success: false,
+          message: "Sự kiện này đã bị từ chối trước đó rồi.",
+        });
+      }
+
+      req.event = event;
+      next();
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Lỗi server" });
     }
   },
 };

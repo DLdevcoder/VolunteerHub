@@ -6,12 +6,15 @@ import eventPermission from "../middlewares/eventPermission.js";
 const router = express.Router();
 
 // ====================================================================
-// ROUTES CÔNG KHAI (Không cần đăng nhập)
+// ROUTES CHO VOLUNTEER
 // ====================================================================
 
 // Lấy danh sách sự kiện đang hoạt động (approved, chưa kết thúc)
 // Dành cho: Tất cả người dùng (public)
 router.get("/active", eventController.getActiveEvents);
+
+// Lấy danh sách tất cả danh mục (để hiển thị dropdown lọc)
+router.get("/categories", eventController.getCategories);
 
 // Xem chi tiết sự kiện
 // Dành cho: Tất cả người dùng (public)
@@ -79,7 +82,7 @@ router.patch(
   "/:event_id/approve",
   authMiddleware.authenticateToken,
   authMiddleware.requireAdmin,
-  eventPermission.checkEventPending,
+  eventPermission.checkEventNotApproved,
   eventController.approveEvent
 );
 
@@ -89,7 +92,7 @@ router.patch(
   "/:event_id/reject",
   authMiddleware.authenticateToken,
   authMiddleware.requireAdmin,
-  eventPermission.checkEventPending,
+  eventPermission.checkEventNotRejected,
   eventController.rejectEvent
 );
 
