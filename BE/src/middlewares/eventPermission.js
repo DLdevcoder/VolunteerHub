@@ -122,8 +122,6 @@ const eventPermission = {
       });
     }
   },
-
-  // src/middlewares/eventPermission.js
   
   // Dùng cho Admin khi muốn Duyệt
   checkEventNotApproved: async (req, res, next) => {
