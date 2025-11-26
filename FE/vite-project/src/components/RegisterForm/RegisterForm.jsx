@@ -1,17 +1,18 @@
 import "./RegisterForm.css";
 import { Button, Form, Input, message } from "antd";
 import { useNavigate } from "react-router-dom";
-import authApi from "../../../apis/authApi";
+import { useDispatch } from "react-redux";
+import { registerThunk } from "../../redux/slices/authSlice";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleLoginOptionClicked = () => {
     navigate("/login");
   };
 
   const handleRegister = async (values) => {
-    // console.log("Register button clicked", values);
     const payload = {
       email: values.email,
       password: values.password,
@@ -21,19 +22,25 @@ const RegisterForm = () => {
     };
 
     try {
-      const res = await authApi.register(payload);
+      const resultAction = await dispatch(registerThunk(payload));
 
-      if (res.success) {
+      if (registerThunk.fulfilled.match(resultAction)) {
         message.success("Register successfully! Please log in.");
-        alert("Register successfully! Please log in.");
+        alert("Register successfully!");
         navigate("/login");
       } else {
-        message.error(res.message || "Register failed");
+        // lỗi do rejectWithValue
+        const errMsg =
+          resultAction.payload || "Register failed, please try again.";
+        alert(
+          `${resultAction.payload || "Register failed, please try again."}`
+        );
+        message.error(errMsg);
       }
     } catch (err) {
       console.error(err);
-      const msg = err?.response?.data?.message || "Error while registering";
-      message.error(msg);
+      alert("Unexpected error while registering");
+      message.error("Unexpected error while registering");
     }
   };
 

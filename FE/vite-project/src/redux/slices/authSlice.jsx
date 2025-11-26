@@ -32,6 +32,29 @@ const loginThunk = createAsyncThunk(
   }
 );
 
+// register thunk
+const registerThunk = createAsyncThunk(
+  "auth/register",
+  async (payload, { rejectWithValue }) => {
+    try {
+      // payload = { email, password, full_name, phone, role_name }
+      const res = await authApi.register(payload);
+
+      if (!res.success) {
+        return rejectWithValue(res.message || "Register failed");
+      }
+
+      return res.data; // { user, token }
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err.message ||
+        "Error while registering";
+      return rejectWithValue(msg);
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -67,9 +90,20 @@ const authSlice = createSlice({
       .addCase(loginThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || "Login failed";
+      })
+      .addCase(registerThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(registerThunk.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(registerThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Register failed";
       });
   },
 });
 
-export { loginThunk };
+export { loginThunk, registerThunk };
 export default authSlice;
