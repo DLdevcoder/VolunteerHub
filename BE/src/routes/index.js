@@ -6,8 +6,10 @@ import eventRoutes from "./eventRoutes.js";
 import dashboardRoutes from "./dashboardRoutes.js";
 import exportRoutes from "./exportRoutes.js";
 import registrationRoutes from "./registrationRoutes.js";
-// import userRoutes from './userRoutes.js';
-// import postRoutes from './postRoutes.js';
+import postRoutes from "./postRoutes.js";
+import commentRoutes from "./commentRoutes.js";
+import reactionRoutes from "./reactionRoutes.js";
+
 
 const router = express.Router();
 
@@ -19,8 +21,9 @@ router.use("/events", eventRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/export", exportRoutes);
 router.use("/registrations", registrationRoutes);
-// router.use('/users', userRoutes);
-// router.use('/posts', postRoutes);
+router.use("/posts", postRoutes);
+router.use("/comments", commentRoutes)
+router.use("/reactions", reactionRoutes)
 
 // Route mặc định để test
 router.get("/", (req, res) => {

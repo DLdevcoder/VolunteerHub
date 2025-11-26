@@ -42,6 +42,12 @@ const Event = {
     return rows.length > 0;
   },
 
+  // Lấy tất cả danh mục sự kiện (Môi trường, Giáo dục...)
+  async getAllCategories() {
+    const [rows] = await pool.execute("SELECT * FROM Categories ORDER BY display_order ASC");
+    return rows;
+  },
+
   // Lấy sự kiện theo ID (lấy tất cả, trừ sự kiện bị xoá mềm)
   async getEventById(event_id) {
     const [events] = await pool.execute(
@@ -280,16 +286,14 @@ const Event = {
     return result.affectedRows > 0;
   },
 
-  // Duyệt sự kiện (sử dụng Stored Procedure)
+  // Duyệt sự kiện (Dùng Stored Procedure tối ưu)
   async approveEvent(event_id, admin_id) {
-    try {
-      // Gọi stored procedure sp_approve_event
-      await pool.execute(`CALL sp_approve_event(?, ?)`, [event_id, admin_id]);
-      return true;
-    } catch (error) {
-      console.error("Approve event stored procedure error:", error);
-      return false;
-    }
+    const [rows] = await pool.execute(
+      `CALL sp_approve_event(?, ?)`, 
+      [event_id, admin_id]
+    );
+    const result = rows[0][0];
+    return result.affected > 0;
   },
 
   // Từ chối sự kiện (cập nhật trạng thái, trigger sẽ tự động tạo thông báo)
