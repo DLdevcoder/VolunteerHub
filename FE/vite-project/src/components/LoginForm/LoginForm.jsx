@@ -28,12 +28,15 @@ const LoginForm = () => {
 
       if (loginThunk.fulfilled.match(resultAction)) {
         message.success("Login successful");
+        alert("Login successful");
         // chuyển sang trang events (hoặc dashboard)
         navigate("/events");
       } else {
+        alert("Login failed: " + (resultAction.payload || "Unknown error"));
         message.error(resultAction.payload || "Login failed");
       }
     } catch (err) {
+      alert("Unexpected error occurred");
       console.error(err);
       message.error("Unexpected error");
     }

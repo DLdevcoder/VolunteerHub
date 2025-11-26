@@ -15,6 +15,7 @@ const AppHeader = () => {
       navigate("/profile");
     } else if (key == 2) {
       dispatch(authSlice.actions.logout());
+      alert("Logged out successfully!");
       navigate("/login");
     }
   };

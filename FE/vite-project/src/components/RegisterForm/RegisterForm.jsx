@@ -25,6 +25,7 @@ const RegisterForm = () => {
 
       if (res.success) {
         message.success("Register successfully! Please log in.");
+        alert("Register successfully! Please log in.");
         navigate("/login");
       } else {
         message.error(res.message || "Register failed");
