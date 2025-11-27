@@ -287,6 +287,47 @@ class NotificationService {
     // Chạy ngay lần đầu
     await this.sendEventReminders();
   }
+
+  // Thông báo sự kiện bị hủy cho tất cả volunteers đã đăng ký
+  static async notifyEventCancelled(event_id, reason) {
+    try {
+      // Lấy tất cả volunteers đã đăng ký (mọi trạng thái)
+      const [registrations] = await pool.execute(
+        `SELECT user_id FROM Registrations WHERE event_id = ?`,
+        [event_id]
+      );
+
+      // Lấy thông tin event
+      const [events] = await pool.execute(
+        `SELECT title FROM Events WHERE event_id = ?`,
+        [event_id]
+      );
+      const event_title = events[0]?.title || "Sự kiện";
+
+      const notifications = [];
+      for (const registration of registrations) {
+        const notification = await this.createNotificationFromTrigger(
+          registration.user_id,
+          "event_cancelled",
+          {
+            event_id: event_id,
+            event_title: event_title,
+            reason: reason,
+            message: `Sự kiện "${event_title}" đã bị hủy: ${reason}`,
+          }
+        );
+        notifications.push(notification);
+      }
+
+      console.log(
+        `Đã gửi thông báo hủy sự kiện cho ${notifications.length} volunteers`
+      );
+      return notifications;
+    } catch (error) {
+      console.error("Lỗi gửi thông báo hủy sự kiện:", error);
+      throw error;
+    }
+  }
 }
 
 export default NotificationService;

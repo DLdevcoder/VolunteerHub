@@ -4,6 +4,8 @@ import Event from "../models/Event.js";
 import pool from "../config/db.js";
 
 const notificationController = {
+  // ==================== API CHO NGƯỜI DÙNG ====================
+
   // Lấy danh sách thông báo của user hiện tại
   async getMyNotifications(req, res) {
     try {
@@ -147,7 +149,33 @@ const notificationController = {
     }
   },
 
-  // ==================== CÁC LUỒNG THÔNG BÁO THEO SƠ ĐỒ ====================
+  // Lấy thông báo gần đây
+  async getRecentNotifications(req, res) {
+    try {
+      const user_id = req.user.user_id;
+      const { limit = 10 } = req.query;
+
+      const notifications = await Notification.getRecentUnread(
+        user_id,
+        parseInt(limit)
+      );
+
+      res.json({
+        success: true,
+        data: {
+          notifications: notifications,
+        },
+      });
+    } catch (error) {
+      console.error("Get recent notifications error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi lấy thông báo gần đây",
+      });
+    }
+  },
+
+  // ==================== API CHO HỆ THỐNG ====================
 
   // Thông báo khi sự kiện được duyệt (cho Manager) - ĐÃ CÓ TRONG TRIGGER
   async notifyEventApproval(req, res) {
@@ -192,19 +220,22 @@ const notificationController = {
   },
 
   // Thông báo khi có đăng ký mới (cho Manager/Event Host)
-  // notificationController.js - trong notifyNewRegistration
   async notifyNewRegistration(req, res) {
     try {
       const { event_id, user_id } = req.body;
 
-      console.log("=== DEBUG CONTROLLER ===");
-      console.log("Event ID:", event_id, "User ID:", user_id);
+      console.log("Event ID:", event_id);
+      console.log("User ID:", user_id);
+
+      // Validate input
+      if (!event_id || !user_id) {
+        return res.status(400).json({
+          success: false,
+          message: "event_id và user_id là bắt buộc",
+        });
+      }
 
       const event = await Event.getEventById(event_id);
-      console.log("Event object:", event);
-      console.log("Event manager_id:", event?.manager_id);
-      console.log("Event title:", event?.title);
-
       if (!event) {
         return res.status(404).json({
           success: false,
@@ -212,17 +243,7 @@ const notificationController = {
         });
       }
 
-      // KIỂM TRA MANAGER_ID CÓ TỒN TẠI KHÔNG
-      if (!event.manager_id) {
-        return res.status(400).json({
-          success: false,
-          message: "Sự kiện không có manager",
-        });
-      }
-
       const user = await User.findById(user_id);
-      console.log("User object:", user);
-
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -230,9 +251,9 @@ const notificationController = {
         });
       }
 
-      // ĐẢM BẢO TẤT CẢ GIÁ TRỊ ĐỀU CÓ
-      const notificationData = {
-        user_id: event.manager_id, // ← KIỂM TRA GIÁ TRỊ NÀY
+      // Gửi thông báo cho manager của sự kiện
+      const notification = await Notification.createAndPush({
+        user_id: event.manager_id,
         type: "new_registration",
         payload: {
           event_id: event_id,
@@ -241,11 +262,7 @@ const notificationController = {
           user_name: user.full_name,
           message: `Có đăng ký mới từ ${user.full_name} cho sự kiện "${event.title}"`,
         },
-      };
-
-      console.log("Final notification data:", notificationData);
-
-      const notification = await Notification.createAndPush(notificationData);
+      });
 
       res.json({
         success: true,
@@ -266,6 +283,14 @@ const notificationController = {
     try {
       const { registration_id, status, rejection_reason } = req.body;
 
+      // Validate input
+      if (!registration_id || !status) {
+        return res.status(400).json({
+          success: false,
+          message: "registration_id và status là bắt buộc",
+        });
+      }
+
       // Lấy thông tin registration từ database
       const [registrations] = await pool.execute(
         `SELECT r.*, e.title as event_title, u.full_name as user_name 
@@ -284,27 +309,6 @@ const notificationController = {
       }
 
       const registration = registrations[0];
-
-      let type, message;
-      switch (status) {
-        case "approved":
-          type = "registration_approved";
-          message = "Đăng ký của bạn đã được chấp nhận";
-          break;
-        case "rejected":
-          type = "registration_rejected";
-          message = `Đăng ký của bạn bị từ chối: ${rejection_reason}`;
-          break;
-        case "completed":
-          type = "registration_completed";
-          message = "Bạn đã hoàn thành sự kiện thành công";
-          break;
-        default:
-          return res.status(400).json({
-            success: false,
-            message: "Trạng thái không hợp lệ",
-          });
-      }
 
       // Cập nhật trạng thái registration (trigger sẽ tự động tạo thông báo)
       const [result] = await pool.execute(
@@ -339,6 +343,14 @@ const notificationController = {
     try {
       const { event_id } = req.body;
 
+      // Validate input
+      if (!event_id) {
+        return res.status(400).json({
+          success: false,
+          message: "event_id là bắt buộc",
+        });
+      }
+
       const event = await Event.getEventById(event_id);
       if (!event) {
         return res.status(404).json({
@@ -366,7 +378,9 @@ const notificationController = {
             event_title: event.title,
             start_date: event.start_date,
             location: event.location,
-            reminder: "Sự kiện sắp diễn ra",
+            message: `Sự kiện "${event.title}" sẽ diễn ra vào ${new Date(
+              event.start_date
+            ).toLocaleString("vi-VN")}`,
           },
         });
         notifications.push(notification);
@@ -386,11 +400,207 @@ const notificationController = {
     }
   },
 
+  // Thông báo sự kiện sắp diễn ra (1h trước)
+  async notifyEventStartingSoon(req, res) {
+    try {
+      const { event_id } = req.body;
+
+      // Validate input
+      if (!event_id) {
+        return res.status(400).json({
+          success: false,
+          message: "event_id là bắt buộc",
+        });
+      }
+
+      const event = await Event.getEventById(event_id);
+      if (!event) {
+        return res.status(404).json({
+          success: false,
+          message: "Sự kiện không tồn tại",
+        });
+      }
+
+      // Lấy tất cả volunteers đã đăng ký và được chấp nhận
+      const [approvedRegistrations] = await pool.execute(
+        `SELECT r.user_id, u.full_name, u.email 
+         FROM Registrations r
+         JOIN Users u ON r.user_id = u.user_id
+         WHERE r.event_id = ? AND r.status = 'approved'`,
+        [event_id]
+      );
+
+      const notifications = [];
+      for (const registration of approvedRegistrations) {
+        const notification = await Notification.createAndPush({
+          user_id: registration.user_id,
+          type: "event_starting_soon",
+          payload: {
+            event_id: event_id,
+            event_title: event.title,
+            start_date: event.start_date,
+            location: event.location,
+            message: `Sự kiện "${event.title}" sẽ bắt đầu trong 1 giờ tới`,
+          },
+        });
+        notifications.push(notification);
+      }
+
+      res.json({
+        success: true,
+        message: `Đã gửi thông báo sắp diễn ra cho ${notifications.length} tình nguyện viên`,
+        data: { notifications },
+      });
+    } catch (error) {
+      console.error("Event starting soon notification error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi gửi thông báo sắp diễn ra",
+      });
+    }
+  },
+
+  // Thông báo sự kiện bị hủy (Admin)
+  async notifyEventCancelled(req, res) {
+    try {
+      const { event_id, reason } = req.body;
+
+      // Validate input
+      if (!event_id || !reason) {
+        return res.status(400).json({
+          success: false,
+          message: "event_id và reason là bắt buộc",
+        });
+      }
+
+      const event = await Event.getEventById(event_id);
+      if (!event) {
+        return res.status(404).json({
+          success: false,
+          message: "Sự kiện không tồn tại",
+        });
+      }
+
+      // Lấy tất cả volunteers đã đăng ký (mọi trạng thái)
+      const [registrations] = await pool.execute(
+        `SELECT r.user_id, u.full_name, u.email 
+         FROM Registrations r
+         JOIN Users u ON r.user_id = u.user_id
+         WHERE r.event_id = ?`,
+        [event_id]
+      );
+
+      const notifications = [];
+      for (const registration of registrations) {
+        const notification = await Notification.createAndPush({
+          user_id: registration.user_id,
+          type: "event_cancelled",
+          payload: {
+            event_id: event_id,
+            event_title: event.title,
+            reason: reason,
+            message: `Sự kiện "${event.title}" đã bị hủy: ${reason}`,
+          },
+        });
+        notifications.push(notification);
+      }
+
+      res.json({
+        success: true,
+        message: `Đã gửi thông báo hủy sự kiện cho ${notifications.length} tình nguyện viên`,
+        data: { notifications },
+      });
+    } catch (error) {
+      console.error("Event cancelled notification error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi gửi thông báo hủy sự kiện",
+      });
+    }
+  },
+
+  // Thông báo cập nhật sự kiện khẩn (Manager)
+  async notifyEventUpdatedUrgent(req, res) {
+    try {
+      const { event_id, changes } = req.body;
+      const manager_id = req.user.user_id;
+
+      // Validate input
+      if (!event_id || !changes) {
+        return res.status(400).json({
+          success: false,
+          message: "event_id và changes là bắt buộc",
+        });
+      }
+
+      const event = await Event.getEventById(event_id);
+      if (!event) {
+        return res.status(404).json({
+          success: false,
+          message: "Sự kiện không tồn tại",
+        });
+      }
+
+      // Kiểm tra quyền manager
+      const isEventOwner = await Event.isEventOwner(event_id, manager_id);
+      if (!isEventOwner) {
+        return res.status(403).json({
+          success: false,
+          message: "Bạn không có quyền cập nhật sự kiện này",
+        });
+      }
+
+      // Lấy tất cả volunteers đã đăng ký và được chấp nhận
+      const [approvedRegistrations] = await pool.execute(
+        `SELECT r.user_id, u.full_name, u.email 
+         FROM Registrations r
+         JOIN Users u ON r.user_id = u.user_id
+         WHERE r.event_id = ? AND r.status = 'approved'`,
+        [event_id]
+      );
+
+      const notifications = [];
+      for (const registration of approvedRegistrations) {
+        const notification = await Notification.createAndPush({
+          user_id: registration.user_id,
+          type: "event_updated_urgent",
+          payload: {
+            event_id: event_id,
+            event_title: event.title,
+            changes: changes,
+            message: `Sự kiện "${event.title}" có thông tin quan trọng được cập nhật`,
+          },
+        });
+        notifications.push(notification);
+      }
+
+      res.json({
+        success: true,
+        message: `Đã gửi thông báo cập nhật khẩn cho ${notifications.length} tình nguyện viên`,
+        data: { notifications },
+      });
+    } catch (error) {
+      console.error("Event updated urgent notification error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi gửi thông báo cập nhật khẩn",
+      });
+    }
+  },
+
   // Thông báo nội dung mới trên wall (cho tất cả participants)
   async notifyNewContent(req, res) {
     try {
       const { event_id, content_type, content_id, content_preview } = req.body;
       const author_id = req.user.user_id;
+
+      // Validate input
+      if (!event_id || !content_type || !content_id) {
+        return res.status(400).json({
+          success: false,
+          message: "event_id, content_type và content_id là bắt buộc",
+        });
+      }
 
       const event = await Event.getEventById(event_id);
       if (!event) {
@@ -435,8 +645,11 @@ const notificationController = {
               event_title: event.title,
               content_type: content_type,
               content_id: content_id,
-              content_preview: content_preview,
+              content_preview: content_preview?.substring(0, 100) || "",
               author_id: author_id,
+              message: `Có ${
+                content_type === "post" ? "bài viết" : "bình luận"
+              } mới trong sự kiện "${event.title}"`,
             },
           });
           notifications.push(notification);
@@ -463,10 +676,12 @@ const notificationController = {
       const { content_type, content_id, reactor_id, content_owner_id } =
         req.body;
 
-      if (!content_owner_id) {
+      // Validate input
+      if (!content_type || !content_id || !reactor_id || !content_owner_id) {
         return res.status(400).json({
           success: false,
-          message: "content_owner_id là bắt buộc",
+          message:
+            "content_type, content_id, reactor_id và content_owner_id là bắt buộc",
         });
       }
 
@@ -512,6 +727,98 @@ const notificationController = {
       res.status(500).json({
         success: false,
         message: "Lỗi server khi gửi thông báo lượt thích",
+      });
+    }
+  },
+
+  // Thông báo tài khoản bị khóa
+  async notifyAccountLocked(req, res) {
+    try {
+      const { user_id, reason } = req.body;
+
+      // Validate input
+      if (!user_id || !reason) {
+        return res.status(400).json({
+          success: false,
+          message: "user_id và reason là bắt buộc",
+        });
+      }
+
+      const user = await User.findById(user_id);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "Người dùng không tồn tại",
+        });
+      }
+
+      const notification = await Notification.createAndPush({
+        user_id: user_id,
+        type: "account_locked",
+        payload: {
+          reason: reason,
+          message: `Tài khoản của bạn đã bị khóa: ${reason}`,
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Đã gửi thông báo khóa tài khoản",
+        data: { notification },
+      });
+    } catch (error) {
+      console.error("Account locked notification error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi gửi thông báo khóa tài khoản",
+      });
+    }
+  },
+
+  // Thông báo manager bị khóa (cho admin)
+  async notifyManagerLocked(req, res) {
+    try {
+      const { manager_id, reason } = req.body;
+      const admin_id = req.user.user_id;
+
+      // Validate input
+      if (!manager_id || !reason) {
+        return res.status(400).json({
+          success: false,
+          message: "manager_id và reason là bắt buộc",
+        });
+      }
+
+      const manager = await User.findById(manager_id);
+      if (!manager) {
+        return res.status(404).json({
+          success: false,
+          message: "Manager không tồn tại",
+        });
+      }
+
+      // Gửi thông báo cho admin
+      const notification = await Notification.createAndPush({
+        user_id: admin_id,
+        type: "manager_account_locked",
+        payload: {
+          manager_id: manager_id,
+          manager_name: manager.full_name,
+          reason: reason,
+          message: `Manager ${manager.full_name} đã bị khóa tài khoản: ${reason}`,
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Đã gửi thông báo manager bị khóa",
+        data: { notification },
+      });
+    } catch (error) {
+      console.error("Manager locked notification error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi gửi thông báo manager bị khóa",
       });
     }
   },
@@ -565,6 +872,152 @@ const notificationController = {
       res.status(500).json({
         success: false,
         message: "Lỗi server khi tạo thông báo",
+      });
+    }
+  },
+
+  // Trong notificationController - THÊM:
+
+  // Thông báo mở khóa tài khoản
+  async notifyAccountUnlocked(req, res) {
+    try {
+      const { user_id } = req.body;
+
+      // Validate input
+      if (!user_id) {
+        return res.status(400).json({
+          success: false,
+          message: "user_id là bắt buộc",
+        });
+      }
+
+      const user = await User.findById(user_id);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "Người dùng không tồn tại",
+        });
+      }
+
+      const notification = await Notification.createAndPush({
+        user_id: user_id,
+        type: "account_unlocked",
+        payload: {
+          message: "Tài khoản của bạn đã được mở khóa",
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Đã gửi thông báo mở khóa tài khoản",
+        data: { notification },
+      });
+    } catch (error) {
+      console.error("Account unlocked notification error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi gửi thông báo mở khóa tài khoản",
+      });
+    }
+  },
+
+  // Thông báo mở khóa manager (cho admin)
+  async notifyManagerUnlocked(req, res) {
+    try {
+      const { manager_id } = req.body;
+      const admin_id = req.user.user_id;
+
+      // Validate input
+      if (!manager_id) {
+        return res.status(400).json({
+          success: false,
+          message: "manager_id là bắt buộc",
+        });
+      }
+
+      const manager = await User.findById(manager_id);
+      if (!manager) {
+        return res.status(404).json({
+          success: false,
+          message: "Manager không tồn tại",
+        });
+      }
+
+      // Gửi thông báo cho admin
+      const notification = await Notification.createAndPush({
+        user_id: admin_id,
+        type: "manager_account_unlocked",
+        payload: {
+          manager_id: manager_id,
+          manager_name: manager.full_name,
+          message: `Manager ${manager.full_name} đã được mở khóa tài khoản`,
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Đã gửi thông báo mở khóa manager",
+        data: { notification },
+      });
+    } catch (error) {
+      console.error("Manager unlocked notification error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi gửi thông báo mở khóa manager",
+      });
+    }
+  },
+
+  // Gửi thông báo hàng loạt
+  async bulkCreateNotifications(req, res) {
+    try {
+      const { user_ids, type, payload } = req.body;
+
+      // Validate input
+      if (!user_ids || !type || !Array.isArray(user_ids)) {
+        return res.status(400).json({
+          success: false,
+          message: "user_ids (array), type và payload là bắt buộc",
+        });
+      }
+
+      // Validate type
+      if (!Notification.isValidType(type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Loại thông báo không hợp lệ",
+        });
+      }
+
+      // Kiểm tra users tồn tại
+      for (const user_id of user_ids) {
+        const user = await User.findById(user_id);
+        if (!user) {
+          return res.status(404).json({
+            success: false,
+            message: `User ${user_id} không tồn tại`,
+          });
+        }
+      }
+
+      // Tạo thông báo hàng loạt
+      const affectedRows = await Notification.bulkCreateForUsers(user_ids, {
+        type,
+        payload,
+      });
+
+      res.status(201).json({
+        success: true,
+        message: `Đã tạo ${affectedRows} thông báo`,
+        data: {
+          affected_rows: affectedRows,
+        },
+      });
+    } catch (error) {
+      console.error("Bulk create notifications error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi tạo thông báo hàng loạt",
       });
     }
   },

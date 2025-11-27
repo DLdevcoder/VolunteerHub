@@ -277,8 +277,11 @@ ALTER TABLE Notifications
 MODIFY COLUMN type ENUM(
     'event_approved', 'event_rejected', 'registration_approved', 'registration_rejected',
     'registration_completed', 'event_reminder', 'new_post', 'new_comment', 'reaction_received',
-    'new_registration'  -- THÊM MỚI
+    'new_registration', 'event_updated_urgent', 'account_locked', 'manager_account_locked', 
+    'event_starting_soon', 'event_cancelled'
 ) NOT NULL;
+
+-- ====================================================================
 -- ====================================================================
 -- VII. STORED PROCEDURES
 -- ====================================================================
