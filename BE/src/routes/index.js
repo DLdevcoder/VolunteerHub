@@ -9,6 +9,7 @@ import registrationRoutes from "./registrationRoutes.js";
 import postRoutes from "./postRoutes.js";
 import commentRoutes from "./commentRoutes.js";
 import reactionRoutes from "./reactionRoutes.js";
+import webPushRoutes from "./webPushRoutes.js";
 
 const router = express.Router();
 
@@ -21,8 +22,9 @@ router.use("/dashboard", dashboardRoutes);
 router.use("/export", exportRoutes);
 router.use("/registrations", registrationRoutes);
 router.use("/posts", postRoutes);
-router.use("/comments", commentRoutes)
-router.use("/reactions", reactionRoutes)
+router.use("/comments", commentRoutes);
+router.use("/reactions", reactionRoutes);
+router.use("/push", webPushRoutes);
 
 // Route mặc định để test
 router.get("/", (req, res) => {

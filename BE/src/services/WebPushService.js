@@ -1,9 +1,14 @@
 import webpush from "web-push";
 import pool from "../config/db.js";
 
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_PUBLIC_KEY =
+  process.env.VAPID_PUBLIC_KEY ||
+  "BIc2Q_6bT3JkK8bZzrQ6eL1J2XqY7nA8mD9pF4sT7wG2hM5vK1xR3eB8yN6tH9jL4qW7zC0pF3vE5sD2";
+const VAPID_PRIVATE_KEY =
+  process.env.VAPID_PRIVATE_KEY ||
+  "KFc2Q_6bT3JkK8bZzrQ6eL1J2XqY7nA8mD9pF4sT7wG2hM5vK1xR3eB8yN6tH9jL4qW7zC0pF3vE5";
 
+// Cấu hình web-push
 webpush.setVapidDetails(
   "mailto:contact@volunteerhub.com",
   VAPID_PUBLIC_KEY,
@@ -15,6 +20,8 @@ class WebPushService {
   static async saveSubscription(user_id, subscription) {
     try {
       const { endpoint, keys } = subscription;
+
+      console.log("Saving subscription for user:", user_id);
 
       // Kiểm tra đã tồn tại chưa
       const [existing] = await pool.execute(
@@ -28,12 +35,14 @@ class WebPushService {
           `UPDATE PushSubscriptions SET keys = ?, is_active = TRUE, updated_at = NOW() WHERE endpoint = ?`,
           [JSON.stringify(keys), endpoint]
         );
+        console.log("Updated existing subscription");
       } else {
         // Insert new
         await pool.execute(
           `INSERT INTO PushSubscriptions (user_id, endpoint, keys) VALUES (?, ?, ?)`,
           [user_id, endpoint, JSON.stringify(keys)]
         );
+        console.log("Created new subscription");
       }
 
       return true;
@@ -95,6 +104,7 @@ class WebPushService {
             JSON.stringify(message)
           );
           sentCount++;
+          console.log(`Push sent to ${subscription.endpoint}`);
         } catch (pushError) {
           console.error("Push notification failed:", pushError);
 
@@ -103,6 +113,9 @@ class WebPushService {
             await pool.execute(
               `UPDATE PushSubscriptions SET is_active = FALSE WHERE endpoint = ?`,
               [subscription.endpoint]
+            );
+            console.log(
+              `Marked subscription as inactive: ${subscription.endpoint}`
             );
           }
         }
@@ -123,6 +136,7 @@ class WebPushService {
         `UPDATE PushSubscriptions SET is_active = FALSE WHERE endpoint = ?`,
         [endpoint]
       );
+      console.log(`Unsubscribed: ${endpoint}`);
       return true;
     } catch (error) {
       console.error("Error unsubscribing:", error);

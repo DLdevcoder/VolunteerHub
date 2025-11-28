@@ -1021,6 +1021,40 @@ const notificationController = {
       });
     }
   },
+
+  async testPush(req, res) {
+    try {
+      const user_id = req.user.user_id;
+
+      console.log("Test push called for user:", user_id);
+
+      // Tạo thông báo test
+      const notification = await Notification.createAndPush({
+        user_id: user_id,
+        type: "test_notification",
+        payload: {
+          message: "This is a test push notification from the server!",
+          test_id: Date.now(),
+          url: "/notifications",
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Test push notification sent successfully!",
+        data: {
+          notification: notification,
+          user_id: user_id,
+        },
+      });
+    } catch (error) {
+      console.error("Test push error:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
 };
 
 export default notificationController;

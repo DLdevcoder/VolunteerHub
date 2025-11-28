@@ -113,24 +113,61 @@ class Notification {
     }
   }
 
-  // Tạo và gửi thông báo ngay lập tức
+  // Tạo và gửi thông báo push
   static async createAndPush(notificationData) {
     try {
       const notification = await this.create(notificationData);
+      try {
+        const WebPushService = await import("./WebPushService.js");
 
-      // Gửi thông báo real-time (tạm thời log - có thể tích hợp Web Push sau)
-      console.log("Web Push would be sent:", {
-        title: this.getNotificationTitle(notification.type),
-        body: this.getNotificationBody(notification.type, notification.payload),
-        user_id: notification.user_id,
-        type: notification.type,
-        url: this.getNotificationUrl(notification),
-      });
+        const pushData = {
+          title: this.getNotificationTitle(notification.type),
+          body: this.getNotificationBody(
+            notification.type,
+            notification.payload
+          ),
+          notification_id: notification.notification_id,
+          type: notification.type,
+          url: this.getNotificationUrl(notification),
+          data: {
+            event_id: this.getPayloadValue(notification.payload, "event_id"),
+            user_id: this.getPayloadValue(notification.payload, "user_id"),
+            registration_id: this.getPayloadValue(
+              notification.payload,
+              "registration_id"
+            ),
+          },
+        };
+
+        await WebPushService.default.sendPushNotification(
+          notification.user_id,
+          pushData
+        );
+        console.log(
+          `Web Push sent successfully to user ${notification.user_id}`
+        );
+      } catch (pushError) {
+        console.error(
+          "Web Push failed, but notification saved to database:",
+          pushError
+        );
+      }
 
       return notification;
     } catch (error) {
       console.error("Error in createAndPush:", error);
       throw error;
+    }
+  }
+
+  // Helper method để lấy giá trị từ payload
+  static getPayloadValue(payload, key) {
+    try {
+      const payloadObj =
+        typeof payload === "string" ? JSON.parse(payload) : payload;
+      return payloadObj?.[key] || null;
+    } catch (error) {
+      return null;
     }
   }
 

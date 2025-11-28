@@ -15,6 +15,8 @@ router.put("/mark-all-read", notificationController.markAllAsRead);
 router.put("/:notification_id/read", notificationController.markAsRead);
 router.delete("/:notification_id", notificationController.deleteNotification);
 
+router.post("/test-push", notificationController.testPush);
+
 // ==================== ROUTES CHO HỆ THỐNG ====================
 
 // Quản lý sự kiện - Duyệt/từ chối sự kiện (Admin)

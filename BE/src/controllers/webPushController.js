@@ -1,11 +1,17 @@
 import WebPushService from "../services/WebPushService.js";
 
-const webPushController = {
-  // Lưu subscription
-  async saveSubscription(req, res) {
+class WebPushController {
+  static async saveSubscription(req, res) {
     try {
-      const user_id = req.user.user_id;
+      const user_id = req.user?.user_id;
       const { subscription } = req.body;
+
+      if (!subscription) {
+        return res.status(400).json({
+          success: false,
+          message: "Subscription is required",
+        });
+      }
 
       await WebPushService.saveSubscription(user_id, subscription);
 
@@ -17,32 +23,38 @@ const webPushController = {
       console.error("Save subscription error:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to save subscription",
+        message: error.message,
       });
     }
-  },
+  }
 
-  // Lấy VAPID public key
-  async getVapidKey(req, res) {
+  static async getVapidKey(req, res) {
     try {
       const publicKey = WebPushService.getVapidPublicKey();
 
       res.json({
         success: true,
-        data: { publicKey },
+        publicKey: publicKey,
       });
     } catch (error) {
+      console.error("Get VAPID key error:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to get VAPID key",
+        message: error.message,
       });
     }
-  },
+  }
 
-  // Hủy subscription
-  async unsubscribe(req, res) {
+  static async unsubscribe(req, res) {
     try {
       const { endpoint } = req.body;
+
+      if (!endpoint) {
+        return res.status(400).json({
+          success: false,
+          message: "Endpoint is required",
+        });
+      }
 
       await WebPushService.unsubscribe(endpoint);
 
@@ -51,12 +63,13 @@ const webPushController = {
         message: "Unsubscribed successfully",
       });
     } catch (error) {
+      console.error("Unsubscribe error:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to unsubscribe",
+        message: error.message,
       });
     }
-  },
-};
+  }
+}
 
-export default webPushController;
+export default WebPushController;

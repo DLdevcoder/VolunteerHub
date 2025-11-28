@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test Web Push - VolunteerHub</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #2c3e50;
+        text-align: center;
+      }
+      .btn {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        margin: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      .btn:hover {
+        background: #2980b9;
+      }
+      .btn:disabled {
+        background: #bdc3c7;
+        cursor: not-allowed;
+      }
+      .btn-success {
+        background: #27ae60;
+      }
+      .btn-danger {
+        background: #e74c3c;
+      }
+      .status {
+        margin: 20px 0;
+        padding: 15px;
+        border-radius: 5px;
+        background: #f8f9fa;
+        border-left: 4px solid #3498db;
+      }
+      .status.success {
+        border-color: #27ae60;
+        background: #d5f4e6;
+      }
+      .status.error {
+        border-color: #e74c3c;
+        background: #fadbd8;
+      }
+      .log {
+        background: #2c3e50;
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 14px;
+      }
+      .step {
+        margin: 20px 0;
+        padding: 15px;
+        background: #ecf0f1;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🧪 Test Web Push Notifications</h1>
+
+      <div class="step">
+        <h3>Bước 1: Kiểm tra hỗ trợ trình duyệt</h3>
+        <button class="btn" onclick="checkBrowserSupport()">
+          Kiểm tra hỗ trợ
+        </button>
+        <div id="supportStatus"></div>
+      </div>
+
+      <div class="step">
+        <h3>Bước 2: Lấy VAPID Key từ server</h3>
+        <button class="btn" onclick="getVapidKey()">Lấy VAPID Key</button>
+        <div id="vapidKeyStatus"></div>
+      </div>
+
+      <div class="step">
+        <h3>Bước 3: Đăng ký nhận thông báo</h3>
+        <button
+          class="btn"
+          id="subscribeBtn"
+          onclick="subscribeToPush()"
+          disabled
+        >
+          Subscribe to Push
+        </button>
+        <button
+          class="btn btn-danger"
+          id="unsubscribeBtn"
+          onclick="unsubscribeFromPush()"
+          disabled
+        >
+          Unsubscribe
+        </button>
+        <div id="subscriptionStatus"></div>
+      </div>
+
+      <div class="step">
+        <h3>Bước 4: Test gửi thông báo</h3>
+        <button
+          class="btn btn-success"
+          id="testPushBtn"
+          onclick="testPushNotification()"
+          disabled
+        >
+          Test Push Notification
+        </button>
+        <button
+          class="btn"
+          onclick="testDifferentNotifications()"
+          disabled
+          id="testMultipleBtn"
+        >
+          Test Multiple Notifications
+        </button>
+        <div id="testStatus"></div>
+      </div>
+      <div class="step">
+        <h3>Bước 5: Debug Service Worker</h3>
+        <button class="btn" onclick="checkServiceWorker()">
+          Kiểm tra Service Worker
+        </button>
+        <button class="btn" onclick="forceRegisterSW()">
+          Force Register SW
+        </button>
+        <button class="btn" onclick="unregisterAllSW()">
+          Unregister All SW
+        </button>
+        <div id="swStatus"></div>
+      </div>
+      <div class="step">
+        <h3>Bước 5: Kiểm tra Service Worker</h3>
+        <button class="btn" onclick="checkServiceWorker()">
+          Kiểm tra Service Worker
+        </button>
+        <div id="swStatus"></div>
+      </div>
+
+      <div class="step">
+        <h3>Logs:</h3>
+        <div class="log" id="log"></div>
+      </div>
+
+      <div class="step">
+        <h3>Thông tin subscription hiện tại:</h3>
+        <pre id="currentSubscription">Chưa có subscription</pre>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "http://localhost:5000/api";
+      let currentSubscription = null;
+      let vapidPublicKey = "";
+
+      // Utility functions
+      function log(message, type = "info") {
+        const logDiv = document.getElementById("log");
+        const timestamp = new Date().toLocaleTimeString();
+        const color =
+          type === "error"
+            ? "#e74c3c"
+            : type === "success"
+            ? "#27ae60"
+            : "#3498db";
+        logDiv.innerHTML += `<div style="color: ${color}; margin: 5px 0;">[${timestamp}] ${message}</div>`;
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+
+      function updateStatus(elementId, message, type = "info") {
+        const element = document.getElementById(elementId);
+        element.innerHTML = message;
+        element.className = `status ${type}`;
+      }
+
+      function enableButton(buttonId) {
+        document.getElementById(buttonId).disabled = false;
+      }
+
+      function disableButton(buttonId) {
+        document.getElementById(buttonId).disabled = true;
+      }
+
+      // Bước 1: Kiểm tra hỗ trợ trình duyệt
+      async function checkBrowserSupport() {
+        log("Đang kiểm tra hỗ trợ trình duyệt...");
+
+        if (!("serviceWorker" in navigator)) {
+          updateStatus(
+            "supportStatus",
+            "❌ Trình duyệt không hỗ trợ Service Worker",
+            "error"
+          );
+          log("ERROR: Service Worker không được hỗ trợ", "error");
+          return false;
+        }
+
+        if (!("PushManager" in window)) {
+          updateStatus(
+            "supportStatus",
+            "❌ Trình duyệt không hỗ trợ Push Notifications",
+            "error"
+          );
+          log("ERROR: Push Manager không được hỗ trợ", "error");
+          return false;
+        }
+
+        if (!("Notification" in window)) {
+          updateStatus(
+            "supportStatus",
+            "❌ Trình duyệt không hỗ trợ Notifications",
+            "error"
+          );
+          log("ERROR: Notification API không được hỗ trợ", "error");
+          return false;
+        }
+
+        updateStatus(
+          "supportStatus",
+          "✅ Trình duyệt hỗ trợ đầy đủ",
+          "success"
+        );
+        log("SUCCESS: Trình duyệt hỗ trợ đầy đủ", "success");
+        enableButton("subscribeBtn");
+        return true;
+      }
+
+      // Bước 2: Lấy VAPID Key
+      async function getVapidKey() {
+        try {
+          log("Đang lấy VAPID public key từ server...");
+
+          const response = await fetch(`${API_BASE}/push/vapid-key`);
+          const data = await response.json();
+
+          if (data.success) {
+            vapidPublicKey = data.publicKey;
+            updateStatus(
+              "vapidKeyStatus",
+              `✅ Đã lấy VAPID Key thành công`,
+              "success"
+            );
+            log(
+              `SUCCESS: VAPID Key: ${vapidPublicKey.substring(0, 20)}...`,
+              "success"
+            );
+            enableButton("subscribeBtn");
+          } else {
+            throw new Error(data.message);
+          }
+        } catch (error) {
+          updateStatus(
+            "vapidKeyStatus",
+            `❌ Lỗi khi lấy VAPID Key: ${error.message}`,
+            "error"
+          );
+          log(`ERROR: Không thể lấy VAPID Key: ${error.message}`, "error");
+        }
+      }
+
+      // Bước 3: Đăng ký nhận thông báo
+      async function subscribeToPush() {
+        try {
+          log("Đang đăng ký nhận push notifications...");
+
+          // Kiểm tra permission
+          const permission = await Notification.requestPermission();
+          log(`Kết quả permission: ${permission}`);
+
+          if (permission !== "granted") {
+            throw new Error("Người dùng từ chối permission");
+          }
+
+          // 🔥 QUAN TRỌNG: Đăng ký service worker với đúng URL
+          const swUrl = "/sw.js"; // Sử dụng relative URL
+          const registration = await navigator.serviceWorker.register(swUrl);
+          log("✅ Service Worker đã được đăng ký: " + swUrl);
+
+          // Đợi service worker active
+          await navigator.serviceWorker.ready;
+          log("✅ Service Worker đã sẵn sàng");
+
+          // Subscribe to push
+          currentSubscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+          });
+
+          log(
+            "✅ Đã subscribe thành công với endpoint: " +
+              currentSubscription.endpoint
+          );
+
+          // Gửi subscription lên server
+          const response = await fetch(`${API_BASE}/push/subscribe`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              subscription: currentSubscription,
+            }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            updateStatus(
+              "subscriptionStatus",
+              "✅ Đã đăng ký nhận thông báo thành công!",
+              "success"
+            );
+            log("SUCCESS: Subscription đã được lưu trên server", "success");
+
+            // Enable các nút tiếp theo
+            enableButton("testPushBtn");
+            enableButton("testMultipleBtn");
+            enableButton("unsubscribeBtn");
+            disableButton("subscribeBtn");
+
+            // Hiển thị subscription info
+            document.getElementById("currentSubscription").textContent =
+              JSON.stringify(currentSubscription, null, 2);
+          } else {
+            throw new Error(result.message);
+          }
+        } catch (error) {
+          updateStatus(
+            "subscriptionStatus",
+            `❌ Lỗi khi đăng ký: ${error.message}`,
+            "error"
+          );
+          log(`ERROR: Đăng ký thất bại: ${error.message}`, "error");
+          console.error("Subscription error details:", error);
+        }
+      }
+
+      // Hủy đăng ký
+      async function unsubscribeFromPush() {
+        try {
+          if (!currentSubscription) {
+            throw new Error("Không có subscription active");
+          }
+
+          const response = await fetch(`${API_BASE}/push/unsubscribe`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              endpoint: currentSubscription.endpoint,
+            }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            await currentSubscription.unsubscribe();
+            currentSubscription = null;
+
+            updateStatus(
+              "subscriptionStatus",
+              "✅ Đã hủy đăng ký thành công",
+              "success"
+            );
+            log("SUCCESS: Đã hủy đăng ký", "success");
+
+            enableButton("subscribeBtn");
+            disableButton("testPushBtn");
+            disableButton("testMultipleBtn");
+            disableButton("unsubscribeBtn");
+
+            document.getElementById("currentSubscription").textContent =
+              "Chưa có subscription";
+          } else {
+            throw new Error(result.message);
+          }
+        } catch (error) {
+          updateStatus(
+            "subscriptionStatus",
+            `❌ Lỗi khi hủy đăng ký: ${error.message}`,
+            "error"
+          );
+          log(`ERROR: Hủy đăng ký thất bại: ${error.message}`, "error");
+        }
+      }
+
+      // Bước 4: Test gửi thông báo
+      async function testPushNotification() {
+        try {
+          log("Đang gửi test push notification...");
+
+          const response = await fetch(`${API_BASE}/notifications/test-push`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization:
+                "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJlbWFpbCI6Im1hbmFnZXJAZXhhbXBsZS5jb20iLCJyb2xlX25hbWUiOiJNYW5hZ2VyIiwiaWF0IjoxNzY0Mjk1MzU1LCJleHAiOjE3NjQ5MDAxNTV9.Phc2l1bZGK4Utrf3YUhB7K6VJUufHCrHi6UVYWefz7M", // Tạm thời dùng test token
+            },
+            body: JSON.stringify({
+              title: "Test Push Notification",
+              body: "Đây là thông báo test từ VolunteerHub!",
+              type: "test",
+            }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            updateStatus(
+              "testStatus",
+              "✅ Đã gửi test notification thành công!",
+              "success"
+            );
+            log("SUCCESS: Test notification đã được gửi", "success");
+            log(`Response: ${JSON.stringify(result)}`);
+          } else {
+            throw new Error(result.message);
+          }
+        } catch (error) {
+          updateStatus(
+            "testStatus",
+            `❌ Lỗi khi test: ${error.message}`,
+            "error"
+          );
+          log(`ERROR: Test thất bại: ${error.message}`, "error");
+        }
+      }
+
+      // Test nhiều loại thông báo khác nhau
+      async function testDifferentNotifications() {
+        const testNotifications = [
+          {
+            type: "event_approved",
+            title: "Sự kiện đã được duyệt",
+            body: "Sự kiện của bạn đã được phê duyệt",
+          },
+          {
+            type: "new_registration",
+            title: "Có đăng ký mới",
+            body: "Có người mới đăng ký tham gia sự kiện",
+          },
+          {
+            type: "event_reminder",
+            title: "Nhắc nhở sự kiện",
+            body: "Sự kiện sắp diễn ra",
+          },
+        ];
+
+        for (const notif of testNotifications) {
+          log(`Testing: ${notif.type}`);
+          // Gửi từng thông báo
+          // (Cần implement API tương ứng)
+        }
+      }
+
+      // Kiểm tra Service Worker
+      // Kiểm tra Service Worker
+      async function checkServiceWorker() {
+        try {
+          log("=== Bắt đầu kiểm tra Service Worker ===");
+
+          if (!navigator.serviceWorker) {
+            throw new Error("Service Worker không được hỗ trợ");
+          }
+
+          log("✅ Navigator.serviceWorker được hỗ trợ");
+
+          // Kiểm tra tất cả các registrations
+          const registrations =
+            await navigator.serviceWorker.getRegistrations();
+          log(
+            `Tìm thấy ${registrations.length} Service Worker registration(s)`
+          );
+
+          if (registrations.length > 0) {
+            for (let i = 0; i < registrations.length; i++) {
+              const reg = registrations[i];
+              log(`SW ${i + 1}: ${reg.scope}, state: ${reg.active?.state}`);
+            }
+          }
+
+          // Kiểm tra registration cụ thể cho scope hiện tại
+          const registration = await navigator.serviceWorker.getRegistration();
+
+          if (registration) {
+            updateStatus(
+              "swStatus",
+              `✅ Service Worker đang chạy: ${registration.scope}`,
+              "success"
+            );
+            log(`SUCCESS: Service Worker active: ${registration.scope}`);
+            log(`SW State: ${registration.active?.state}`);
+            log(`SW Script: ${registration.active?.scriptURL}`);
+          } else {
+            updateStatus(
+              "swStatus",
+              "❌ Không có Service Worker nào đang chạy",
+              "error"
+            );
+            log("ERROR: Không có Service Worker active", "error");
+
+            // Thử đăng ký lại
+            log("Thử đăng ký Service Worker lại...");
+            await registerServiceWorker();
+          }
+        } catch (error) {
+          updateStatus("swStatus", `❌ Lỗi: ${error.message}`, "error");
+          log(`ERROR: ${error.message}`, "error");
+        }
+      }
+      // Force register Service Worker
+      async function forceRegisterSW() {
+        try {
+          log("=== FORCE REGISTER SERVICE WORKER ===");
+
+          // Unregister all trước
+          const registrations =
+            await navigator.serviceWorker.getRegistrations();
+          for (let registration of registrations) {
+            await registration.unregister();
+            log(`Đã unregister: ${registration.scope}`);
+          }
+
+          // Đợi một chút
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          // Register lại
+          const registration = await registerServiceWorker();
+
+          if (registration) {
+            updateStatus(
+              "swStatus",
+              "✅ Force register thành công!",
+              "success"
+            );
+            log("SUCCESS: Force register thành công");
+          }
+        } catch (error) {
+          updateStatus(
+            "swStatus",
+            `❌ Force register thất bại: ${error.message}`,
+            "error"
+          );
+          log(`ERROR: Force register failed: ${error.message}`, "error");
+        }
+      }
+
+      // Unregister all Service Workers
+      async function unregisterAllSW() {
+        try {
+          log("=== UNREGISTER ALL SERVICE WORKERS ===");
+
+          const registrations =
+            await navigator.serviceWorker.getRegistrations();
+          log(`Tìm thấy ${registrations.length} Service Worker để unregister`);
+
+          for (let registration of registrations) {
+            const result = await registration.unregister();
+            log(
+              `Unregister ${registration.scope}: ${
+                result ? "thành công" : "thất bại"
+              }`
+            );
+          }
+
+          updateStatus(
+            "swStatus",
+            `✅ Đã unregister ${registrations.length} Service Worker`,
+            "success"
+          );
+        } catch (error) {
+          updateStatus(
+            "swStatus",
+            `❌ Unregister thất bại: ${error.message}`,
+            "error"
+          );
+          log(`ERROR: Unregister failed: ${error.message}`, "error");
+        }
+      }
+
+      // Hàm đăng ký Service Worker
+      async function registerServiceWorker() {
+        try {
+          const swUrl = "/sw.js";
+          log(`Đang đăng ký Service Worker: ${swUrl}`);
+
+          const registration = await navigator.serviceWorker.register(swUrl);
+          log(`✅ Service Worker đã được đăng ký: ${registration.scope}`);
+
+          // Đợi cho SW active
+          if (registration.installing) {
+            log("Service Worker đang installing...");
+            await new Promise((resolve) => {
+              registration.installing.addEventListener("statechange", (e) => {
+                log(`SW state changed to: ${e.target.state}`);
+                if (e.target.state === "activated") {
+                  resolve();
+                }
+              });
+            });
+          }
+
+          log("✅ Service Worker đã activated và sẵn sàng");
+          return registration;
+        } catch (error) {
+          log(`❌ Lỗi đăng ký Service Worker: ${error.message}`, "error");
+          throw error;
+        }
+      }
+
+      // Utility function để convert base64 string thành Uint8Array
+      function urlBase64ToUint8Array(base64String) {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding)
+          .replace(/-/g, "+")
+          .replace(/_/g, "/");
+
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      }
+
+      // Kiểm tra khi trang load
+      window.addEventListener("load", async () => {
+        log("Trang test Web Push đã được load");
+
+        // Tự động kiểm tra browser support
+        await checkBrowserSupport();
+
+        // Tự động lấy VAPID key
+        await getVapidKey();
+
+        // Kiểm tra nếu đã có subscription từ trước
+        if ("serviceWorker" in navigator && "PushManager" in window) {
+          try {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription =
+              await registration.pushManager.getSubscription();
+            if (subscription) {
+              currentSubscription = subscription;
+              updateStatus(
+                "subscriptionStatus",
+                "✅ Đã tìm thấy subscription từ trước",
+                "success"
+              );
+              log("SUCCESS: Đã tìm thấy existing subscription", "success");
+              enableButton("testPushBtn");
+              enableButton("testMultipleBtn");
+              enableButton("unsubscribeBtn");
+              disableButton("subscribeBtn");
+              document.getElementById("currentSubscription").textContent =
+                JSON.stringify(currentSubscription, null, 2);
+            }
+          } catch (error) {
+            log(`Không thể kiểm tra existing subscription: ${error.message}`);
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
