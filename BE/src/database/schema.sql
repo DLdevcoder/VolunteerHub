@@ -277,8 +277,24 @@ ALTER TABLE Notifications
 MODIFY COLUMN type ENUM(
     'event_approved', 'event_rejected', 'registration_approved', 'registration_rejected',
     'registration_completed', 'event_reminder', 'new_post', 'new_comment', 'reaction_received',
-    'new_registration'  -- THÊM MỚI
+    'new_registration', 'event_updated_urgent', 'account_locked', 'manager_account_locked', 
+    'event_starting_soon', 'event_cancelled'
 ) NOT NULL;
+
+CREATE TABLE `PushSubscriptions` (
+  `subscription_id` INT PRIMARY KEY AUTO_INCREMENT,
+  `user_id` INT NOT NULL,
+  `endpoint` TEXT NOT NULL,
+  `keys` JSON NOT NULL,
+  `is_active` BOOLEAN DEFAULT TRUE,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `Users`(`user_id`) ON DELETE CASCADE,
+  INDEX idx_user_id (user_id),
+  INDEX idx_endpoint (endpoint(255))
+) ENGINE=InnoDB COMMENT='Lưu trữ subscription cho Web Push';
+
+-- ====================================================================
 -- ====================================================================
 -- VII. STORED PROCEDURES
 -- ====================================================================

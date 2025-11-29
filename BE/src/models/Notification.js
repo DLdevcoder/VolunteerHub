@@ -82,39 +82,23 @@ class Notification {
 
   // Tạo thông báo mới
   static async create(notificationData) {
-    let { user_id, type, payload } = notificationData;
+    const { user_id, type, payload } = notificationData;
 
-    console.log("=== DEBUG NOTIFICATION CREATE ===");
-    console.log("user_id:", user_id, "type:", type);
-    console.log("payload:", payload);
-    console.log("payload type:", typeof payload);
-
-    // CHỈ STRINGIFY NẾU PAYLOAD LÀ OBJECT VÀ CHƯA STRINGIFY
-    if (payload && typeof payload === "object") {
-      payload = JSON.stringify(payload);
-      console.log("payload after stringify:", payload);
-    }
-
-    // VALIDATE KHÔNG CÓ UNDEFINED
-    if (user_id === undefined || type === undefined || payload === undefined) {
-      console.log(
-        "UNDEFINED FOUND - user_id:",
-        user_id,
-        "type:",
-        type,
-        "payload:",
-        payload
-      );
-      throw new Error(
-        `Cannot have undefined values: user_id=${user_id}, type=${type}, payload=${payload}`
-      );
+    if (!this.isValidType(type)) {
+      throw new Error(`Invalid notification type: ${type}`);
     }
 
     try {
+      // Tự động stringify nếu payload là object
+      let processedPayload = payload;
+      if (payload && typeof payload === "object") {
+        processedPayload = JSON.stringify(payload);
+      }
+
       const [result] = await pool.execute(
         `INSERT INTO Notifications (user_id, type, payload) 
          VALUES (?, ?, ?)`,
-        [user_id, type, payload]
+        [user_id, type, processedPayload]
       );
 
       // Lấy thông báo vừa tạo
@@ -126,6 +110,64 @@ class Notification {
       return notifications[0];
     } catch (error) {
       throw new Error(`Database error in create: ${error.message}`);
+    }
+  }
+
+  // Tạo và gửi thông báo push
+  static async createAndPush(notificationData) {
+    try {
+      const notification = await this.create(notificationData);
+      try {
+        const WebPushService = await import("./WebPushService.js");
+
+        const pushData = {
+          title: this.getNotificationTitle(notification.type),
+          body: this.getNotificationBody(
+            notification.type,
+            notification.payload
+          ),
+          notification_id: notification.notification_id,
+          type: notification.type,
+          url: this.getNotificationUrl(notification),
+          data: {
+            event_id: this.getPayloadValue(notification.payload, "event_id"),
+            user_id: this.getPayloadValue(notification.payload, "user_id"),
+            registration_id: this.getPayloadValue(
+              notification.payload,
+              "registration_id"
+            ),
+          },
+        };
+
+        await WebPushService.default.sendPushNotification(
+          notification.user_id,
+          pushData
+        );
+        console.log(
+          `Web Push sent successfully to user ${notification.user_id}`
+        );
+      } catch (pushError) {
+        console.error(
+          "Web Push failed, but notification saved to database:",
+          pushError
+        );
+      }
+
+      return notification;
+    } catch (error) {
+      console.error("Error in createAndPush:", error);
+      throw error;
+    }
+  }
+
+  // Helper method để lấy giá trị từ payload
+  static getPayloadValue(payload, key) {
+    try {
+      const payloadObj =
+        typeof payload === "string" ? JSON.parse(payload) : payload;
+      return payloadObj?.[key] || null;
+    } catch (error) {
+      return null;
     }
   }
 
@@ -205,48 +247,65 @@ class Notification {
     }
   }
 
-  // Validate notification type - PHẢI KHỚP VỚI ENUM TRONG DB
+  // Validate notification type - ĐẦY ĐỦ CÁC TYPE THEO DB
   static isValidType(type) {
     const validTypes = [
+      // Event related
       "event_approved",
       "event_rejected",
+      "event_reminder",
+      "event_updated_urgent",
+      "event_starting_soon",
+      "event_cancelled",
+
+      // Registration related
       "registration_approved",
       "registration_rejected",
       "registration_completed",
-      "event_reminder",
+      "new_registration",
+
+      // Content related (wall-like)
       "new_post",
       "new_comment",
       "reaction_received",
-      "new_registration",
+
+      // Account related
+      "account_locked",
+      "manager_account_locked",
+      "account_unlocked",
+      "manager_account_unlocked",
     ];
 
     return validTypes.includes(type);
   }
 
-  // Các method hỗ trợ Web Push (tùy chọn - nếu triển khai sau)
-  static async createAndPush(notificationData) {
-    try {
-      const notification = await this.create(notificationData);
-
-      return notification;
-    } catch (error) {
-      console.error("Error in createAndPush:", error);
-      throw error;
-    }
-  }
-
-  // Helper cho nội dung thông báo
+  // Helper methods cho nội dung thông báo
   static getNotificationTitle(type) {
     const titles = {
+      // Event related
       event_approved: "Sự kiện đã được duyệt",
       event_rejected: "Sự kiện bị từ chối",
+      event_reminder: "Nhắc nhở sự kiện",
+      event_updated_urgent: "Sự kiện được cập nhật khẩn",
+      event_starting_soon: "Sự kiện sắp bắt đầu",
+      event_cancelled: "Sự kiện đã bị hủy",
+
+      // Registration related
       registration_approved: "Đăng ký được chấp nhận",
       registration_rejected: "Đăng ký bị từ chối",
       registration_completed: "Hoàn thành sự kiện",
-      event_reminder: "Nhắc nhở sự kiện",
+      new_registration: "Có đăng ký mới",
+
+      // Content related
       new_post: "Bài viết mới",
       new_comment: "Bình luận mới",
       reaction_received: "Có tương tác mới",
+
+      // Account related
+      account_locked: "Tài khoản bị khóa",
+      manager_account_locked: "Manager bị khóa",
+      account_unlocked: "Tài khoản đã được mở khóa",
+      manager_account_unlocked: "Manager đã được mở khóa",
     };
 
     return titles[type] || "Thông báo mới";
@@ -254,19 +313,159 @@ class Notification {
 
   static getNotificationBody(type, payload) {
     const defaultBodies = {
+      // Event related
       event_approved: "Sự kiện của bạn đã được phê duyệt",
       event_rejected: "Sự kiện của bạn đã bị từ chối",
+      event_reminder: "Sự kiện sắp diễn ra",
+      event_updated_urgent: "Sự kiện có thông tin quan trọng được cập nhật",
+      event_starting_soon: "Sự kiện sẽ bắt đầu trong 1 giờ tới",
+      event_cancelled: "Sự kiện bạn đã đăng ký đã bị hủy",
+
+      // Registration related
       registration_approved:
         "Đăng ký tham gia sự kiện của bạn đã được chấp nhận",
       registration_rejected: "Đăng ký tham gia sự kiện của bạn đã bị từ chối",
       registration_completed: "Bạn đã hoàn thành sự kiện thành công",
-      event_reminder: "Sự kiện sắp diễn ra",
+      new_registration: "Có người mới đăng ký tham gia sự kiện",
+
+      // Content related
       new_post: "Có bài viết mới trong sự kiện",
       new_comment: "Có bình luận mới trong bài viết",
       reaction_received: "Bài viết của bạn nhận được tương tác mới",
+
+      // Account related
+      account_locked: "Tài khoản volunteer đã bị khóa",
+      manager_account_locked: "Tài khoản manager đã bị khóa",
+      account_unlocked: "Tài khoản volunteer mở bị khóa",
+      manager_account_unlocked: "Tài khoản manager đã mở khóa",
     };
 
     return defaultBodies[type] || "Bạn có thông báo mới";
+  }
+
+  // Lấy URL cho thông báo (dùng để điều hướng khi click)
+  static getNotificationUrl(notification) {
+    try {
+      const payload =
+        typeof notification.payload === "string"
+          ? JSON.parse(notification.payload)
+          : notification.payload;
+
+      const urlMap = {
+        // Event related - đi đến trang sự kiện
+        event_approved: `/events/${payload?.event_id}`,
+        event_rejected: `/events/${payload?.event_id}`,
+        event_reminder: `/events/${payload?.event_id}`,
+        event_updated_urgent: `/events/${payload?.event_id}`,
+        event_starting_soon: `/events/${payload?.event_id}`,
+        event_cancelled: `/events/${payload?.event_id}`,
+
+        // Registration related - đi đến trang đăng ký của tôi
+        registration_approved: `/my-registrations`,
+        registration_rejected: `/my-registrations`,
+        registration_completed: `/my-registrations`,
+        new_registration: `/events/${payload?.event_id}/registrations`,
+
+        // Content related - đi đến bài viết/comment
+        new_post: `/posts/${payload?.post_id || payload?.content_id}`,
+        new_comment: `/posts/${payload?.post_id}`,
+        reaction_received: `/posts/${payload?.post_id || payload?.content_id}`,
+
+        // Account related - đi đến trang tài khoản
+        account_locked: `/profile`,
+        manager_account_locked: `/admin/users`,
+      };
+
+      return urlMap[notification.type] || "/notifications";
+    } catch (error) {
+      return "/notifications";
+    }
+  }
+
+  // Bulk create notifications for multiple users
+  static async bulkCreateForUsers(userIds, notificationData) {
+    try {
+      const { type, payload } = notificationData;
+
+      if (!this.isValidType(type)) {
+        throw new Error(`Invalid notification type: ${type}`);
+      }
+
+      // Tự động stringify payload
+      let processedPayload = payload;
+      if (payload && typeof payload === "object") {
+        processedPayload = JSON.stringify(payload);
+      }
+
+      const values = userIds.map((user_id) => [
+        user_id,
+        type,
+        processedPayload,
+      ]);
+
+      const placeholders = userIds.map(() => "(?, ?, ?)").join(", ");
+
+      const [result] = await pool.execute(
+        `INSERT INTO Notifications (user_id, type, payload) 
+         VALUES ${placeholders}`,
+        values.flat()
+      );
+
+      return result.affectedRows;
+    } catch (error) {
+      throw new Error(`Database error in bulkCreateForUsers: ${error.message}`);
+    }
+  }
+
+  // Lấy thông báo chưa đọc gần đây
+  static async getRecentUnread(user_id, limit = 10) {
+    try {
+      const [notifications] = await pool.execute(
+        `SELECT notification_id, type, payload, created_at
+         FROM Notifications 
+         WHERE user_id = ? AND is_read = FALSE
+         ORDER BY created_at DESC
+         LIMIT ?`,
+        [user_id, limit]
+      );
+      return notifications;
+    } catch (error) {
+      throw new Error(`Database error in getRecentUnread: ${error.message}`);
+    }
+  }
+
+  // Lấy thông báo theo loại
+  static async findByType(user_id, type, limit = 20) {
+    try {
+      const [notifications] = await pool.execute(
+        `SELECT notification_id, type, payload, is_read, created_at
+         FROM Notifications 
+         WHERE user_id = ? AND type = ?
+         ORDER BY created_at DESC
+         LIMIT ?`,
+        [user_id, type, limit]
+      );
+      return notifications;
+    } catch (error) {
+      throw new Error(`Database error in findByType: ${error.message}`);
+    }
+  }
+
+  // Lấy thông báo theo khoảng thời gian
+  static async findByTimeRange(user_id, startDate, endDate, limit = 50) {
+    try {
+      const [notifications] = await pool.execute(
+        `SELECT notification_id, type, payload, is_read, created_at
+         FROM Notifications 
+         WHERE user_id = ? AND created_at BETWEEN ? AND ?
+         ORDER BY created_at DESC
+         LIMIT ?`,
+        [user_id, startDate, endDate, limit]
+      );
+      return notifications;
+    } catch (error) {
+      throw new Error(`Database error in findByTimeRange: ${error.message}`);
+    }
   }
 }
 
