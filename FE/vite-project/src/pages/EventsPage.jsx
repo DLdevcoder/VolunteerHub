@@ -15,6 +15,9 @@ const EventsPage = () => {
   const { items, pagination, loading, error } = useSelector(
     (state) => state.events
   );
+
+  console.log("in EventPage.jsx, pagination: ", pagination);
+
   const { user } = useSelector((state) => state.auth);
   const userRole = user?.role_name;
 
@@ -43,7 +46,7 @@ const EventsPage = () => {
       const res = await registrationApi.registerForEvent(eventId);
       message.success(res?.data?.message || "Đăng ký sự kiện thành công");
       // Nếu muốn cập nhật lại số người tham gia:
-      // dispatch(fetchActiveEvents({ page, limit: DEFAULT_LIMIT }));
+      dispatch(fetchActiveEvents({ page, limit: DEFAULT_LIMIT }));
     } catch (err) {
       message.error(
         err?.response?.data?.message || "Không thể đăng ký sự kiện"
@@ -53,19 +56,19 @@ const EventsPage = () => {
     }
   };
 
-  // const handleCancel = async (eventId) => {
-  //   try {
-  //     setRegisteringId(`cancel-${eventId}`);
-  //     const res = await registrationApi.cancelRegistration(eventId);
-  //     message.success(res?.data?.message || "Hủy đăng ký thành công");
-  //   } catch (err) {
-  //     message.error(
-  //       err?.response?.data?.message || "Không thể hủy đăng ký sự kiện"
-  //     );
-  //   } finally {
-  //     setRegisteringId(null);
-  //   }
-  // };
+  const handleCancel = async (eventId) => {
+    try {
+      setRegisteringId(`cancel-${eventId}`);
+      const res = await registrationApi.cancelRegistration(eventId);
+      message.success(res?.data?.message || "Hủy đăng ký thành công");
+    } catch (err) {
+      message.error(
+        err?.response?.data?.message || "Không thể hủy đăng ký sự kiện"
+      );
+    } finally {
+      setRegisteringId(null);
+    }
+  };
 
   return (
     <div style={{ padding: 24 }}>
@@ -88,14 +91,14 @@ const EventsPage = () => {
       ) : (
         <>
           {/* 3 cột card: mobile 1, tablet 2, desktop 3 */}
-          <Row gutter={[16, 16]}>
+          <Row gutter={[16, 16]} align="stretch">
             {items.map((ev) => (
               <Col key={ev.event_id} xs={24} md={12} lg={8}>
                 <EventCard
                   event={ev}
                   onRegister={handleRegister}
                   // nếu chưa muốn cho hủy thì tạm comment:
-                  // onCancel={handleCancel}
+                  onCancel={handleCancel}
                   registeringId={registeringId}
                   userRole={userRole}
                 />

@@ -1,9 +1,10 @@
-// src/components/EventCard.jsx
 import { Card, Tag, Button, Space, Typography } from "antd";
+import { IoIosTime } from "react-icons/io";
+import { FaLocationDot } from "react-icons/fa6";
+import { FaUserFriends } from "react-icons/fa";
+import "./EventCard.css";
 
-const { Text, Title } = Typography;
-
-function formatDateRange(start, end) {
+const formatDateRange = (start, end) => {
   if (!start || !end) return "";
   const s = new Date(start);
   const e = new Date(end);
@@ -15,7 +16,7 @@ function formatDateRange(start, end) {
     )}:${pad(d.getMinutes())}`;
 
   return `${fmt(s)} - ${fmt(e)}`;
-}
+};
 
 const EventCard = ({
   event,
@@ -44,53 +45,63 @@ const EventCard = ({
   const canRegister = userRole === "Volunteer";
 
   return (
-    <Card hoverable bodyStyle={{ padding: 16 }}>
-      <Space direction="vertical" size={8} style={{ width: "100%" }}>
-        <Space>
-          <Title level={4} style={{ margin: 0 }}>
-            {title}
-          </Title>
+    <Card hoverable className="card-container">
+      <div className="card-header-container">
+        <div className="header-title">{title}</div>
+        <div className="header-tag">
           {category_name && <Tag color="blue">{category_name}</Tag>}
-        </Space>
-
-        <Text type="secondary">⏰ {formatDateRange(start_date, end_date)}</Text>
-        <Text>📍 {location}</Text>
-
-        <Text type="secondary" ellipsis={{ rows: 3, expandable: true }}>
-          {description}
-        </Text>
-
-        <Space
-          style={{ marginTop: 8, justifyContent: "space-between" }}
-          align="center"
-        >
-          <Text strong>👥 {participantsText}</Text>
-
-          {canRegister && (
-            <Space>
-              <Button
-                type="primary"
-                size="small"
-                onClick={() => onRegister(event_id)}
-                loading={registeringId === event_id}
-              >
-                Đăng ký
-              </Button>
-
-              {onCancel && (
+        </div>
+      </div>
+      <div className="card-content-container">
+        <div className="date">
+          <div className="date-icon">
+            <IoIosTime />
+          </div>
+          <div className="date-content">
+            {formatDateRange(start_date, end_date)}
+          </div>
+        </div>
+        <div className="location">
+          <div className="location-icon">
+            <FaLocationDot />
+          </div>
+          <div className="location-content">{location}</div>
+        </div>
+        <div className="description">{description}</div>
+        <div className="register-container">
+          <div className="participants">
+            <div className="participants-icon">
+              <FaUserFriends />
+            </div>
+            <div className="participants-content">{participantsText}</div>
+          </div>
+          <div className="buttons">
+            {canRegister && (
+              <Space>
                 <Button
+                  type="primary"
                   size="small"
-                  danger
-                  onClick={() => onCancel(event_id)}
-                  loading={registeringId === `cancel-${event_id}`}
+                  onClick={() => onRegister(event_id)}
+                  loading={registeringId === event_id}
                 >
-                  Hủy
+                  Đăng ký
                 </Button>
-              )}
-            </Space>
-          )}
-        </Space>
-      </Space>
+
+                {onCancel && (
+                  <Button
+                    size="small"
+                    danger
+                    onClick={() => onCancel(event_id)}
+                    loading={registeringId === `cancel-${event_id}`}
+                  >
+                    Hủy
+                  </Button>
+                )}
+              </Space>
+            )}
+          </div>
+        </div>
+      </div>
     </Card>
   );
 };

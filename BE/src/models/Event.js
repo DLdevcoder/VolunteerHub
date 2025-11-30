@@ -44,7 +44,9 @@ const Event = {
 
   // Lấy tất cả danh mục sự kiện (Môi trường, Giáo dục...)
   async getAllCategories() {
-    const [rows] = await pool.execute("SELECT * FROM Categories ORDER BY display_order ASC");
+    const [rows] = await pool.execute(
+      "SELECT * FROM Categories ORDER BY display_order ASC"
+    );
     return rows;
   },
 
@@ -126,7 +128,9 @@ const Event = {
     }
 
     const whereClause =
-      whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(" AND ")}`
+        : "";
 
     // Validate sort_by để tránh SQL injection
     const validSortFields = [
@@ -136,7 +140,9 @@ const Event = {
       "title",
       "current_participants",
     ];
-    const sortField = validSortFields.includes(sort_by) ? sort_by : "created_at";
+    const sortField = validSortFields.includes(sort_by)
+      ? sort_by
+      : "created_at";
     const sortDirection = sort_order.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
     // Đếm tổng số bản ghi
@@ -171,19 +177,29 @@ const Event = {
     };
   },
 
-    // Lấy danh sách sự kiện đang hoạt động (approved và chưa kết thúc)
+  // Lấy danh sách sự kiện đang hoạt động (approved và chưa kết thúc)
+  // models/Event.js (chỉ thay hàm này)
+
   async getActiveEvents(filters = {}) {
-    const { 
-      page = 1, 
-      limit = 10, 
-      category_id, 
+    let {
+      page = 1,
+      limit = 10,
+      category_id,
       search,
-      start_date_from, 
-      start_date_to    
+      start_date_from,
+      start_date_to,
     } = filters;
 
+    // Đảm bảo page / limit là số hợp lệ
+    page = Number(page) || 1;
+    limit = Number(limit) || 10;
+
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+
     const offset = (page - 1) * limit;
-    
+
     // Điều kiện cứng: Chỉ lấy sự kiện chưa xóa, đã duyệt và chưa kết thúc
     let whereConditions = [
       "e.is_deleted = FALSE",
@@ -192,17 +208,22 @@ const Event = {
     ];
     let params = [];
 
+    // Lọc theo category
     if (category_id) {
       whereConditions.push("e.category_id = ?");
-      params.push(category_id);
+      params.push(Number(category_id));
     }
 
+    // Lọc theo search (mình cho thêm location cho tiện, bạn muốn giữ nguyên thì bỏ OR e.location)
     if (search) {
-      whereConditions.push("(e.title LIKE ? OR e.description LIKE ?)");
-      params.push(`%${search}%`, `%${search}%`);
+      whereConditions.push(
+        "(e.title LIKE ? OR e.description LIKE ? OR e.location LIKE ?)"
+      );
+      const likeVal = `%${search}%`;
+      params.push(likeVal, likeVal, likeVal);
     }
 
-    // Logic lọc theo thời gian bắt đầu
+    // Lọc theo khoảng thời gian bắt đầu
     if (start_date_from) {
       whereConditions.push("e.start_date >= ?");
       params.push(start_date_from);
@@ -215,22 +236,38 @@ const Event = {
 
     const whereClause = `WHERE ${whereConditions.join(" AND ")}`;
 
-    // Đếm tổng số (Dùng pool.query để nhất quán)
+    // -------- 1) Đếm tổng số event phù hợp --------
     const [countResult] = await pool.query(
-      `SELECT COUNT(*) as total FROM Events e ${whereClause}`,
+      `SELECT COUNT(*) AS total FROM Events e ${whereClause}`,
       params
     );
-    const total = countResult[0].total;
+    const total = countResult[0]?.total ?? 0;
 
-    // Lấy dữ liệu
+    // Nếu không có bản ghi nào thì trả rỗng luôn cho nhanh
+    if (total === 0) {
+      return {
+        events: [],
+        pagination: {
+          total: 0,
+          page,
+          limit,
+          totalPages: 0,
+        },
+      };
+    }
+
+    // -------- 2) Lấy dữ liệu trang hiện tại --------
     const [events] = await pool.query(
-      `SELECT e.*, c.name as category_name, u.full_name as manager_name
-       FROM Events e
-       LEFT JOIN Categories c ON e.category_id = c.category_id
-       LEFT JOIN Users u ON e.manager_id = u.user_id
-       ${whereClause}
-       ORDER BY e.start_date ASC
-       LIMIT ? OFFSET ?`,
+      `SELECT 
+        e.*, 
+        c.name AS category_name, 
+        u.full_name AS manager_name
+     FROM Events e
+     LEFT JOIN Categories c ON e.category_id = c.category_id
+     LEFT JOIN Users u ON e.manager_id = u.user_id
+     ${whereClause}
+     ORDER BY e.start_date ASC
+     LIMIT ? OFFSET ?`,
       [...params, Number(limit), Number(offset)]
     );
 
@@ -238,8 +275,8 @@ const Event = {
       events,
       pagination: {
         total,
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page,
+        limit,
         totalPages: Math.ceil(total / limit),
       },
     };
@@ -251,15 +288,23 @@ const Event = {
     // Quan trọng: Phải bao gồm cả các trường trạng thái để Controller reset về Pending
     const allowedFields = [
       // Thông tin cơ bản
-      'title', 'description', 'target_participants', 
-      'start_date', 'end_date', 'location', 'category_id',
-      'approval_status', 'approved_by', 'approval_date', 'rejection_reason'
+      "title",
+      "description",
+      "target_participants",
+      "start_date",
+      "end_date",
+      "location",
+      "category_id",
+      "approval_status",
+      "approved_by",
+      "approval_date",
+      "rejection_reason",
     ];
 
     const fields = [];
     const values = [];
 
-    Object.keys(data).forEach(key => {
+    Object.keys(data).forEach((key) => {
       // Chỉ lấy những key nằm trong whitelist và giá trị không phải undefined
       if (allowedFields.includes(key) && data[key] !== undefined) {
         fields.push(`${key} = ?`);
@@ -288,10 +333,10 @@ const Event = {
 
   // Duyệt sự kiện (Dùng Stored Procedure tối ưu)
   async approveEvent(event_id, admin_id) {
-    const [rows] = await pool.execute(
-      `CALL sp_approve_event(?, ?)`, 
-      [event_id, admin_id]
-    );
+    const [rows] = await pool.execute(`CALL sp_approve_event(?, ?)`, [
+      event_id,
+      admin_id,
+    ]);
     const result = rows[0][0];
     return result.affected > 0;
   },
