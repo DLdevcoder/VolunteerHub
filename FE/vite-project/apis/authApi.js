@@ -13,6 +13,10 @@ const authApi = {
     const response = await api.post(`${AUTH_API}/register`, data);
     return response.data; // { success, message, data: { user, token } }
   },
+  getMe: async () => {
+    const response = await api.get(`${AUTH_API}/me`);
+    return response.data;
+  },
 };
 
 export default authApi;

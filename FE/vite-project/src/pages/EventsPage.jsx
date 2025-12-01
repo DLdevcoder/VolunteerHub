@@ -16,7 +16,7 @@ const EventsPage = () => {
     (state) => state.events
   );
 
-  console.log("in EventPage.jsx, pagination: ", pagination);
+  // console.log("in EventPage.jsx, pagination: ", pagination);
 
   const { user } = useSelector((state) => state.auth);
   const userRole = user?.role_name;

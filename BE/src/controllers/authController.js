@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_secret_key_2024";
+const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_super_secret_key";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 const authController = {
@@ -235,7 +235,7 @@ const authController = {
     try {
       const user_id = req.user.user_id;
 
-      const user = await User.getUserByIdWithRole(user_id);
+      const user = await User.findById(user_id);
       if (!user) {
         return res.status(404).json({
           success: false,
