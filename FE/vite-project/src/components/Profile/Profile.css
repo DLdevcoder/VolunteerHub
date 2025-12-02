@@ -20,13 +20,12 @@
 .profile-box .upper {
   height: 30%;
   display: flex;
-  box-sizing: border-box;
-  padding: 5px;
-  /* border-bottom: 1px solid black; */
+  /* box-sizing: border-box;
+  padding: 5px; */
 }
 
 .profile-box .upper .avatar-container {
-  width: 20%;
+  width: 25%;
   display: flex;
   justify-content: center;
   /* background-color: antiquewhite; */
@@ -37,10 +36,15 @@
     border-radius: 50%;
     background-color: aquamarine;
 
-    .ava-icon {
+    .ava-icon,
+    .ava-image {
       width: 100%;
       height: 100%;
       border-radius: 50%;
+    }
+
+    .ava-image {
+      object-fit: cover;
     }
   }
 }
@@ -51,15 +55,33 @@
   flex-direction: column;
   padding: 20px;
   box-sizing: border-box;
-  /* background-color: bisque; */
 
   .role {
     font-size: 4.5rem;
   }
 
-  .status {
-    font-size: 3rem;
+  /* CHỈ style cho Tag, không động vào .ant-tag nhiều quá */
+  .status-tag {
+    align-self: flex-start;
+    margin-top: 4px;
+    font-size: 1.6rem; /* nhỏ hơn role */
+    line-height: 1;
   }
+}
+
+.change-avatar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+
+  .title {
+    font-weight: 700;
+  }
+}
+
+.profile-divider {
+  margin: 5px 0;
 }
 
 .profile-box .lower {
@@ -101,4 +123,29 @@
   justify-content: center;
   align-items: center;
   /* background-color: rgb(215, 215, 247); */
+}
+
+@media (height <= 768px) {
+  .profile-box {
+    height: 90%;
+    width: 70%;
+  }
+  .profile-box .upper {
+    height: 20%;
+
+    .avatar-container {
+      width: 15%;
+    }
+
+    .role-and-status {
+      .role {
+        font-size: 2rem;
+      }
+
+      .status {
+        font-size: 1rem;
+        align-self: flex-start;
+      }
+    }
+  }
 }

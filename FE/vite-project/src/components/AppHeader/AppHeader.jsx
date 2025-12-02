@@ -1,14 +1,18 @@
 import "./AppHeader.css";
-import { Input, Button, Avatar, Badge, Dropdown } from "antd";
+import { Input, Avatar, Badge, Dropdown } from "antd";
 import { BellOutlined } from "@ant-design/icons";
 import { SlLogout } from "react-icons/sl";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import authSlice from "../../redux/slices/authSlice";
+import { meSelector } from "../../redux/selectors/userSelectors";
 
 const AppHeader = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  const user = useSelector(meSelector);
+  console.log("in app header, user = ", user);
 
   const handleDropdownClicked = ({ key }) => {
     if (key == 1) {
@@ -51,7 +55,7 @@ const AppHeader = () => {
               onClick: handleDropdownClicked,
             }}
           >
-            <img src="images/avatar.png" />
+            <img src={user.avatar_url} />
           </Dropdown>
         </div>
       </div>
