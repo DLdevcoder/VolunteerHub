@@ -94,8 +94,10 @@ export const updateUserStatusThunk = createAsyncThunk(
 
 /* ========== SLICE ========== */
 
+const savedUser = localStorage.getItem("vh_user");
+
 const initialState = {
-  me: null,
+  me: savedUser ? JSON.parse(savedUser) : null,
   loadingMe: false,
   updatingMe: false,
   errorMe: null,

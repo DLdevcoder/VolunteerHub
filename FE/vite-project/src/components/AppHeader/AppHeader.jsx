@@ -55,7 +55,7 @@ const AppHeader = () => {
               onClick: handleDropdownClicked,
             }}
           >
-            <img src={user.avatar_url} />
+            <img src={user?.avatar_url || "images/avatar.png"} />
           </Dropdown>
         </div>
       </div>
