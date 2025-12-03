@@ -57,6 +57,10 @@ const AppHeader = () => {
     // if (item.payload?.url) navigate(item.payload.url);
   };
 
+  const handleGoToNotificationsPage = () => {
+    navigate("/notifications");
+  };
+
   const notificationOverlay = (
     <div className="header-notification-dropdown">
       {loadingRecent ? (
@@ -64,26 +68,43 @@ const AppHeader = () => {
           <Spin size="small" />
         </div>
       ) : (
-        <List
-          size="small"
-          dataSource={recent}
-          locale={{ emptyText: "Không có thông báo" }}
-          renderItem={(item) => (
-            <List.Item
-              className={item.is_read ? "notif-item read" : "notif-item"}
-              onClick={() => handleNotificationClick(item)}
-            >
-              <div className="notif-content">
-                <div className="notif-title">
-                  {item.payload?.title || item.type}
+        <>
+          <List
+            size="small"
+            dataSource={recent}
+            locale={{ emptyText: "Không có thông báo" }}
+            renderItem={(item) => (
+              <List.Item
+                className={item.is_read ? "notif-item read" : "notif-item"}
+                onClick={() => handleNotificationClick(item)}
+              >
+                <div className="notif-content">
+                  <div className="notif-title">
+                    {item.payload?.title || item.type}
+                  </div>
+                  <div className="notif-message">
+                    {item.payload?.message || ""}
+                  </div>
                 </div>
-                <div className="notif-message">
-                  {item.payload?.message || ""}
-                </div>
-              </div>
-            </List.Item>
-          )}
-        />
+              </List.Item>
+            )}
+          />
+
+          {/* ⬇️ Footer: Tất cả thông báo */}
+          <div
+            className="notif-footer-view-all"
+            style={{
+              padding: "8px 12px",
+              borderTop: "1px solid #f0f0f0",
+              textAlign: "center",
+              cursor: "pointer",
+              fontWeight: 500,
+            }}
+            onClick={handleGoToNotificationsPage}
+          >
+            Tất cả thông báo
+          </div>
+        </>
       )}
     </div>
   );

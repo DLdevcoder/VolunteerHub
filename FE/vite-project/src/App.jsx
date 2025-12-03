@@ -8,6 +8,7 @@ import ResetPassword from "./components/ResetPassword/ResetPassword";
 import EventsPage from "./pages/EventsPage";
 import HistoryPage from "./pages/HistoryPage";
 import DashboardPage from "./pages/DashboardPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 import Profile from "./components/Profile/Profile";
 
@@ -24,6 +25,7 @@ const App = () => {
         <Route path="events" element={<EventsPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
       </Route>
     </Routes>
   );

@@ -7,14 +7,31 @@ class Notification {
     { page = 1, limit = 20, is_read, type } = {}
   ) {
     try {
-      const offset = (page - 1) * limit;
+      // 1. Ép và validate page/limit an toàn
+      const numPage = Number(page);
+      const numLimit = Number(limit);
 
+      const safePage = Number.isInteger(numPage) && numPage > 0 ? numPage : 1;
+
+      const safeLimit =
+        Number.isInteger(numLimit) && numLimit > 0 ? numLimit : 20;
+
+      const offset = (safePage - 1) * safeLimit;
+
+      // 2. Build WHERE + params như cũ
       let whereConditions = ["user_id = ?"];
       let queryParams = [user_id];
 
       if (is_read !== undefined) {
+        // is_read lấy từ query string: "true" | "false" | ...
+        // -> convert rõ ràng sang 0/1 cho chắc
+        const isReadBool =
+          is_read === true ||
+          is_read === "true" ||
+          is_read === "1" ||
+          is_read === 1;
         whereConditions.push("is_read = ?");
-        queryParams.push(is_read === "true");
+        queryParams.push(isReadBool ? 1 : 0);
       }
 
       if (type) {
@@ -27,36 +44,38 @@ class Notification {
           ? `WHERE ${whereConditions.join(" AND ")}`
           : "";
 
-      // Lấy danh sách thông báo
-      const [notifications] = await pool.execute(
-        `SELECT 
-          notification_id, type, payload, is_read, created_at, updated_at
-         FROM Notifications 
-         ${whereClause}
-         ORDER BY created_at DESC
-         LIMIT ? OFFSET ?`,
-        [...queryParams, parseInt(limit), offset]
-      );
+      // 3. Query list: LIMIT/OFFSET dùng số đã sanitize, không dùng ?
+      const listSql = `
+      SELECT 
+        notification_id, type, payload, is_read, created_at, updated_at
+      FROM Notifications
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ${safeLimit} OFFSET ${offset}
+    `;
 
-      // Đếm tổng số thông báo
-      const [countResult] = await pool.execute(
-        `SELECT COUNT(*) as total
-         FROM Notifications 
-         ${whereClause}`,
-        queryParams
-      );
+      const [notifications] = await pool.execute(listSql, queryParams);
 
-      const total = countResult[0].total;
-      const totalPages = Math.ceil(total / limit);
+      // 4. Query count: vẫn dùng params bình thường
+      const countSql = `
+      SELECT COUNT(*) as total
+      FROM Notifications
+      ${whereClause}
+    `;
+      const [countResult] = await pool.execute(countSql, queryParams);
+
+      const total = countResult[0]?.total || 0;
+      const totalPages = Math.ceil(total / safeLimit);
 
       return {
         notifications,
         pagination: {
-          current_page: parseInt(page),
+          current_page: safePage,
           total_pages: totalPages,
           total_records: total,
-          has_next: page < totalPages,
-          has_prev: page > 1,
+          has_next: safePage < totalPages,
+          has_prev: safePage > 1,
+          limit: safeLimit, // thêm luôn cho tiện FE đọc
         },
       };
     } catch (error) {
