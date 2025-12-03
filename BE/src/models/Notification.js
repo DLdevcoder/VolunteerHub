@@ -118,7 +118,7 @@ class Notification {
     try {
       const notification = await this.create(notificationData);
       try {
-        const WebPushService = await import("./WebPushService.js");
+        const WebPushService = await import("../services/WebPushService.js");
 
         const pushData = {
           title: this.getNotificationTitle(notification.type),
@@ -420,14 +420,23 @@ class Notification {
   // Lấy thông báo chưa đọc gần đây
   static async getRecentUnread(user_id, limit = 10) {
     try {
-      const [notifications] = await pool.execute(
-        `SELECT notification_id, type, payload, created_at
-         FROM Notifications 
-         WHERE user_id = ? AND is_read = FALSE
-         ORDER BY created_at DESC
-         LIMIT ?`,
-        [user_id, limit]
-      );
+      // Convert limit to a safe integer
+      const safeLimit =
+        Number.isInteger(Number(limit)) && Number(limit) > 0
+          ? Number(limit)
+          : 10;
+
+      const sql = `
+      SELECT notification_id, type, payload, created_at
+      FROM Notifications
+      WHERE user_id = ?
+        AND is_read = FALSE
+      ORDER BY created_at DESC
+      LIMIT ${safeLimit}
+    `;
+
+      // Chỉ còn 1 dấu ? nên chỉ truyền user_id
+      const [notifications] = await pool.execute(sql, [user_id]);
       return notifications;
     } catch (error) {
       throw new Error(`Database error in getRecentUnread: ${error.message}`);

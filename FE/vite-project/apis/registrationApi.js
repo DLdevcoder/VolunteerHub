@@ -16,35 +16,51 @@ const registrationApi = {
   // ====== VOLUNTEER ======
 
   // Đăng ký tham gia sự kiện
-  registerForEvent(eventId) {
-    return api.post(`/registrations/events/${eventId}`);
+  async registerForEvent(eventId) {
+    const response = await api.post(`/registrations/events/${eventId}`);
+    // { success, message, data? }
+    return response.data;
   },
 
   // Hủy đăng ký khỏi sự kiện
-  cancelRegistration(eventId) {
-    return api.delete(`/registrations/events/${eventId}`);
+  async cancelRegistration(eventId) {
+    const response = await api.delete(`/registrations/events/${eventId}`);
+    return response.data;
   },
 
   // ====== MANAGER ======
 
   // Lấy danh sách đăng ký của một event (Manager – chủ sự kiện)
-  getEventRegistrations(eventId) {
-    return api.get(`/registrations/events/${eventId}`);
+  async getEventRegistrations(eventId) {
+    const response = await api.get(`/registrations/events/${eventId}`);
+    return response.data; // { success, message, data: [...] }
   },
 
   // Duyệt một đơn đăng ký
-  approveRegistration(registrationId) {
-    return api.patch(`/registrations/${registrationId}/approve`);
+  async approveRegistration(registrationId) {
+    const response = await api.patch(
+      `/registrations/${registrationId}/approve`
+    );
+    return response.data;
   },
 
   // Từ chối một đơn đăng ký, cần gửi reason
-  rejectRegistration(registrationId, reason) {
-    return api.patch(`/registrations/${registrationId}/reject`, { reason });
+  async rejectRegistration(registrationId, reason) {
+    const response = await api.patch(
+      `/registrations/${registrationId}/reject`,
+      {
+        reason,
+      }
+    );
+    return response.data;
   },
 
   // Đánh dấu hoàn thành tham gia sự kiện
-  completeRegistration(registrationId) {
-    return api.patch(`/registrations/${registrationId}/complete`);
+  async completeRegistration(registrationId) {
+    const response = await api.patch(
+      `/registrations/${registrationId}/complete`
+    );
+    return response.data;
   },
 };
 

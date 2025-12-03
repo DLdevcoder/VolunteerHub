@@ -1,10 +1,17 @@
-// src/pages/EventsPage.jsx
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchActiveEvents } from "../redux/slices/eventSlice";
 import { Row, Col, Spin, Empty, Pagination, message, Typography } from "antd";
+
 import EventCard from "../components/EventCard/EventCard";
-import registrationApi from "../../apis/registrationApi";
+import { fetchActiveEvents } from "../redux/slices/eventSlice";
+import {
+  registerForEventThunk,
+  cancelRegistrationThunk,
+} from "../redux/slices/registrationSlice";
+import {
+  volunteerRegisteringIdSelector,
+  volunteerRegistrationErrorSelector,
+} from "../redux/selectors/registrationSelectors";
 
 const { Title } = Typography;
 
@@ -12,19 +19,23 @@ const DEFAULT_LIMIT = 9; // 3 cột x 3 hàng
 
 const EventsPage = () => {
   const dispatch = useDispatch();
+
+  // ======= EVENTS STATE (from eventSlice) =======
   const { items, pagination, loading, error } = useSelector(
     (state) => state.events
   );
 
-  // console.log("in EventPage.jsx, pagination: ", pagination);
-
+  // ======= AUTH STATE (to know role) =======
   const { user } = useSelector((state) => state.auth);
   const userRole = user?.role_name;
 
-  const [page, setPage] = useState(1);
-  const [registeringId, setRegisteringId] = useState(null);
+  // ======= REGISTRATION STATE (from registrationSlice via selectors) =======
+  const registeringId = useSelector(volunteerRegisteringIdSelector);
+  const registrationError = useSelector(volunteerRegistrationErrorSelector);
 
-  // load events lần đầu + khi đổi trang
+  const [page, setPage] = useState(1);
+
+  // Load events when first mount + when page changes
   useEffect(() => {
     dispatch(
       fetchActiveEvents({
@@ -34,41 +45,62 @@ const EventsPage = () => {
     );
   }, [dispatch, page]);
 
+  // Show errors from eventSlice
   useEffect(() => {
     if (error) {
       message.error(error);
     }
   }, [error]);
 
+  // Show errors from registrationSlice (volunteer)
+  useEffect(() => {
+    if (registrationError) {
+      message.error(registrationError);
+    }
+  }, [registrationError]);
+
+  // ======= HANDLERS =======
+
   const handleRegister = async (eventId) => {
     try {
-      setRegisteringId(eventId);
-      const res = await registrationApi.registerForEvent(eventId);
-      message.success(res?.data?.message || "Đăng ký sự kiện thành công");
-      // Nếu muốn cập nhật lại số người tham gia:
-      dispatch(fetchActiveEvents({ page, limit: DEFAULT_LIMIT }));
-    } catch (err) {
-      message.error(
-        err?.response?.data?.message || "Không thể đăng ký sự kiện"
+      const result = await dispatch(registerForEventThunk(eventId)).unwrap();
+
+      // result: { eventId, message }
+      message.success(result?.message || "Đăng ký sự kiện thành công");
+
+      // Reload events to update participants count
+      dispatch(
+        fetchActiveEvents({
+          page,
+          limit: DEFAULT_LIMIT,
+        })
       );
-    } finally {
-      setRegisteringId(null);
+    } catch (err) {
+      const msg = err?.message || "Không thể đăng ký sự kiện";
+      message.error(msg);
     }
   };
 
   const handleCancel = async (eventId) => {
     try {
-      setRegisteringId(`cancel-${eventId}`);
-      const res = await registrationApi.cancelRegistration(eventId);
-      message.success(res?.data?.message || "Hủy đăng ký thành công");
-    } catch (err) {
-      message.error(
-        err?.response?.data?.message || "Không thể hủy đăng ký sự kiện"
+      const result = await dispatch(cancelRegistrationThunk(eventId)).unwrap();
+
+      message.success(result?.message || "Hủy đăng ký thành công");
+
+      // Optionally reload events to update participants
+      dispatch(
+        fetchActiveEvents({
+          page,
+          limit: DEFAULT_LIMIT,
+        })
       );
-    } finally {
-      setRegisteringId(null);
+    } catch (err) {
+      const msg = err?.message || "Không thể hủy đăng ký sự kiện";
+      message.error(msg);
     }
   };
+
+  // ======= RENDER =======
 
   return (
     <div style={{ padding: 24 }}>
@@ -97,7 +129,6 @@ const EventsPage = () => {
                 <EventCard
                   event={ev}
                   onRegister={handleRegister}
-                  // nếu chưa muốn cho hủy thì tạm comment:
                   onCancel={handleCancel}
                   registeringId={registeringId}
                   userRole={userRole}
@@ -106,7 +137,7 @@ const EventsPage = () => {
             ))}
           </Row>
 
-          {pagination.total > pagination.limit && (
+          {pagination?.total > pagination?.limit && (
             <div
               style={{
                 display: "flex",

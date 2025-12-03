@@ -32,14 +32,17 @@ class WebPushService {
       if (existing.length > 0) {
         // Update existing
         await pool.execute(
-          `UPDATE PushSubscriptions SET keys = ?, is_active = TRUE, updated_at = NOW() WHERE endpoint = ?`,
+          `UPDATE PushSubscriptions 
+             SET \`keys\` = ?, is_active = TRUE, updated_at = NOW() 
+           WHERE endpoint = ?`,
           [JSON.stringify(keys), endpoint]
         );
         console.log("Updated existing subscription");
       } else {
         // Insert new
         await pool.execute(
-          `INSERT INTO PushSubscriptions (user_id, endpoint, keys) VALUES (?, ?, ?)`,
+          `INSERT INTO PushSubscriptions (user_id, endpoint, \`keys\`) 
+           VALUES (?, ?, ?)`,
           [user_id, endpoint, JSON.stringify(keys)]
         );
         console.log("Created new subscription");
@@ -57,8 +60,9 @@ class WebPushService {
     try {
       // Lấy tất cả subscriptions của user
       const [subscriptions] = await pool.execute(
-        `SELECT endpoint, keys FROM PushSubscriptions 
-         WHERE user_id = ? AND is_active = TRUE`,
+        `SELECT endpoint, \`keys\` 
+           FROM PushSubscriptions 
+          WHERE user_id = ? AND is_active = TRUE`,
         [user_id]
       );
 
@@ -111,7 +115,9 @@ class WebPushService {
           // Nếu subscription không còn valid, đánh dấu inactive
           if (pushError.statusCode === 410) {
             await pool.execute(
-              `UPDATE PushSubscriptions SET is_active = FALSE WHERE endpoint = ?`,
+              `UPDATE PushSubscriptions 
+                 SET is_active = FALSE 
+               WHERE endpoint = ?`,
               [subscription.endpoint]
             );
             console.log(
@@ -133,7 +139,9 @@ class WebPushService {
   static async unsubscribe(endpoint) {
     try {
       await pool.execute(
-        `UPDATE PushSubscriptions SET is_active = FALSE WHERE endpoint = ?`,
+        `UPDATE PushSubscriptions 
+           SET is_active = FALSE 
+         WHERE endpoint = ?`,
         [endpoint]
       );
       console.log(`Unsubscribed: ${endpoint}`);

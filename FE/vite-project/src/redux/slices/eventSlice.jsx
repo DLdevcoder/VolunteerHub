@@ -1,51 +1,23 @@
+// src/redux/slices/eventSlice.js
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import eventApi from "../../../apis/eventApi";
 
 // THUNK: fetch active events with pagination
 export const fetchActiveEvents = createAsyncThunk(
   "events/fetchActiveEvents",
-  // { page, limit, search, category_id, start_date_from, start_date_to }s
+  // { page, limit, search, category_id, start_date_from, start_date_to }
   async (params, { rejectWithValue }) => {
     try {
       const res = await eventApi.getActiveEvents(params);
-      const payload = res?.data;
+      // res: { success, data: { events, pagination }, message? }
 
-      if (!payload?.success) {
+      if (!res?.success) {
         return rejectWithValue(
-          payload?.message || "Không lấy được danh sách sự kiện"
+          res?.message || "Không lấy được danh sách sự kiện"
         );
       }
 
-      /* payload.data
-      "events": [
-      {
-        "event_id": 1,
-        "title": "Dọn rác bờ hồ Hoàn Kiếm",
-        "description": "Cùng nhau dọn rác...",
-        "target_participants": 50,
-        "current_participants": 10,
-        "start_date": "2025-12-10 08:00:00",
-        "end_date": "2025-12-10 11:00:00",
-        "location": "Bờ hồ Hoàn Kiếm, Hà Nội",
-        "manager_id": 2,
-        "category_id": 1,
-        "category_name": "Môi trường",
-        "approval_status": "approved",
-        "is_deleted": 0,
-        "created_at": "...",
-        "updated_at": "..."
-      }
-      // ...
-    ],
-    "pagination": {
-      "total": 15,
-      "page": 1,
-      "limit": 9,
-      "totalPages": 2
-    }
-      
-      */
-      const result = payload.data || {};
+      const result = res.data || {};
       const events = result.events || [];
       const apiPagination = result.pagination || {};
 

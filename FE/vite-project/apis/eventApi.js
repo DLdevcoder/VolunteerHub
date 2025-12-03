@@ -1,3 +1,4 @@
+// src/apis/eventApi.js
 import { api } from "../api";
 
 /**
@@ -16,59 +17,70 @@ import { api } from "../api";
 
 const eventApi = {
   // ==== PUBLIC / VOLUNTEER ====
-  getActiveEvents(params) {
-    // { page, limit, search, category_id, start_date_from, start_date_to }
-    return api.get("/events/active", { params });
+
+  // { page, limit, search, category_id, start_date_from, start_date_to }
+  async getActiveEvents(params) {
+    const response = await api.get("/events/active", { params });
+    return response.data; // { success, data: { events, pagination }, message? }
   },
 
-  getCategories() {
-    return api.get("/events/categories");
+  async getCategories() {
+    const response = await api.get("/events/categories");
+    return response.data;
   },
 
-  getEventById(eventId) {
-    return api.get(`/events/${eventId}`);
+  async getEventById(eventId) {
+    const response = await api.get(`/events/${eventId}`);
+    return response.data;
   },
 
   // ==== MANAGER ====
 
   // Tạo sự kiện (Manager)
-  createEvent(payload) {
+  async createEvent(payload) {
     // payload: { title, description, target_participants, start_date, end_date, location, category_id }
-    return api.post("/events", payload);
+    const response = await api.post("/events", payload);
+    return response.data;
   },
 
   // Lấy danh sách sự kiện của Manager đang đăng nhập
-  getMyEvents(params) {
+  async getMyEvents(params) {
     // { page, limit, approval_status, category_id, search, sort_by, sort_order }
-    return api.get("/events/my/events", { params });
+    const response = await api.get("/events/my/events", { params });
+    return response.data;
   },
 
   // Cập nhật sự kiện (Manager – chủ sở hữu)
-  updateEvent(eventId, payload) {
-    return api.put(`/events/${eventId}`, payload);
+  async updateEvent(eventId, payload) {
+    const response = await api.put(`/events/${eventId}`, payload);
+    return response.data;
   },
 
   // Xóa mềm sự kiện (Manager hoặc Admin – có check quyền ở BE)
-  deleteEvent(eventId) {
-    return api.delete(`/events/${eventId}`);
+  async deleteEvent(eventId) {
+    const response = await api.delete(`/events/${eventId}`);
+    return response.data;
   },
 
   // ==== ADMIN ====
 
   // Lấy tất cả sự kiện (pending, rejected, deleted, v.v.)
-  getAllEventsAdmin(params) {
+  async getAllEventsAdmin(params) {
     // { page, limit, approval_status, category_id, manager_id, search, ... }
-    return api.get("/events/admin/all", { params });
+    const response = await api.get("/events/admin/all", { params });
+    return response.data;
   },
 
   // Duyệt sự kiện
-  approveEvent(eventId) {
-    return api.patch(`/events/${eventId}/approve`);
+  async approveEvent(eventId) {
+    const response = await api.patch(`/events/${eventId}/approve`);
+    return response.data;
   },
 
   // Từ chối sự kiện
-  rejectEvent(eventId, reason) {
-    return api.patch(`/events/${eventId}/reject`, { reason });
+  async rejectEvent(eventId, reason) {
+    const response = await api.patch(`/events/${eventId}/reject`, { reason });
+    return response.data;
   },
 };
 
