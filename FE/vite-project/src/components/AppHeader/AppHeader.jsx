@@ -60,9 +60,7 @@ const AppHeader = () => {
   const notificationOverlay = (
     <div className="header-notification-dropdown">
       {loadingRecent ? (
-        <div
-          style={{ padding: 12, textAlign: "center", backgroundColor: "white" }}
-        >
+        <div style={{ padding: 12, textAlign: "center" }}>
           <Spin size="small" />
         </div>
       ) : (
