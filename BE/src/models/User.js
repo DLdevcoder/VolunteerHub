@@ -204,7 +204,26 @@ class User {
       throw new Error(`Database error in getRoleId: ${error.message}`);
     }
   }
+
+  // Lấy danh sách admin (dùng để gửi notification duyệt sự kiện)
+  static async getAdmins() {
+    try {
+      const [rows] = await pool.execute(
+        `SELECT 
+         u.user_id, u.email, u.full_name, u.phone, u.avatar_url,
+         r.name as role_name, u.status, u.created_at, u.updated_at
+       FROM Users u
+       JOIN Roles r ON u.role_id = r.role_id
+       WHERE r.name = 'Admin'`
+        // Nếu bạn có cột status và muốn chỉ lấy active:
+        // AND u.status = 'active'
+      );
+
+      return rows; // mảng admin
+    } catch (error) {
+      throw new Error(`Database error in getAdmins: ${error.message}`);
+    }
+  }
 }
 
 export default User;
-

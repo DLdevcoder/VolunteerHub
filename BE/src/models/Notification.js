@@ -277,6 +277,9 @@ class Notification {
       "event_starting_soon",
       "event_cancelled",
 
+      // NEW: manager tạo event → admin phải duyệt
+      "event_pending_approval",
+
       // Registration related
       "registration_approved",
       "registration_rejected",
@@ -308,6 +311,7 @@ class Notification {
       event_updated_urgent: "Sự kiện được cập nhật khẩn",
       event_starting_soon: "Sự kiện sắp bắt đầu",
       event_cancelled: "Sự kiện đã bị hủy",
+      event_pending_approval: "Sự kiện mới chờ duyệt",
 
       // Registration related
       registration_approved: "Đăng ký được chấp nhận",
@@ -339,6 +343,8 @@ class Notification {
       event_updated_urgent: "Sự kiện có thông tin quan trọng được cập nhật",
       event_starting_soon: "Sự kiện sẽ bắt đầu trong 1 giờ tới",
       event_cancelled: "Sự kiện bạn đã đăng ký đã bị hủy",
+      event_pending_approval:
+        "Có sự kiện mới được tạo bởi Manager, cần xem xét và duyệt.",
 
       // Registration related
       registration_approved:
@@ -378,6 +384,7 @@ class Notification {
         event_updated_urgent: `/events/${payload?.event_id}`,
         event_starting_soon: `/events/${payload?.event_id}`,
         event_cancelled: `/events/${payload?.event_id}`,
+        event_pending_approval: `/admin/events?event_id=${payload?.event_id}`,
 
         // Registration related - đi đến trang đăng ký của tôi
         registration_approved: `/my-registrations`,

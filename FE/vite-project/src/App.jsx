@@ -8,9 +8,12 @@ import ResetPassword from "./components/ResetPassword/ResetPassword";
 import EventsPage from "./pages/EventsPage";
 import HistoryPage from "./pages/HistoryPage";
 import DashboardPage from "./pages/DashboardPage";
-import NotificationsPage from "./pages/NotificationsPage";
 
 import Profile from "./components/Profile/Profile";
+import NotificationsPage from "./pages/NotificationsPage";
+
+import ManagerCreateEvent from "./components/manager/ManagerCreateEvent/ManagerCreateEvent";
+import ManagerMyEvents from "./components/manager/ManagerMyEvents/ManagerMyEvents";
 
 const App = () => {
   return (
@@ -26,6 +29,12 @@ const App = () => {
         <Route path="history" element={<HistoryPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
+
+        {/* Manager routes */}
+        <Route path="manager">
+          <Route path="events" element={<ManagerMyEvents />} />
+          <Route path="events/create" element={<ManagerCreateEvent />} />
+        </Route>
       </Route>
     </Routes>
   );

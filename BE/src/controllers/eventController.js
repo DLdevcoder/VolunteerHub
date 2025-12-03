@@ -1,19 +1,26 @@
 import Event from "../models/Event.js";
+import Notification from "../models/Notification.js";
+import pool from "../config/db.js";
 
 // Hàm helper: Format ngày giữ nguyên giờ nhập vào
 const formatDateAsIs = (dateInput) => {
   const date = new Date(dateInput);
-  const pad = (num) => num.toString().padStart(2, '0');
+  const pad = (num) => num.toString().padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 };
 
 const eventController = {
-  // Tạo sự kiện 
+  // Tạo sự kiện
   async createEvent(req, res) {
     try {
       let {
-        title, description, target_participants,
-        start_date, end_date, location, category_id,
+        title,
+        description,
+        target_participants,
+        start_date,
+        end_date,
+        location,
+        category_id,
       } = req.body;
 
       const manager_id = req.user.user_id;
@@ -25,15 +32,25 @@ const eventController = {
       if (!title || !description || !start_date || !end_date || !location) {
         return res.status(400).json({
           success: false,
-          message: "Vui lòng cung cấp đầy đủ thông tin: title, description, start_date, end_date, location",
+          message:
+            "Vui lòng cung cấp đầy đủ thông tin: title, description, start_date, end_date, location",
         });
       }
 
       if (target_participants !== undefined && target_participants !== null) {
         const participants = Number(target_participants);
-        if (isNaN(participants)) return res.status(400).json({ success: false, message: "Số lượng phải là số" });
-        if (participants <= 0) return res.status(400).json({ success: false, message: "Số lượng phải lớn hơn 0" });
-        if (participants > 5000) return res.status(400).json({ success: false, message: "Số lượng quá lớn (max 5000)" });
+        if (isNaN(participants))
+          return res
+            .status(400)
+            .json({ success: false, message: "Số lượng phải là số" });
+        if (participants <= 0)
+          return res
+            .status(400)
+            .json({ success: false, message: "Số lượng phải lớn hơn 0" });
+        if (participants > 5000)
+          return res
+            .status(400)
+            .json({ success: false, message: "Số lượng quá lớn (max 5000)" });
       }
 
       const startDateObj = new Date(start_date);
@@ -41,24 +58,43 @@ const eventController = {
       const now = new Date();
 
       if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
-        return res.status(400).json({ success: false, message: "Định dạng ngày tháng không hợp lệ" });
+        return res.status(400).json({
+          success: false,
+          message: "Định dạng ngày tháng không hợp lệ",
+        });
       }
       if (startDateObj >= endDateObj) {
-        return res.status(400).json({ success: false, message: "Ngày kết thúc phải sau ngày bắt đầu" });
+        return res.status(400).json({
+          success: false,
+          message: "Ngày kết thúc phải sau ngày bắt đầu",
+        });
       }
       if (startDateObj < now) {
-        return res.status(400).json({ success: false, message: "Ngày bắt đầu phải trong tương lai" });
+        return res.status(400).json({
+          success: false,
+          message: "Ngày bắt đầu phải trong tương lai",
+        });
       }
       if (endDateObj.getTime() - startDateObj.getTime() < 15 * 60 * 1000) {
-        return res.status(400).json({ success: false, message: "Thời lượng sự kiện quá ngắn (tối thiểu 15 phút)" });
+        return res.status(400).json({
+          success: false,
+          message: "Thời lượng sự kiện quá ngắn (tối thiểu 15 phút)",
+        });
       }
 
       const formattedStartDate = formatDateAsIs(start_date);
       const formattedEndDate = formatDateAsIs(end_date);
 
-      const isDuplicate = await Event.checkDuplicate(title, formattedStartDate, location);
+      const isDuplicate = await Event.checkDuplicate(
+        title,
+        formattedStartDate,
+        location
+      );
       if (isDuplicate) {
-        return res.status(409).json({ success: false, message: "Sự kiện bị trùng lặp (Tên, Giờ, Địa điểm)" });
+        return res.status(409).json({
+          success: false,
+          message: "Sự kiện bị trùng lặp (Tên, Giờ, Địa điểm)",
+        });
       }
 
       const eventId = await Event.createEvent({
@@ -74,26 +110,64 @@ const eventController = {
 
       const newEvent = await Event.getEventById(eventId);
 
+      // Gửi thông báo cho tất cả Admin: có sự kiện mới chờ duyệt
+      try {
+        const admins = await User.getAdmins();
+        console.log(
+          "Admins for event_pending_approval:",
+          admins.map((a) => a.user_id)
+        );
+
+        if (admins && admins.length > 0) {
+          const adminIds = admins.map((a) => a.user_id);
+
+          await Notification.bulkCreateForUsers(adminIds, {
+            type: "event_pending_approval",
+            payload: {
+              event_id: eventId,
+              event_title: newEvent.title,
+              manager_id,
+              manager_name: newEvent.manager_name,
+              message: `Sự kiện "${newEvent.title}" vừa được tạo bởi ${newEvent.manager_name} và đang chờ duyệt.`,
+            },
+          });
+        }
+      } catch (notifyErr) {
+        console.error(
+          "Send event_pending_approval notification failed:",
+          notifyErr
+        );
+      }
+
       res.status(201).json({
         success: true,
         message: "Tạo sự kiện thành công",
         data: { event: newEvent },
       });
-
     } catch (error) {
       console.error("Create event error:", error);
 
-      if (error.code === 'ER_NO_REFERENCED_ROW_2') {
-        return res.status(400).json({ success: false, message: "Danh mục không tồn tại" });
+      if (error.code === "ER_NO_REFERENCED_ROW_2") {
+        return res
+          .status(400)
+          .json({ success: false, message: "Danh mục không tồn tại" });
       }
-      if (error.code === 'ER_TRUNCATED_WRONG_VALUE') {
-        return res.status(400).json({ success: false, message: "Lỗi định dạng ngày tháng với Database" });
+      if (error.code === "ER_TRUNCATED_WRONG_VALUE") {
+        return res.status(400).json({
+          success: false,
+          message: "Lỗi định dạng ngày tháng với Database",
+        });
       }
-      if (error.code === 'ER_DATA_TOO_LONG') {
-        return res.status(400).json({ success: false, message: "Dữ liệu nhập vào quá dài" });
+      if (error.code === "ER_DATA_TOO_LONG") {
+        return res
+          .status(400)
+          .json({ success: false, message: "Dữ liệu nhập vào quá dài" });
       }
 
-      res.status(500).json({ success: false, message: "Lỗi máy chủ nội bộ khi tạo sự kiện" });
+      res.status(500).json({
+        success: false,
+        message: "Lỗi máy chủ nội bộ khi tạo sự kiện",
+      });
     }
   },
 
@@ -123,8 +197,8 @@ const eventController = {
       // Xử lý limit: Nếu là 'all' thì giữ nguyên, nếu là số thì parse
       let limitInput = req.query.limit;
       let limit;
-      if (limitInput === 'all') {
-        limit = 'all';
+      if (limitInput === "all") {
+        limit = "all";
       } else {
         limit = parseInt(limitInput);
         if (isNaN(limit) || limit < 1) limit = 10;
@@ -132,24 +206,40 @@ const eventController = {
       }
 
       if (isNaN(page) || page < 1) page = 1;
-      const allowedSorts = ['created_at', 'start_date', 'title', 'current_participants'];
+      const allowedSorts = [
+        "created_at",
+        "start_date",
+        "title",
+        "current_participants",
+      ];
       let sort_by = req.query.sort_by;
       let sort_order = req.query.sort_order;
 
-      if (!allowedSorts.includes(sort_by)) sort_by = 'created_at';
-      if (sort_order !== 'ASC' && sort_order !== 'DESC') sort_order = 'DESC';
+      if (!allowedSorts.includes(sort_by)) sort_by = "created_at";
+      if (sort_order !== "ASC" && sort_order !== "DESC") sort_order = "DESC";
 
       const { start_date_from, start_date_to } = req.query;
       const isValidDate = (d) => !isNaN(new Date(d).getTime());
 
       if (start_date_from && !isValidDate(start_date_from)) {
-        return res.status(400).json({ success: false, message: "Ngày bắt đầu không hợp lệ" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Ngày bắt đầu không hợp lệ" });
       }
       if (start_date_to && !isValidDate(start_date_to)) {
-        return res.status(400).json({ success: false, message: "Ngày kết thúc không hợp lệ" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Ngày kết thúc không hợp lệ" });
       }
-      if (start_date_from && start_date_to && new Date(start_date_from) > new Date(start_date_to)) {
-        return res.status(400).json({ success: false, message: "Ngày bắt đầu phải nhỏ hơn ngày kết thúc" });
+      if (
+        start_date_from &&
+        start_date_to &&
+        new Date(start_date_from) > new Date(start_date_to)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Ngày bắt đầu phải nhỏ hơn ngày kết thúc",
+        });
       }
 
       let is_deleted = req.query.is_deleted;
@@ -159,7 +249,9 @@ const eventController = {
         approval_status: req.query.approval_status,
         category_id: req.query.category_id,
         manager_id: req.query.manager_id,
-        search: req.query.search ? req.query.search.trim().substring(0, 100) : undefined, // Cắt ngắn search
+        search: req.query.search
+          ? req.query.search.trim().substring(0, 100)
+          : undefined, // Cắt ngắn search
         start_date_from,
         start_date_to,
         sort_by,
@@ -216,18 +308,18 @@ const eventController = {
       // Hàm kiểm tra ngày hợp lệ
       const isValidDate = (d) => !isNaN(new Date(d).getTime());
 
-      // Nếu gửi ngày tào lao -> Báo lỗi 
+      // Nếu gửi ngày tào lao -> Báo lỗi
       if (start_date_from && !isValidDate(start_date_from)) {
         return res.status(400).json({
           success: false,
-          message: "Ngày bắt đầu (start_date_from) không hợp lệ"
+          message: "Ngày bắt đầu (start_date_from) không hợp lệ",
         });
       }
 
       if (start_date_to && !isValidDate(start_date_to)) {
         return res.status(400).json({
           success: false,
-          message: "Ngày kết thúc (start_date_to) không hợp lệ"
+          message: "Ngày kết thúc (start_date_to) không hợp lệ",
         });
       }
 
@@ -235,7 +327,8 @@ const eventController = {
         if (new Date(start_date_from) > new Date(start_date_to)) {
           return res.status(400).json({
             success: false,
-            message: "Khoảng thời gian không hợp lệ (Ngày bắt đầu phải nhỏ hơn ngày kết thúc)"
+            message:
+              "Khoảng thời gian không hợp lệ (Ngày bắt đầu phải nhỏ hơn ngày kết thúc)",
           });
         }
       }
@@ -256,7 +349,6 @@ const eventController = {
         message: "Lấy danh sách sự kiện thành công",
         data: result,
       });
-
     } catch (error) {
       console.error("Get active events error:", error);
       res.status(500).json({
@@ -320,8 +412,8 @@ const eventController = {
       let sort_order = req.query.sort_order;
       if (sort_order) {
         sort_order = sort_order.toUpperCase();
-        if (sort_order !== 'ASC' && sort_order !== 'DESC') {
-          sort_order = 'DESC';
+        if (sort_order !== "ASC" && sort_order !== "DESC") {
+          sort_order = "DESC";
         }
       }
 
@@ -350,7 +442,6 @@ const eventController = {
         message: "Lấy danh sách sự kiện của bạn thành công",
         data: result,
       });
-
     } catch (error) {
       console.error("Get my events error:", error);
       res.status(500).json({
@@ -383,17 +474,25 @@ const eventController = {
       if (end_date) end_date = formatDateAsIs(end_date);
 
       let dataToUpdate = {
-        title, description, target_participants,
-        start_date, end_date, location, category_id
+        title,
+        description,
+        target_participants,
+        start_date,
+        end_date,
+        location,
+        category_id,
       };
 
-      Object.keys(dataToUpdate).forEach(key => dataToUpdate[key] === undefined && delete dataToUpdate[key]);
+      Object.keys(dataToUpdate).forEach(
+        (key) => dataToUpdate[key] === undefined && delete dataToUpdate[key]
+      );
 
       const currentEvent = req.event;
       if (!currentEvent) {
         return res.status(500).json({
           success: false,
-          message: "Lỗi hệ thống: Không tìm thấy thông tin sự kiện từ Middleware",
+          message:
+            "Lỗi hệ thống: Không tìm thấy thông tin sự kiện từ Middleware",
         });
       }
       const now = new Date();
@@ -409,47 +508,68 @@ const eventController = {
 
       if (isRestrictedMode) {
         if (start_date || end_date) {
-          const reason = isRunning ? "sự kiện đang diễn ra" : "đã có người đăng ký";
+          const reason = isRunning
+            ? "sự kiện đang diễn ra"
+            : "đã có người đăng ký";
           return res.status(400).json({
             success: false,
-            message: `Không thể thay đổi thời gian vì ${reason}. Chỉ được sửa thông tin mô tả/địa điểm.`
+            message: `Không thể thay đổi thời gian vì ${reason}. Chỉ được sửa thông tin mô tả/địa điểm.`,
           });
         }
-        message = "Cập nhật thông tin nóng thành công (Trạng thái sự kiện được giữ nguyên).";
-
+        message =
+          "Cập nhật thông tin nóng thành công (Trạng thái sự kiện được giữ nguyên).";
       } else {
-        if (start_date && end_date && new Date(start_date) > new Date(end_date)) {
-          return res.status(400).json({ success: false, message: "Ngày bắt đầu phải trước ngày kết thúc" });
+        if (
+          start_date &&
+          end_date &&
+          new Date(start_date) > new Date(end_date)
+        ) {
+          return res.status(400).json({
+            success: false,
+            message: "Ngày bắt đầu phải trước ngày kết thúc",
+          });
         }
         if (start_date && !end_date) {
           if (new Date(start_date) > new Date(currentEvent.end_date)) {
-            return res.status(400).json({ success: false, message: "Ngày bắt đầu mới không được lớn hơn ngày kết thúc hiện tại" });
+            return res.status(400).json({
+              success: false,
+              message:
+                "Ngày bắt đầu mới không được lớn hơn ngày kết thúc hiện tại",
+            });
           }
         }
         if (end_date && !start_date) {
           if (new Date(currentEvent.start_date) > new Date(end_date)) {
-            return res.status(400).json({ success: false, message: "Ngày kết thúc mới không được nhỏ hơn ngày bắt đầu hiện tại" });
+            return res.status(400).json({
+              success: false,
+              message:
+                "Ngày kết thúc mới không được nhỏ hơn ngày bắt đầu hiện tại",
+            });
           }
         }
 
         // Reset trạng thái (Nếu Approved -> Reset về Pending để duyệt lại)
-        if (currentEvent.approval_status === 'approved') {
-          dataToUpdate.approval_status = 'pending';
+        if (currentEvent.approval_status === "approved") {
+          dataToUpdate.approval_status = "pending";
           dataToUpdate.approved_by = null;
           dataToUpdate.approval_date = null;
-          message = "Cập nhật thành công. Sự kiện đã được chuyển về trạng thái chờ duyệt lại.";
+          message =
+            "Cập nhật thành công. Sự kiện đã được chuyển về trạng thái chờ duyệt lại.";
         }
       }
 
-      if (currentEvent.approval_status === 'rejected') {
-        dataToUpdate.approval_status = 'pending';
+      if (currentEvent.approval_status === "rejected") {
+        dataToUpdate.approval_status = "pending";
         dataToUpdate.approved_by = null;
         message = "Cập nhật thành công. Sự kiện đã được gửi lại để duyệt.";
       }
       const updated = await Event.updateEvent(event_id, dataToUpdate);
 
       if (!updated) {
-        return res.status(400).json({ success: false, message: "Không có thông tin nào thay đổi hoặc lỗi cập nhật" });
+        return res.status(400).json({
+          success: false,
+          message: "Không có thông tin nào thay đổi hoặc lỗi cập nhật",
+        });
       }
       const updatedEvent = await Event.getEventById(event_id);
 
@@ -458,7 +578,6 @@ const eventController = {
         message: message,
         data: { event: updatedEvent },
       });
-
     } catch (error) {
       console.error("Update event error:", error);
       res.status(500).json({ success: false, message: "Lỗi server" });
@@ -474,7 +593,9 @@ const eventController = {
 
       // Sự kiện đã bị xoá rồi
       if (!currentEvent) {
-        return res.status(404).json({ success: false, message: "Sự kiện không tồn tại" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Sự kiện không tồn tại" });
       }
 
       if (role_name !== "Admin") {
