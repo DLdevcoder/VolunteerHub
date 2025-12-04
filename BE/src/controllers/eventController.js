@@ -1,6 +1,6 @@
 import Event from "../models/Event.js";
 import Notification from "../models/Notification.js";
-import pool from "../config/db.js";
+import User from "../models/User.js";
 
 // Hàm helper: Format ngày giữ nguyên giờ nhập vào
 const formatDateAsIs = (dateInput) => {
@@ -113,24 +113,34 @@ const eventController = {
       // Gửi thông báo cho tất cả Admin: có sự kiện mới chờ duyệt
       try {
         const admins = await User.getAdmins();
-        console.log(
-          "Admins for event_pending_approval:",
-          admins.map((a) => a.user_id)
-        );
+        console.log("Admins from getAdmins():", admins);
 
-        if (admins && admins.length > 0) {
-          const adminIds = admins.map((a) => a.user_id);
+        if (!admins || admins.length === 0) {
+          console.log(
+            "No admins found => no event_pending_approval notifications."
+          );
+        } else {
+          for (const admin of admins) {
+            console.log(
+              `Creating event_pending_approval notification for admin_id = ${admin.user_id}`
+            );
 
-          await Notification.bulkCreateForUsers(adminIds, {
-            type: "event_pending_approval",
-            payload: {
-              event_id: eventId,
-              event_title: newEvent.title,
-              manager_id,
-              manager_name: newEvent.manager_name,
-              message: `Sự kiện "${newEvent.title}" vừa được tạo bởi ${newEvent.manager_name} và đang chờ duyệt.`,
-            },
-          });
+            await Notification.create({
+              user_id: admin.user_id,
+              type: "event_pending_approval",
+              payload: {
+                event_id: eventId,
+                event_title: newEvent.title,
+                manager_id,
+                manager_name: newEvent.manager_name,
+                message: `Sự kiện "${newEvent.title}" vừa được tạo bởi ${newEvent.manager_name} và đang chờ duyệt.`,
+              },
+            });
+          }
+
+          console.log(
+            `Created event_pending_approval notifications for ${admins.length} admin(s)`
+          );
         }
       } catch (notifyErr) {
         console.error(

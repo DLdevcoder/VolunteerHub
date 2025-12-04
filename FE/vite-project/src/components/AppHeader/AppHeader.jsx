@@ -24,7 +24,7 @@ const AppHeader = () => {
   const dispatch = useDispatch();
 
   const user = useSelector(meSelector);
-  console.log("in app header, user = ", user);
+  // console.log("in app header, user = ", user);
 
   const { token } = useSelector((state) => state.auth);
 
