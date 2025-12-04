@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   Button,
   Form,
@@ -10,46 +10,47 @@ import {
   Card,
   Space,
 } from "antd";
-import eventApi from "../../../../apis/eventApi";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchEventCategories,
+  createEventThunk,
+} from "../../../redux/slices/eventSlice";
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 
 const ManagerCreateEvent = () => {
   const [form] = Form.useForm();
-  const [categories, setCategories] = useState([]);
-  const [loadingCategories, setLoadingCategories] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const dispatch = useDispatch();
+
+  const {
+    categories,
+    categoriesLoading,
+    categoriesError,
+    createLoading,
+    createError,
+  } = useSelector((state) => state.events);
+
+  // Load categories
+  useEffect(() => {
+    dispatch(fetchEventCategories());
+  }, [dispatch]);
+
+  // Show error messages from slice (optional but nice)
+  useEffect(() => {
+    if (categoriesError) {
+      message.error(categoriesError);
+    }
+  }, [categoriesError]);
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoadingCategories(true);
-        const res = await eventApi.getCategories();
-        // res: { success, data, message? }
-        if (!res?.success) {
-          message.error(res?.message || "Không tải được danh mục");
-          return;
-        }
-        setCategories(res.data || []);
-      } catch (err) {
-        message.error(
-          err?.response?.data?.message ||
-            err?.message ||
-            "Không tải được danh mục"
-        );
-      } finally {
-        setLoadingCategories(false);
-      }
-    };
-
-    fetchCategories();
-  }, []);
+    if (createError) {
+      message.error(createError);
+    }
+  }, [createError]);
 
   const handleSubmit = async (values) => {
     try {
-      setSubmitting(true);
-
       const [start, end] = values.timeRange || [];
 
       const payload = {
@@ -62,21 +63,17 @@ const ManagerCreateEvent = () => {
         end_date: end?.format("YYYY-MM-DD HH:mm:ss"),
       };
 
-      const res = await eventApi.createEvent(payload);
-      // res: { success, message, data: { event } }
-      if (!res?.success) {
-        message.error(res?.message || "Tạo sự kiện thất bại");
-        return;
-      }
+      // dispatch + unwrap to use try/catch
+      const createdEvent = await dispatch(createEventThunk(payload)).unwrap();
 
-      message.success(res.message || "Tạo sự kiện thành công");
+      message.success("Tạo sự kiện thành công");
+      // Nếu muốn dùng dữ liệu event:
+      // console.log("Created event:", createdEvent);
+
       form.resetFields();
-    } catch (err) {
-      message.error(
-        err?.response?.data?.message || err?.message || "Tạo sự kiện thất bại"
-      );
-    } finally {
-      setSubmitting(false);
+    } catch (errMsg) {
+      // errMsg là payload từ rejectWithValue
+      message.error(errMsg || "Tạo sự kiện thất bại");
     }
   };
 
@@ -108,7 +105,7 @@ const ManagerCreateEvent = () => {
 
         <Form.Item label="Danh mục" name="category_id">
           <Select
-            loading={loadingCategories}
+            loading={categoriesLoading}
             allowClear
             placeholder="Chọn danh mục (không bắt buộc)"
           >
@@ -163,7 +160,7 @@ const ManagerCreateEvent = () => {
         </Form.Item>
 
         <Form.Item>
-          <Button type="primary" htmlType="submit" loading={submitting}>
+          <Button type="primary" htmlType="submit" loading={createLoading}>
             Tạo sự kiện
           </Button>
         </Form.Item>

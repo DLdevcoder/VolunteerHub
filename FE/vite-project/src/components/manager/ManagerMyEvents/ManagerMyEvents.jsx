@@ -1,53 +1,34 @@
-import { useEffect, useState } from "react";
+// src/pages/Manager/Events/ManagerMyEvents/ManagerMyEvents.jsx
+import { useEffect } from "react";
 import { Table, Tag, message, Card } from "antd";
-import eventApi from "../../../../apis/eventApi";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchManagerEvents } from "../../../redux/slices/eventSlice";
 
 const ManagerMyEvents = () => {
-  const [events, setEvents] = useState([]);
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
-  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
 
-  const fetchData = async (page = 1, pageSize = 10) => {
-    try {
-      setLoading(true);
-      const res = await eventApi.getMyEvents({
+  const { myEvents, myEventsPagination, myEventsLoading, myEventsError } =
+    useSelector((state) => state.events);
+
+  const fetchData = (page = 1, pageSize = 10) => {
+    dispatch(
+      fetchManagerEvents({
         page,
         limit: pageSize,
-      });
-      // res: { success, message, data: { events, pagination } }
-      if (!res?.success) {
-        message.error(res?.message || "Không tải được event của bạn");
-        return;
-      }
-
-      const result = res.data || {};
-      const list = result.events || [];
-      const apiPag = result.pagination || {};
-
-      setEvents(list);
-      setPagination({
-        current: apiPag.page || page,
-        pageSize: apiPag.limit || pageSize,
-        total: apiPag.total || 0,
-      });
-    } catch (err) {
-      message.error(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Không tải được event của bạn"
-      );
-    } finally {
-      setLoading(false);
-    }
+      })
+    );
   };
 
   useEffect(() => {
     fetchData(1, 10);
   }, []);
+
+  // Show error from slice
+  useEffect(() => {
+    if (myEventsError) {
+      message.error(myEventsError);
+    }
+  }, [myEventsError]);
 
   const handleTableChange = (pag) => {
     fetchData(pag.current, pag.pageSize);
@@ -101,10 +82,14 @@ const ManagerMyEvents = () => {
     <Card title="Event của tôi" bordered={false}>
       <Table
         rowKey="event_id"
-        loading={loading}
+        loading={myEventsLoading}
         columns={columns}
-        dataSource={events}
-        pagination={pagination}
+        dataSource={myEvents}
+        pagination={{
+          current: myEventsPagination.page,
+          pageSize: myEventsPagination.limit,
+          total: myEventsPagination.total,
+        }}
         onChange={handleTableChange}
       />
     </Card>
