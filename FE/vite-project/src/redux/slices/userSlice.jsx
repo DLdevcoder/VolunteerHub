@@ -92,6 +92,27 @@ export const updateUserStatusThunk = createAsyncThunk(
   }
 );
 
+export const updateUserRoleThunk = createAsyncThunk(
+  "user/updateUserRole",
+  async ({ userId, role_name }, { rejectWithValue }) => {
+    try {
+      const res = await userApi.updateUserRole(userId, role_name);
+
+      if (!res.success) {
+        return rejectWithValue(res.message || "Cannot update user role");
+      }
+
+      return res.data.user;
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err.message ||
+        "Error while updating user role";
+      return rejectWithValue(msg);
+    }
+  }
+);
+
 /* ========== SLICE ========== */
 
 const savedUser = localStorage.getItem("vh_user");
@@ -173,6 +194,17 @@ const userSlice = createSlice({
 
       /* --- updateUserStatus (admin) --- */
       .addCase(updateUserStatusThunk.fulfilled, (state, action) => {
+        const updated = action.payload;
+        const idx = state.admin.list.findIndex(
+          (u) => u.user_id === updated.user_id
+        );
+        if (idx !== -1) {
+          state.admin.list[idx] = updated;
+        }
+      })
+
+      /* --- updateUserRole (admin) --- */
+      .addCase(updateUserRoleThunk.fulfilled, (state, action) => {
         const updated = action.payload;
         const idx = state.admin.list.findIndex(
           (u) => u.user_id === updated.user_id

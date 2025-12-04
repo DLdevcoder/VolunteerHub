@@ -2,8 +2,23 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import eventApi from "../../../apis/eventApi";
 
+/* ======================================================================
+   Helpers
+====================================================================== */
+
+const replaceEventInList = (list, updated) =>
+  Array.isArray(list)
+    ? list.map((ev) =>
+        ev.event_id === updated.event_id ? { ...ev, ...updated } : ev
+      )
+    : [];
+
+/* ======================================================================
+   THUNKS
+====================================================================== */
+
 // =========================
-// THUNK: public active events
+// 1. PUBLIC: active events
 // =========================
 export const fetchActiveEvents = createAsyncThunk(
   "events/fetchActiveEvents",
@@ -50,7 +65,7 @@ export const fetchActiveEvents = createAsyncThunk(
 );
 
 // =========================
-// THUNK: categories (used by ManagerCreateEvent, etc.)
+// 2. Categories
 // =========================
 export const fetchEventCategories = createAsyncThunk(
   "events/fetchCategories",
@@ -75,7 +90,7 @@ export const fetchEventCategories = createAsyncThunk(
 );
 
 // =========================
-// THUNK: manager - create event
+// 3. MANAGER – create event
 // =========================
 export const createEventThunk = createAsyncThunk(
   "events/createEvent",
@@ -96,7 +111,7 @@ export const createEventThunk = createAsyncThunk(
 );
 
 // =========================
-// THUNK: manager - my events list
+// 4. MANAGER – my events list
 // =========================
 export const fetchManagerEvents = createAsyncThunk(
   "events/fetchManagerEvents",
@@ -140,8 +155,97 @@ export const fetchManagerEvents = createAsyncThunk(
 );
 
 // =========================
-// STATE + SLICE
+// 5. ADMIN – list events (requests)
 // =========================
+export const fetchAdminEvents = createAsyncThunk(
+  "events/fetchAdminEvents",
+  // { page, limit, approval_status, manager_id, category_id, search, sort_by, sort_order }
+  async (params, { rejectWithValue }) => {
+    try {
+      const res = await eventApi.getAllEventsAdmin(params);
+      // res: { success, data: { events, pagination }, message? }
+      if (!res?.success) {
+        return rejectWithValue(
+          res?.message || "Không tải được danh sách sự kiện (admin)"
+        );
+      }
+
+      const result = res.data || {};
+      const events = result.events || [];
+      const apiPag = result.pagination || {};
+
+      const pagination = {
+        page: apiPag.page ?? params?.page ?? 1,
+        limit: apiPag.limit ?? params?.limit ?? 10,
+        total:
+          apiPag.total ??
+          apiPag.total_records ??
+          (Array.isArray(events) ? events.length : 0),
+        totalPages:
+          apiPag.totalPages ??
+          apiPag.total_pages ??
+          (apiPag.total && apiPag.limit
+            ? Math.ceil(apiPag.total / apiPag.limit)
+            : 1),
+      };
+
+      return { events, pagination };
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Không tải được danh sách sự kiện (admin)";
+      return rejectWithValue(msg);
+    }
+  }
+);
+
+// =========================
+// 6. ADMIN – approve / reject event
+// =========================
+export const approveEventThunk = createAsyncThunk(
+  "events/approveEvent",
+  async (eventId, { rejectWithValue }) => {
+    try {
+      const res = await eventApi.approveEvent(eventId);
+      // { success, message, data: { event } }
+      if (!res?.success) {
+        return rejectWithValue(res?.message || "Không thể duyệt sự kiện");
+      }
+      return res.data?.event;
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Không thể duyệt sự kiện";
+      return rejectWithValue(msg);
+    }
+  }
+);
+
+export const rejectEventThunk = createAsyncThunk(
+  "events/rejectEvent",
+  async ({ eventId, reason }, { rejectWithValue }) => {
+    try {
+      const res = await eventApi.rejectEvent(eventId, reason);
+      // { success, message, data: { event } }
+      if (!res?.success) {
+        return rejectWithValue(res?.message || "Không thể từ chối sự kiện");
+      }
+      return res.data?.event;
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Không thể từ chối sự kiện";
+      return rejectWithValue(msg);
+    }
+  }
+);
+
+/* ======================================================================
+   STATE + SLICE
+====================================================================== */
 
 const initialState = {
   // Public active events (volunteer)
@@ -175,6 +279,18 @@ const initialState = {
   createLoading: false,
   createError: null,
   lastCreatedEvent: null,
+
+  // Admin: events list (requests, etc.)
+  adminEvents: [],
+  adminEventsPagination: {
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  },
+  adminEventsLoading: false,
+  adminEventsError: null,
+  adminActionError: null,
 };
 
 const eventSlice = createSlice({
@@ -250,9 +366,52 @@ const eventSlice = createSlice({
         state.myEventsLoading = false;
         state.myEventsError = action.payload || "Không tải được event của bạn";
       });
+
+    // -------- admin: events list --------
+    builder
+      .addCase(fetchAdminEvents.pending, (state) => {
+        state.adminEventsLoading = true;
+        state.adminEventsError = null;
+      })
+      .addCase(fetchAdminEvents.fulfilled, (state, action) => {
+        state.adminEventsLoading = false;
+        state.adminEvents = action.payload.events;
+        state.adminEventsPagination = action.payload.pagination;
+      })
+      .addCase(fetchAdminEvents.rejected, (state, action) => {
+        state.adminEventsLoading = false;
+        state.adminEventsError =
+          action.payload || "Không tải được danh sách sự kiện (admin)";
+      });
+
+    // -------- admin: approve / reject --------
+    builder
+      .addCase(approveEventThunk.fulfilled, (state, action) => {
+        const updated = action.payload;
+        if (!updated) return;
+
+        state.adminEvents = replaceEventInList(state.adminEvents, updated);
+        state.myEvents = replaceEventInList(state.myEvents, updated);
+        state.adminActionError = null;
+      })
+      .addCase(approveEventThunk.rejected, (state, action) => {
+        state.adminActionError =
+          action.payload || "Không thể duyệt sự kiện (admin)";
+      })
+      .addCase(rejectEventThunk.fulfilled, (state, action) => {
+        const updated = action.payload;
+        if (!updated) return;
+
+        state.adminEvents = replaceEventInList(state.adminEvents, updated);
+        state.myEvents = replaceEventInList(state.myEvents, updated);
+        state.adminActionError = null;
+      })
+      .addCase(rejectEventThunk.rejected, (state, action) => {
+        state.adminActionError =
+          action.payload || "Không thể từ chối sự kiện (admin)";
+      });
   },
 });
 
 export const { resetCreateEventState } = eventSlice.actions;
-
 export default eventSlice;

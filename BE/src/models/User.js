@@ -112,7 +112,15 @@ class User {
     role = "",
     status = "",
   } = {}) {
-    const offset = (page - 1) * limit;
+    // Ép kiểu an toàn
+    const numPage = Number(page);
+    const safePage = Number.isInteger(numPage) && numPage > 0 ? numPage : 1;
+
+    const numLimit = Number(limit);
+    const safeLimit =
+      Number.isInteger(numLimit) && numLimit > 0 ? numLimit : 10;
+
+    const offset = (safePage - 1) * safeLimit;
 
     // Xây dựng query động
     let whereConditions = [];
@@ -139,42 +147,45 @@ class User {
         : "";
 
     try {
-      // Query chính
-      const [users] = await pool.execute(
-        `SELECT 
-          u.user_id, u.email, u.full_name, u.phone, u.avatar_url,
-          r.name as role_name, u.status, u.created_at, u.updated_at
-         FROM Users u 
-         JOIN Roles r ON u.role_id = r.role_id 
-         ${whereClause}
-         ORDER BY u.created_at DESC
-         LIMIT ? OFFSET ?`,
-        [...queryParams, parseInt(limit), offset]
-      );
+      // ====== Query danh sách ======
+      const listSql = `
+      SELECT 
+        u.user_id, u.email, u.full_name, u.phone, u.avatar_url,
+        r.name as role_name, u.status, u.created_at, u.updated_at
+      FROM Users u 
+      JOIN Roles r ON u.role_id = r.role_id 
+      ${whereClause}
+      ORDER BY u.created_at DESC
+      LIMIT ${safeLimit} OFFSET ${offset}
+    `;
 
-      // Query tổng số records
-      const [countResult] = await pool.execute(
-        `SELECT COUNT(*) as total
-         FROM Users u 
-         JOIN Roles r ON u.role_id = r.role_id 
-         ${whereClause}`,
-        queryParams
-      );
+      const [users] = await pool.execute(listSql, queryParams);
 
-      const total = countResult[0].total;
-      const totalPages = Math.ceil(total / limit);
+      // ====== Query tổng records ======
+      const countSql = `
+      SELECT COUNT(*) as total
+      FROM Users u 
+      JOIN Roles r ON u.role_id = r.role_id 
+      ${whereClause}
+    `;
+      const [countResult] = await pool.execute(countSql, queryParams);
+
+      const total = countResult[0]?.total || 0;
+      const totalPages = Math.ceil(total / safeLimit);
 
       return {
         users,
         pagination: {
-          current_page: parseInt(page),
+          current_page: safePage,
           total_pages: totalPages,
           total_records: total,
-          has_next: page < totalPages,
-          has_prev: page > 1,
+          has_next: safePage < totalPages,
+          has_prev: safePage > 1,
+          limit: safeLimit,
         },
       };
     } catch (error) {
+      console.error("User.findAll error SQL:", error);
       throw new Error(`Database error in findAll: ${error.message}`);
     }
   }

@@ -1,3 +1,4 @@
+// src/components/Notifications/Notifications.jsx
 import "./Notifications.css";
 import { useEffect, useState } from "react";
 import {
@@ -25,6 +26,11 @@ import {
   deleteNotificationThunk,
 } from "../../redux/slices/notificationSlice";
 
+import {
+  getNotificationTypeLabel,
+  getNotificationMainText,
+} from "../../utils/notificationUtils";
+
 const { Title, Text } = Typography;
 
 const Notifications = () => {
@@ -34,7 +40,6 @@ const Notifications = () => {
   const pagination = useSelector(notificationsPaginationSelector);
   const loading = useSelector(loadingNotificationsSelector);
 
-  // cố gắng đọc nhiều kiểu tên field pagination khác nhau cho đỡ lệ thuộc
   const currentPageFromStore = pagination?.page || pagination?.currentPage || 1;
   const pageSizeFromStore = pagination?.limit || pagination?.pageSize || 20;
   const totalFromStore =
@@ -46,7 +51,6 @@ const Notifications = () => {
   const [page, setPage] = useState(currentPageFromStore);
   const [pageSize, setPageSize] = useState(pageSizeFromStore);
 
-  // load list mỗi khi page/pageSize đổi
   useEffect(() => {
     dispatch(fetchNotificationsThunk({ page, limit: pageSize }));
   }, [dispatch, page, pageSize]);
@@ -114,50 +118,55 @@ const Notifications = () => {
             itemLayout="horizontal"
             dataSource={notifications}
             locale={{ emptyText: "Không có thông báo nào" }}
-            renderItem={(item) => (
-              <List.Item
-                style={{
-                  backgroundColor: item.is_read ? "#fff" : "#e6f7ff",
-                  borderRadius: 8,
-                  marginBottom: 8,
-                  padding: 12,
-                  cursor: "pointer",
-                }}
-                onClick={() => handleMarkRead(item)}
-                actions={[
-                  <Popconfirm
-                    key="delete"
-                    title="Xóa thông báo?"
-                    okText="Xóa"
-                    cancelText="Hủy"
-                    onConfirm={() => handleDelete(item)}
-                  >
-                    <Button danger type="link">
-                      Xóa
-                    </Button>
-                  </Popconfirm>,
-                ]}
-              >
-                <List.Item.Meta
-                  title={
-                    <Space>
-                      <Text strong>{item.payload?.title || item.type}</Text>
-                      {!item.is_read && <Tag color="blue">Chưa đọc</Tag>}
-                    </Space>
-                  }
-                  description={
-                    <>
-                      <div>{item.payload?.message}</div>
-                      <div style={{ marginTop: 4 }}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {renderTime(item.created_at)}
-                        </Text>
-                      </div>
-                    </>
-                  }
-                />
-              </List.Item>
-            )}
+            renderItem={(item) => {
+              const typeLabel = getNotificationTypeLabel(item.type);
+              const mainText = getNotificationMainText(item.payload || {});
+
+              return (
+                <List.Item
+                  style={{
+                    backgroundColor: item.is_read ? "#fff" : "#e6f7ff",
+                    borderRadius: 8,
+                    marginBottom: 8,
+                    padding: 12,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => handleMarkRead(item)}
+                  actions={[
+                    <Popconfirm
+                      key="delete"
+                      title="Xóa thông báo?"
+                      okText="Xóa"
+                      cancelText="Hủy"
+                      onConfirm={() => handleDelete(item)}
+                    >
+                      <Button danger type="link">
+                        Xóa
+                      </Button>
+                    </Popconfirm>,
+                  ]}
+                >
+                  <List.Item.Meta
+                    title={
+                      <Space>
+                        <Text strong>{typeLabel}</Text>
+                        {!item.is_read && <Tag color="blue">Chưa đọc</Tag>}
+                      </Space>
+                    }
+                    description={
+                      <>
+                        {mainText && <div>{mainText}</div>}
+                        <div style={{ marginTop: 4 }}>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {renderTime(item.created_at)}
+                          </Text>
+                        </div>
+                      </>
+                    }
+                  />
+                </List.Item>
+              );
+            }}
           />
 
           <div style={{ marginTop: 16, textAlign: "right" }}>

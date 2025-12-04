@@ -31,6 +31,12 @@ const userApi = {
     const res = await api.put(`/users/${userId}/status`, { status });
     return res.data; // { success, message, data: { user } }
   },
+
+  // 🔥 NEW: Admin – cập nhật role (ví dụ: set Admin/Manager)
+  updateUserRole: async (userId, role_name) => {
+    const res = await api.put(`/users/${userId}/role`, { role_name });
+    return res.data; // { success, message, data: { user } }
+  },
 };
 
 export default userApi;

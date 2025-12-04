@@ -15,6 +15,10 @@ import NotificationsPage from "./pages/NotificationsPage";
 import ManagerCreateEvent from "./components/manager/ManagerCreateEvent/ManagerCreateEvent";
 import ManagerMyEvents from "./components/manager/ManagerMyEvents/ManagerMyEvents";
 
+import AdminEventRequests from "./components/admin/AdminEventRequests/AdminEventRequests";
+import AdminUsers from "./components/admin/AdminUsers/AdminUsers";
+import AdminExport from "./components/admin/AdminExport/AdminExport";
+
 const App = () => {
   return (
     <Routes>
@@ -34,6 +38,13 @@ const App = () => {
         <Route path="manager">
           <Route path="events" element={<ManagerMyEvents />} />
           <Route path="events/create" element={<ManagerCreateEvent />} />
+        </Route>
+
+        {/* Admin routes */}
+        <Route path="admin">
+          <Route path="event-requests" element={<AdminEventRequests />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="export" element={<AdminExport />} />
         </Route>
       </Route>
     </Routes>

@@ -19,20 +19,22 @@ import {
 } from "../../redux/slices/notificationSlice";
 import { useEffect } from "react";
 
+import {
+  getNotificationTypeLabel,
+  getNotificationMainText,
+} from "../../utils/notificationUtils";
+
 const AppHeader = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const user = useSelector(meSelector);
-  // console.log("in app header, user = ", user);
-
   const { token } = useSelector((state) => state.auth);
 
   const unreadCount = useSelector(unreadCountSelector);
   const recent = useSelector(recentNotificationsSelector);
   const loadingRecent = useSelector(loadingRecentNotificationsSelector);
 
-  // load badge + dropdown data khi có token
   useEffect(() => {
     if (!token) return;
     dispatch(fetchUnreadCountThunk());
@@ -53,8 +55,7 @@ const AppHeader = () => {
     if (!item.is_read) {
       dispatch(markNotificationReadThunk(item.notification_id));
     }
-    // tuỳ bạn: chuyển hướng theo payload.url, v.v.
-    // if (item.payload?.url) navigate(item.payload.url);
+    // có thể điều hướng dựa trên payload.url sau này
   };
 
   const handleGoToNotificationsPage = () => {
@@ -73,24 +74,24 @@ const AppHeader = () => {
             size="small"
             dataSource={recent}
             locale={{ emptyText: "Không có thông báo" }}
-            renderItem={(item) => (
-              <List.Item
-                className={item.is_read ? "notif-item read" : "notif-item"}
-                onClick={() => handleNotificationClick(item)}
-              >
-                <div className="notif-content">
-                  <div className="notif-title">
-                    {item.payload?.title || item.type}
+            renderItem={(item) => {
+              const typeLabel = getNotificationTypeLabel(item.type);
+              const mainText = getNotificationMainText(item.payload || {});
+
+              return (
+                <List.Item
+                  className={item.is_read ? "notif-item read" : "notif-item"}
+                  onClick={() => handleNotificationClick(item)}
+                >
+                  <div className="notif-content">
+                    <div className="notif-title">{typeLabel}</div>
+                    <div className="notif-message">{mainText}</div>
                   </div>
-                  <div className="notif-message">
-                    {item.payload?.message || ""}
-                  </div>
-                </div>
-              </List.Item>
-            )}
+                </List.Item>
+              );
+            }}
           />
 
-          {/* ⬇️ Footer: Tất cả thông báo */}
           <div
             className="notif-footer-view-all"
             style={{
@@ -122,7 +123,6 @@ const AppHeader = () => {
       </div>
 
       <div className="appHeader-noti-and-ava-wrapper">
-        {/* Notifications */}
         <div className="appHeader-notification-icon">
           <Dropdown trigger={["click"]} popupRender={() => notificationOverlay}>
             <Badge count={unreadCount} size="small">
@@ -131,7 +131,6 @@ const AppHeader = () => {
           </Dropdown>
         </div>
 
-        {/* Avatar */}
         <div className="appHeader-avatar-wrapper">
           <Dropdown
             trigger={["click"]}
