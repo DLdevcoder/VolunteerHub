@@ -1,37 +1,49 @@
-// src/pages/Manager/Events/ManagerMyEvents/ManagerMyEvents.jsx
-import { useEffect } from "react";
-import { Table, Tag, message, Card } from "antd";
+// src/components/manager/ManagerMyEvents/ManagerMyEvents.jsx
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Table, Tag, message, Card } from "antd";
+
 import { fetchManagerEvents } from "../../../redux/slices/eventSlice";
+import {
+  managerEventsSelector,
+  managerEventsPaginationSelector,
+  managerEventsLoadingSelector,
+  managerEventsErrorSelector,
+} from "../../../redux/selectors/eventSelectors";
 
 const ManagerMyEvents = () => {
   const dispatch = useDispatch();
 
-  const { myEvents, myEventsPagination, myEventsLoading, myEventsError } =
-    useSelector((state) => state.events);
+  const events = useSelector(managerEventsSelector);
+  const pagination = useSelector(managerEventsPaginationSelector);
+  const loading = useSelector(managerEventsLoadingSelector);
+  const error = useSelector(managerEventsErrorSelector);
 
-  const fetchData = (page = 1, pageSize = 10) => {
+  const [pageSize, setPageSize] = useState(10);
+
+  const loadData = (page = 1, limit = pageSize) => {
     dispatch(
       fetchManagerEvents({
         page,
-        limit: pageSize,
+        limit,
       })
     );
   };
 
   useEffect(() => {
-    fetchData(1, 10);
-  }, []);
+    loadData(1, pageSize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch]);
 
-  // Show error from slice
   useEffect(() => {
-    if (myEventsError) {
-      message.error(myEventsError);
+    if (error) {
+      message.error(error);
     }
-  }, [myEventsError]);
+  }, [error]);
 
   const handleTableChange = (pag) => {
-    fetchData(pag.current, pag.pageSize);
+    setPageSize(pag.pageSize);
+    loadData(pag.current, pag.pageSize);
   };
 
   const columns = [
@@ -78,17 +90,19 @@ const ManagerMyEvents = () => {
     },
   ];
 
+  const pag = pagination || {};
+
   return (
     <Card title="Event của tôi" bordered={false}>
       <Table
         rowKey="event_id"
-        loading={myEventsLoading}
+        loading={loading}
         columns={columns}
-        dataSource={myEvents}
+        dataSource={events}
         pagination={{
-          current: myEventsPagination.page,
-          pageSize: myEventsPagination.limit,
-          total: myEventsPagination.total,
+          current: pag.page || 1,
+          pageSize,
+          total: pag.total || 0,
         }}
         onChange={handleTableChange}
       />

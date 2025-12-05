@@ -1,69 +1,96 @@
+// src/components/admin/AdminEventRequests/AdminEventRequests.jsx
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Table, Tag, Button, Card, message, Space } from "antd";
+import { Card, Table, Tag, Button, Space, Select, Input, message } from "antd";
+
 import {
   fetchAdminEvents,
   approveEventThunk,
   rejectEventThunk,
 } from "../../../redux/slices/eventSlice";
 
+import {
+  adminEventsSelector,
+  adminEventsPaginationSelector,
+  adminEventsLoadingSelector,
+  adminEventsErrorSelector,
+  adminActionErrorSelector,
+} from "../../../redux/selectors/eventSelectors";
+
+const { Option } = Select;
+
 const AdminEventRequests = () => {
   const dispatch = useDispatch();
 
-  const { adminEvents, adminEventsPagination, adminEventsLoading } =
-    useSelector((state) => state.events);
+  const events = useSelector(adminEventsSelector);
+  const pagination = useSelector(adminEventsPaginationSelector);
+  const loading = useSelector(adminEventsLoadingSelector);
+  const listError = useSelector(adminEventsErrorSelector);
+  const actionError = useSelector(adminActionErrorSelector);
 
-  const [approvingId, setApprovingId] = useState(null);
-  const [rejectingId, setRejectingId] = useState(null);
+  const [approvalFilter, setApprovalFilter] = useState("pending");
+  const [search, setSearch] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [rowLoadingId, setRowLoadingId] = useState(null);
 
-  const loadData = (page = 1, limit = 10) => {
+  const loadData = (page = 1, limit = pageSize) => {
     dispatch(
       fetchAdminEvents({
         page,
         limit,
-        approval_status: "pending", // chỉ load request chờ duyệt
+        approval_status: approvalFilter || undefined,
+        search: search || undefined,
       })
     );
   };
 
   useEffect(() => {
-    loadData(1, 10);
-  }, [dispatch]);
+    loadData(1, pageSize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, approvalFilter, search]);
+
+  useEffect(() => {
+    if (listError) message.error(listError);
+  }, [listError]);
+
+  useEffect(() => {
+    if (actionError) message.error(actionError);
+  }, [actionError]);
 
   const handleTableChange = (pag) => {
+    setPageSize(pag.pageSize);
     loadData(pag.current, pag.pageSize);
   };
 
   const handleApprove = async (eventId) => {
     try {
-      setApprovingId(eventId);
+      setRowLoadingId(eventId);
       await dispatch(approveEventThunk(eventId)).unwrap();
       message.success("Duyệt sự kiện thành công");
-      // reload để bỏ khỏi danh sách pending
-      loadData(1, adminEventsPagination.limit || 10);
+      loadData(pagination.page || 1, pageSize);
     } catch (err) {
       message.error(err || "Không thể duyệt sự kiện");
     } finally {
-      setApprovingId(null);
+      setRowLoadingId(null);
     }
   };
 
   const handleReject = async (eventId) => {
-    const reason = window.prompt("Nhập lý do từ chối (>= 5 ký tự):");
+    const reason = window.prompt("Nhập lý do từ chối:");
     if (!reason || reason.trim().length < 5) {
-      message.warning("Vui lòng nhập lý do tối thiểu 5 ký tự");
+      message.warning("Lý do cần ít nhất 5 ký tự");
       return;
     }
 
     try {
-      setRejectingId(eventId);
+      setRowLoadingId(eventId);
       await dispatch(rejectEventThunk({ eventId, reason })).unwrap();
       message.success("Từ chối sự kiện thành công");
-      loadData(1, adminEventsPagination.limit || 10);
+      loadData(pagination.page || 1, pageSize);
     } catch (err) {
       message.error(err || "Không thể từ chối sự kiện");
     } finally {
-      setRejectingId(null);
+      setRowLoadingId(null);
     }
   };
 
@@ -74,10 +101,9 @@ const AdminEventRequests = () => {
       key: "title",
     },
     {
-      title: "Quản lý",
+      title: "Manager",
       dataIndex: "manager_name",
       key: "manager_name",
-      render: (value) => value || "—",
     },
     {
       title: "Thời gian",
@@ -90,34 +116,27 @@ const AdminEventRequests = () => {
       ),
     },
     {
-      title: "Địa điểm",
-      dataIndex: "location",
-      key: "location",
-    },
-    {
-      title: "Số lượng",
-      key: "participants",
-      render: (_, record) => (
-        <>
-          {record.current_participants}/{record.target_participants}
-        </>
-      ),
-    },
-    {
-      title: "Trạng thái",
+      title: "Trạng thái duyệt",
       dataIndex: "approval_status",
       key: "approval_status",
-      render: (status) => <Tag color="gold">{status}</Tag>,
+      render: (status) => {
+        let color = "default";
+        if (status === "approved") color = "green";
+        else if (status === "pending") color = "gold";
+        else if (status === "rejected") color = "red";
+        return <Tag color={color}>{status}</Tag>;
+      },
     },
     {
       title: "Hành động",
-      key: "action",
+      key: "actions",
       render: (_, record) => (
         <Space>
           <Button
             type="primary"
             size="small"
-            loading={approvingId === record.event_id}
+            disabled={record.approval_status === "approved"}
+            loading={rowLoadingId === record.event_id}
             onClick={() => handleApprove(record.event_id)}
           >
             Approve
@@ -125,7 +144,8 @@ const AdminEventRequests = () => {
           <Button
             danger
             size="small"
-            loading={rejectingId === record.event_id}
+            disabled={record.approval_status === "rejected"}
+            loading={rowLoadingId === record.event_id}
             onClick={() => handleReject(record.event_id)}
           >
             Reject
@@ -135,17 +155,45 @@ const AdminEventRequests = () => {
     },
   ];
 
+  const pag = pagination || {};
+
   return (
-    <Card title="Event requests" bordered={false}>
+    <Card
+      title="Event requests"
+      extra={
+        <Space>
+          <span>Trạng thái:</span>
+          <Select
+            style={{ width: 160 }}
+            value={approvalFilter}
+            onChange={setApprovalFilter}
+          >
+            <Option value="">All</Option>
+            <Option value="pending">Pending</Option>
+            <Option value="approved">Approved</Option>
+            <Option value="rejected">Rejected</Option>
+          </Select>
+
+          <Input.Search
+            allowClear
+            placeholder="Tìm kiếm theo tên"
+            style={{ width: 220 }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onSearch={() => loadData(1, pageSize)}
+          />
+        </Space>
+      }
+    >
       <Table
         rowKey="event_id"
-        loading={adminEventsLoading}
+        loading={loading}
         columns={columns}
-        dataSource={adminEvents}
+        dataSource={events}
         pagination={{
-          current: adminEventsPagination.page || 1,
-          pageSize: adminEventsPagination.limit || 10,
-          total: adminEventsPagination.total || 0,
+          current: pag.page || 1,
+          pageSize,
+          total: pag.total || 0,
         }}
         onChange={handleTableChange}
       />

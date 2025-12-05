@@ -1,4 +1,6 @@
+// src/components/manager/ManagerCreateEvent/ManagerCreateEvent.jsx
 import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Button,
   Form,
@@ -10,11 +12,17 @@ import {
   Card,
   Space,
 } from "antd";
-import { useDispatch, useSelector } from "react-redux";
 import {
   fetchEventCategories,
   createEventThunk,
+  resetCreateEventState,
 } from "../../../redux/slices/eventSlice";
+import {
+  eventCategoriesSelector,
+  eventCategoriesLoadingSelector,
+  eventCreateLoadingSelector,
+  eventCreateErrorSelector,
+} from "../../../redux/selectors/eventSelectors";
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
@@ -23,57 +31,42 @@ const ManagerCreateEvent = () => {
   const [form] = Form.useForm();
   const dispatch = useDispatch();
 
-  const {
-    categories,
-    categoriesLoading,
-    categoriesError,
-    createLoading,
-    createError,
-  } = useSelector((state) => state.events);
+  const categories = useSelector(eventCategoriesSelector);
+  const categoriesLoading = useSelector(eventCategoriesLoadingSelector);
+  const createLoading = useSelector(eventCreateLoadingSelector);
+  const createError = useSelector(eventCreateErrorSelector);
 
-  // Load categories
   useEffect(() => {
     dispatch(fetchEventCategories());
   }, [dispatch]);
 
-  // Show error messages from slice (optional but nice)
-  useEffect(() => {
-    if (categoriesError) {
-      message.error(categoriesError);
-    }
-  }, [categoriesError]);
-
   useEffect(() => {
     if (createError) {
       message.error(createError);
+      dispatch(resetCreateEventState());
     }
-  }, [createError]);
+  }, [createError, dispatch]);
 
   const handleSubmit = async (values) => {
+    const [start, end] = values.timeRange || [];
+
+    const payload = {
+      title: values.title,
+      description: values.description,
+      target_participants: values.target_participants || 0,
+      location: values.location,
+      category_id: values.category_id || null,
+      start_date: start?.format("YYYY-MM-DD HH:mm:ss"),
+      end_date: end?.format("YYYY-MM-DD HH:mm:ss"),
+    };
+
     try {
-      const [start, end] = values.timeRange || [];
-
-      const payload = {
-        title: values.title,
-        description: values.description,
-        target_participants: values.target_participants || 0,
-        location: values.location,
-        category_id: values.category_id || null,
-        start_date: start?.format("YYYY-MM-DD HH:mm:ss"),
-        end_date: end?.format("YYYY-MM-DD HH:mm:ss"),
-      };
-
-      // dispatch + unwrap to use try/catch
-      const createdEvent = await dispatch(createEventThunk(payload)).unwrap();
-
+      await dispatch(createEventThunk(payload)).unwrap();
       message.success("Tạo sự kiện thành công");
-      // Nếu muốn dùng dữ liệu event:
-      // console.log("Created event:", createdEvent);
-
       form.resetFields();
-    } catch (errMsg) {
-      // errMsg là payload từ rejectWithValue
-      message.error(errMsg || "Tạo sự kiện thất bại");
+      dispatch(resetCreateEventState());
+    } catch (err) {
+      message.error(err || "Tạo sự kiện thất bại");
     }
   };
 

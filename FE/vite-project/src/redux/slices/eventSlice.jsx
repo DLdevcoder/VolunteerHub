@@ -18,7 +18,7 @@ const replaceEventInList = (list, updated) =>
 ====================================================================== */
 
 // =========================
-// 1. PUBLIC: active events
+// 1. VOLUNTEER: active events
 // =========================
 export const fetchActiveEvents = createAsyncThunk(
   "events/fetchActiveEvents",
@@ -243,54 +243,92 @@ export const rejectEventThunk = createAsyncThunk(
   }
 );
 
+// =========================
+// 7. EVENT DETAIL – by id
+// =========================
+export const fetchEventDetailThunk = createAsyncThunk(
+  "events/fetchEventDetail",
+  async (eventId, { rejectWithValue }) => {
+    try {
+      const res = await eventApi.getEventById(eventId);
+      // BE: { success, data: { event } }
+      if (!res?.success) {
+        return rejectWithValue(
+          res?.message || "Không lấy được chi tiết sự kiện"
+        );
+      }
+      return res.data?.event || null;
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Không lấy được chi tiết sự kiện";
+      return rejectWithValue(msg);
+    }
+  }
+);
+
 /* ======================================================================
    STATE + SLICE
 ====================================================================== */
 
 const initialState = {
-  // Public active events (volunteer)
-  items: [],
-  pagination: {
-    page: 1,
-    limit: 9,
-    total: 0,
-    totalPages: 0,
+  // Volunteer: active events
+  volunteer: {
+    items: [],
+    pagination: {
+      page: 1,
+      limit: 9,
+      total: 0,
+      totalPages: 0,
+    },
+    loading: false,
+    error: null,
   },
-  loading: false,
-  error: null,
 
   // Categories
-  categories: [],
-  categoriesLoading: false,
-  categoriesError: null,
-
-  // Manager: my events
-  myEvents: [],
-  myEventsPagination: {
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 0,
+  categories: {
+    items: [],
+    loading: false,
+    error: null,
   },
-  myEventsLoading: false,
-  myEventsError: null,
 
-  // Manager: create event
-  createLoading: false,
-  createError: null,
-  lastCreatedEvent: null,
-
-  // Admin: events list (requests, etc.)
-  adminEvents: [],
-  adminEventsPagination: {
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 0,
+  // Manager: my events & create
+  manager: {
+    myEvents: [],
+    pagination: {
+      page: 1,
+      limit: 10,
+      total: 0,
+      totalPages: 0,
+    },
+    loading: false,
+    error: null,
+    createLoading: false,
+    createError: null,
+    lastCreatedEvent: null,
   },
-  adminEventsLoading: false,
-  adminEventsError: null,
-  adminActionError: null,
+
+  // Admin: events list & actions
+  admin: {
+    events: [],
+    pagination: {
+      page: 1,
+      limit: 10,
+      total: 0,
+      totalPages: 0,
+    },
+    loading: false,
+    error: null,
+    actionError: null,
+  },
+
+  // Event detail (for detail page)
+  detail: {
+    data: null,
+    loading: false,
+    error: null,
+  },
 };
 
 const eventSlice = createSlice({
@@ -298,117 +336,138 @@ const eventSlice = createSlice({
   initialState,
   reducers: {
     resetCreateEventState(state) {
-      state.createLoading = false;
-      state.createError = null;
-      state.lastCreatedEvent = null;
+      state.manager.createLoading = false;
+      state.manager.createError = null;
+      state.manager.lastCreatedEvent = null;
     },
   },
   extraReducers: (builder) => {
-    // -------- active events (public) --------
+    /* -------- volunteer active events -------- */
     builder
       .addCase(fetchActiveEvents.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+        state.volunteer.loading = true;
+        state.volunteer.error = null;
       })
       .addCase(fetchActiveEvents.fulfilled, (state, action) => {
-        state.loading = false;
-        state.items = action.payload.events;
-        state.pagination = action.payload.pagination;
+        state.volunteer.loading = false;
+        state.volunteer.items = action.payload.events;
+        state.volunteer.pagination = action.payload.pagination;
       })
       .addCase(fetchActiveEvents.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || "Không lấy được danh sách sự kiện";
+        state.volunteer.loading = false;
+        state.volunteer.error =
+          action.payload || "Không lấy được danh sách sự kiện";
       });
 
-    // -------- categories --------
+    /* -------- categories -------- */
     builder
       .addCase(fetchEventCategories.pending, (state) => {
-        state.categoriesLoading = true;
-        state.categoriesError = null;
+        state.categories.loading = true;
+        state.categories.error = null;
       })
       .addCase(fetchEventCategories.fulfilled, (state, action) => {
-        state.categoriesLoading = false;
-        state.categories = action.payload || [];
+        state.categories.loading = false;
+        state.categories.items = action.payload || [];
       })
       .addCase(fetchEventCategories.rejected, (state, action) => {
-        state.categoriesLoading = false;
-        state.categoriesError =
+        state.categories.loading = false;
+        state.categories.error =
           action.payload || "Không tải được danh sách danh mục";
       });
 
-    // -------- manager: create event --------
+    /* -------- manager: create event -------- */
     builder
       .addCase(createEventThunk.pending, (state) => {
-        state.createLoading = true;
-        state.createError = null;
+        state.manager.createLoading = true;
+        state.manager.createError = null;
       })
       .addCase(createEventThunk.fulfilled, (state, action) => {
-        state.createLoading = false;
-        state.lastCreatedEvent = action.payload;
+        state.manager.createLoading = false;
+        state.manager.lastCreatedEvent = action.payload;
       })
       .addCase(createEventThunk.rejected, (state, action) => {
-        state.createLoading = false;
-        state.createError = action.payload || "Tạo sự kiện thất bại";
+        state.manager.createLoading = false;
+        state.manager.createError = action.payload || "Tạo sự kiện thất bại";
       });
 
-    // -------- manager: my events --------
+    /* -------- manager: my events -------- */
     builder
       .addCase(fetchManagerEvents.pending, (state) => {
-        state.myEventsLoading = true;
-        state.myEventsError = null;
+        state.manager.loading = true;
+        state.manager.error = null;
       })
       .addCase(fetchManagerEvents.fulfilled, (state, action) => {
-        state.myEventsLoading = false;
-        state.myEvents = action.payload.events;
-        state.myEventsPagination = action.payload.pagination;
+        state.manager.loading = false;
+        state.manager.myEvents = action.payload.events;
+        state.manager.pagination = action.payload.pagination;
       })
       .addCase(fetchManagerEvents.rejected, (state, action) => {
-        state.myEventsLoading = false;
-        state.myEventsError = action.payload || "Không tải được event của bạn";
+        state.manager.loading = false;
+        state.manager.error = action.payload || "Không tải được event của bạn";
       });
 
-    // -------- admin: events list --------
+    /* -------- admin: events list -------- */
     builder
       .addCase(fetchAdminEvents.pending, (state) => {
-        state.adminEventsLoading = true;
-        state.adminEventsError = null;
+        state.admin.loading = true;
+        state.admin.error = null;
       })
       .addCase(fetchAdminEvents.fulfilled, (state, action) => {
-        state.adminEventsLoading = false;
-        state.adminEvents = action.payload.events;
-        state.adminEventsPagination = action.payload.pagination;
+        state.admin.loading = false;
+        state.admin.events = action.payload.events;
+        state.admin.pagination = action.payload.pagination;
       })
       .addCase(fetchAdminEvents.rejected, (state, action) => {
-        state.adminEventsLoading = false;
-        state.adminEventsError =
+        state.admin.loading = false;
+        state.admin.error =
           action.payload || "Không tải được danh sách sự kiện (admin)";
       });
 
-    // -------- admin: approve / reject --------
+    /* -------- admin: approve / reject -------- */
     builder
       .addCase(approveEventThunk.fulfilled, (state, action) => {
         const updated = action.payload;
         if (!updated) return;
-
-        state.adminEvents = replaceEventInList(state.adminEvents, updated);
-        state.myEvents = replaceEventInList(state.myEvents, updated);
-        state.adminActionError = null;
+        state.admin.events = replaceEventInList(state.admin.events, updated);
+        state.manager.myEvents = replaceEventInList(
+          state.manager.myEvents,
+          updated
+        );
+        state.admin.actionError = null;
       })
       .addCase(approveEventThunk.rejected, (state, action) => {
-        state.adminActionError =
+        state.admin.actionError =
           action.payload || "Không thể duyệt sự kiện (admin)";
       })
       .addCase(rejectEventThunk.fulfilled, (state, action) => {
         const updated = action.payload;
         if (!updated) return;
-
-        state.adminEvents = replaceEventInList(state.adminEvents, updated);
-        state.myEvents = replaceEventInList(state.myEvents, updated);
-        state.adminActionError = null;
+        state.admin.events = replaceEventInList(state.admin.events, updated);
+        state.manager.myEvents = replaceEventInList(
+          state.manager.myEvents,
+          updated
+        );
+        state.admin.actionError = null;
       })
       .addCase(rejectEventThunk.rejected, (state, action) => {
-        state.adminActionError =
+        state.admin.actionError =
           action.payload || "Không thể từ chối sự kiện (admin)";
+      });
+
+    /* -------- event detail -------- */
+    builder
+      .addCase(fetchEventDetailThunk.pending, (state) => {
+        state.detail.loading = true;
+        state.detail.error = null;
+      })
+      .addCase(fetchEventDetailThunk.fulfilled, (state, action) => {
+        state.detail.loading = false;
+        state.detail.data = action.payload;
+      })
+      .addCase(fetchEventDetailThunk.rejected, (state, action) => {
+        state.detail.loading = false;
+        state.detail.error =
+          action.payload || "Không lấy được chi tiết sự kiện";
       });
   },
 });

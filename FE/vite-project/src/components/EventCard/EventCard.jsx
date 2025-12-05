@@ -1,4 +1,5 @@
-import { Card, Tag, Button, Space, Typography } from "antd";
+// src/components/EventCard/EventCard.jsx
+import { Card, Tag, Button, Space } from "antd";
 import { IoIosTime } from "react-icons/io";
 import { FaLocationDot } from "react-icons/fa6";
 import { FaUserFriends } from "react-icons/fa";
@@ -24,6 +25,7 @@ const EventCard = ({
   onCancel,
   registeringId,
   userRole,
+  onClickCard,
 }) => {
   const {
     event_id,
@@ -44,8 +46,27 @@ const EventCard = ({
 
   const canRegister = userRole === "Volunteer";
 
+  const handleCardClick = () => {
+    if (onClickCard) onClickCard(event_id);
+  };
+
+  const handleRegisterClick = (e) => {
+    e.stopPropagation();
+    if (onRegister) onRegister(event_id);
+  };
+
+  const handleCancelClick = (e) => {
+    e.stopPropagation();
+    if (onCancel) onCancel(event_id);
+  };
+
   return (
-    <Card hoverable className="card-container">
+    <Card
+      hoverable
+      className="card-container"
+      onClick={handleCardClick}
+      style={{ cursor: onClickCard ? "pointer" : "default" }}
+    >
       <div className="card-header-container">
         <div className="header-title">{title}</div>
         <div className="header-tag">
@@ -81,7 +102,7 @@ const EventCard = ({
                 <Button
                   type="primary"
                   size="small"
-                  onClick={() => onRegister(event_id)}
+                  onClick={handleRegisterClick}
                   loading={registeringId === event_id}
                 >
                   Đăng ký
@@ -91,7 +112,7 @@ const EventCard = ({
                   <Button
                     size="small"
                     danger
-                    onClick={() => onCancel(event_id)}
+                    onClick={handleCancelClick}
                     loading={registeringId === `cancel-${event_id}`}
                   >
                     Hủy

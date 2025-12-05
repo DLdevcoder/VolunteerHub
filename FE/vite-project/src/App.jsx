@@ -11,6 +11,7 @@ import DashboardPage from "./pages/DashboardPage";
 
 import Profile from "./components/Profile/Profile";
 import NotificationsPage from "./pages/NotificationsPage";
+import EventDetailPage from "./pages/EventDetailPage";
 
 import ManagerCreateEvent from "./components/manager/ManagerCreateEvent/ManagerCreateEvent";
 import ManagerMyEvents from "./components/manager/ManagerMyEvents/ManagerMyEvents";
@@ -30,6 +31,7 @@ const App = () => {
       <Route path="/" element={<AppLayout />}>
         <Route index element={<Navigate to="/events" />} />
         <Route path="events" element={<EventsPage />} />
+        <Route path="events/:event_id" element={<EventDetailPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
