@@ -283,11 +283,9 @@ const Event = {
   },
 
   // Cập nhật thông tin sự kiện (chỉ cập nhật các trường được gửi lên)
+  // models/Event.js
   async updateEvent(event_id, data) {
-    // Danh sách các trường ĐƯỢC PHÉP cập nhật (Whitelist)
-    // Quan trọng: Phải bao gồm cả các trường trạng thái để Controller reset về Pending
     const allowedFields = [
-      // Thông tin cơ bản
       "title",
       "description",
       "target_participants",
@@ -305,20 +303,32 @@ const Event = {
     const values = [];
 
     Object.keys(data).forEach((key) => {
-      // Chỉ lấy những key nằm trong whitelist và giá trị không phải undefined
       if (allowedFields.includes(key) && data[key] !== undefined) {
         fields.push(`${key} = ?`);
         values.push(data[key]);
       }
     });
 
-    if (fields.length === 0) return 0;
+    if (fields.length === 0) {
+      console.log("[Event.updateEvent] No allowed fields to update", {
+        event_id,
+        data,
+      });
+      return false;
+    }
 
-    let sql = `UPDATE Events SET ${fields.join(", ")} WHERE event_id = ? AND is_deleted = FALSE`;
+    const sql = `UPDATE Events SET ${fields.join(", ")} WHERE event_id = ? AND is_deleted = FALSE`;
     values.push(event_id);
 
+    console.log("[Event.updateEvent] SQL:", sql);
+    console.log("[Event.updateEvent] VALUES:", values);
+
     const [result] = await pool.execute(sql, values);
-    return result.affectedRows;
+
+    console.log("[Event.updateEvent] result:", result);
+
+    // return true / false instead of raw affectedRows
+    return result.affectedRows > 0;
   },
 
   // Xóa mềm sự kiện (soft delete)

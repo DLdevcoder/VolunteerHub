@@ -53,11 +53,13 @@ const formatDateRange = (start, end) => {
 };
 
 const EventDetail = () => {
-  const { eventId } = useParams();
+  const { event_id } = useParams();
   const dispatch = useDispatch();
 
   const event = useSelector(eventDetailSelector);
   const detailLoading = useSelector(eventDetailLoadingSelector);
+
+  console.log("Event detail, event id = ", event_id);
 
   const posts = useSelector(eventPostsSelector);
   const postsPagination = useSelector(eventPostsPaginationSelector);
@@ -71,24 +73,24 @@ const EventDetail = () => {
 
   // Load event + first page of posts
   useEffect(() => {
-    if (!eventId) return;
+    if (!event_id) return;
 
-    dispatch(fetchEventDetailThunk(eventId));
+    dispatch(fetchEventDetailThunk(event_id));
     dispatch(
       fetchEventPostsThunk({
-        eventId,
+        event_id,
         page: 1,
         limit: PAGE_SIZE,
       })
     );
     // ⬆️ we do NOT call setPage(1) here (no warning)
-  }, [dispatch, eventId]);
+  }, [dispatch, event_id]);
 
   const handleChangePostsPage = (nextPage) => {
     setPage(nextPage);
     dispatch(
       fetchEventPostsThunk({
-        eventId,
+        event_id,
         page: nextPage,
         limit: PAGE_SIZE,
       })
@@ -103,7 +105,7 @@ const EventDetail = () => {
       setCreatingPost(true);
       await dispatch(
         createPostThunk({
-          eventId,
+          event_id,
           content,
         })
       ).unwrap();
@@ -123,7 +125,7 @@ const EventDetail = () => {
 
   const handleDeletePost = async (postId) => {
     try {
-      await dispatch(deletePostThunk({ eventId, postId })).unwrap();
+      await dispatch(deletePostThunk({ event_id, postId })).unwrap();
       // reload current page
       handleChangePostsPage(page);
     } catch (err) {

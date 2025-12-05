@@ -3,6 +3,7 @@ import { Card, Tag, Button, Space } from "antd";
 import { IoIosTime } from "react-icons/io";
 import { FaLocationDot } from "react-icons/fa6";
 import { FaUserFriends } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import "./EventCard.css";
 
 const formatDateRange = (start, end) => {
@@ -25,8 +26,9 @@ const EventCard = ({
   onCancel,
   registeringId,
   userRole,
-  onClickCard,
 }) => {
+  const navigate = useNavigate();
+
   const {
     event_id,
     title,
@@ -42,31 +44,16 @@ const EventCard = ({
   const participantsText =
     target_participants && target_participants > 0
       ? `${current_participants}/${target_participants}`
-      : `${current_participants} người tham gia`;
+      : `${current_participants ?? 0} người tham gia`;
 
   const canRegister = userRole === "Volunteer";
 
   const handleCardClick = () => {
-    if (onClickCard) onClickCard(event_id);
-  };
-
-  const handleRegisterClick = (e) => {
-    e.stopPropagation();
-    if (onRegister) onRegister(event_id);
-  };
-
-  const handleCancelClick = (e) => {
-    e.stopPropagation();
-    if (onCancel) onCancel(event_id);
+    navigate(`/events/${event_id}`);
   };
 
   return (
-    <Card
-      hoverable
-      className="card-container"
-      onClick={handleCardClick}
-      style={{ cursor: onClickCard ? "pointer" : "default" }}
-    >
+    <Card hoverable className="card-container" onClick={handleCardClick}>
       <div className="card-header-container">
         <div className="header-title">{title}</div>
         <div className="header-tag">
@@ -102,7 +89,10 @@ const EventCard = ({
                 <Button
                   type="primary"
                   size="small"
-                  onClick={handleRegisterClick}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRegister(event_id);
+                  }}
                   loading={registeringId === event_id}
                 >
                   Đăng ký
@@ -112,7 +102,10 @@ const EventCard = ({
                   <Button
                     size="small"
                     danger
-                    onClick={handleCancelClick}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCancel(event_id);
+                    }}
                     loading={registeringId === `cancel-${event_id}`}
                   >
                     Hủy

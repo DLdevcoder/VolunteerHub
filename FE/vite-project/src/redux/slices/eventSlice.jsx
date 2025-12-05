@@ -22,11 +22,9 @@ const replaceEventInList = (list, updated) =>
 // =========================
 export const fetchActiveEvents = createAsyncThunk(
   "events/fetchActiveEvents",
-  // { page, limit, search, category_id, start_date_from, start_date_to }
   async (params, { rejectWithValue }) => {
     try {
       const res = await eventApi.getActiveEvents(params);
-      // res: { success, data: { events, pagination }, message? }
 
       if (!res?.success) {
         return rejectWithValue(
@@ -72,7 +70,6 @@ export const fetchEventCategories = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await eventApi.getCategories();
-      // res: { success, data, message? }
       if (!res?.success) {
         return rejectWithValue(
           res?.message || "Không tải được danh sách danh mục"
@@ -97,7 +94,6 @@ export const createEventThunk = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const res = await eventApi.createEvent(payload);
-      // res: { success, message, data: { event } }
       if (!res?.success) {
         return rejectWithValue(res?.message || "Tạo sự kiện thất bại");
       }
@@ -115,11 +111,9 @@ export const createEventThunk = createAsyncThunk(
 // =========================
 export const fetchManagerEvents = createAsyncThunk(
   "events/fetchManagerEvents",
-  // { page, limit, approval_status, category_id, search, sort_by, sort_order }
   async (params, { rejectWithValue }) => {
     try {
       const res = await eventApi.getMyEvents(params);
-      // res: { success, message, data: { events, pagination } }
       if (!res?.success) {
         return rejectWithValue(res?.message || "Không tải được event của bạn");
       }
@@ -159,11 +153,9 @@ export const fetchManagerEvents = createAsyncThunk(
 // =========================
 export const fetchAdminEvents = createAsyncThunk(
   "events/fetchAdminEvents",
-  // { page, limit, approval_status, manager_id, category_id, search, sort_by, sort_order }
   async (params, { rejectWithValue }) => {
     try {
       const res = await eventApi.getAllEventsAdmin(params);
-      // res: { success, data: { events, pagination }, message? }
       if (!res?.success) {
         return rejectWithValue(
           res?.message || "Không tải được danh sách sự kiện (admin)"
@@ -208,7 +200,6 @@ export const approveEventThunk = createAsyncThunk(
   async (eventId, { rejectWithValue }) => {
     try {
       const res = await eventApi.approveEvent(eventId);
-      // { success, message, data: { event } }
       if (!res?.success) {
         return rejectWithValue(res?.message || "Không thể duyệt sự kiện");
       }
@@ -228,7 +219,6 @@ export const rejectEventThunk = createAsyncThunk(
   async ({ eventId, reason }, { rejectWithValue }) => {
     try {
       const res = await eventApi.rejectEvent(eventId, reason);
-      // { success, message, data: { event } }
       if (!res?.success) {
         return rejectWithValue(res?.message || "Không thể từ chối sự kiện");
       }
@@ -251,7 +241,6 @@ export const fetchEventDetailThunk = createAsyncThunk(
   async (eventId, { rejectWithValue }) => {
     try {
       const res = await eventApi.getEventById(eventId);
-      // BE: { success, data: { event } }
       if (!res?.success) {
         return rejectWithValue(
           res?.message || "Không lấy được chi tiết sự kiện"
@@ -263,6 +252,69 @@ export const fetchEventDetailThunk = createAsyncThunk(
         err?.response?.data?.message ||
         err?.message ||
         "Không lấy được chi tiết sự kiện";
+      return rejectWithValue(msg);
+    }
+  }
+);
+
+// =========================
+// 8. MANAGER – update event
+// =========================
+export const updateEventThunk = createAsyncThunk(
+  "events/updateEvent",
+  async ({ eventId, payload }, { rejectWithValue }) => {
+    try {
+      console.log("[updateEventThunk] eventId =", eventId);
+      console.log("[updateEventThunk] UPDATE EVENT PAYLOAD =", payload);
+
+      const res = await eventApi.updateEvent(eventId, payload);
+      console.log("[updateEventThunk] API RESPONSE =", res);
+
+      if (!res?.success) {
+        return rejectWithValue(res?.message || "Cập nhật sự kiện thất bại");
+      }
+
+      // BE có thể trả về nhiều kiểu khác nhau, nên ta bắt hết:
+      const updated =
+        res.data?.event ?? // { data: { event: {...} } }
+        res.data?.updatedEvent ?? // { data: { updatedEvent: {...} } }
+        res.data ?? // { data: {...} }
+        null;
+
+      if (!updated) {
+        console.warn(
+          "[updateEventThunk] Không tìm thấy event đã cập nhật trong response"
+        );
+      }
+
+      return updated;
+    } catch (err) {
+      console.error("[updateEventThunk] ERROR =", err);
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Cập nhật sự kiện thất bại";
+      return rejectWithValue(msg);
+    }
+  }
+);
+
+// =========================
+// 9. MANAGER / ADMIN – delete event
+// =========================
+export const deleteEventThunk = createAsyncThunk(
+  "events/deleteEvent",
+  async (eventId, { rejectWithValue }) => {
+    try {
+      const res = await eventApi.deleteEvent(eventId);
+      if (!res?.success) {
+        return rejectWithValue(res?.message || "Xóa sự kiện thất bại");
+      }
+      // Chỉ cần trả về id để xóa khỏi store
+      return { eventId };
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message || err?.message || "Xóa sự kiện thất bại";
       return rejectWithValue(msg);
     }
   }
@@ -293,7 +345,7 @@ const initialState = {
     error: null,
   },
 
-  // Manager: my events & create
+  // Manager: my events & create/edit/delete
   manager: {
     myEvents: [],
     pagination: {
@@ -307,6 +359,10 @@ const initialState = {
     createLoading: false,
     createError: null,
     lastCreatedEvent: null,
+    updateLoading: false,
+    updateError: null,
+    deleteLoading: false,
+    deleteError: null,
   },
 
   // Admin: events list & actions
@@ -323,7 +379,7 @@ const initialState = {
     actionError: null,
   },
 
-  // Event detail (for detail page)
+  // Event detail (for detail / edit page)
   detail: {
     data: null,
     loading: false,
@@ -468,6 +524,74 @@ const eventSlice = createSlice({
         state.detail.loading = false;
         state.detail.error =
           action.payload || "Không lấy được chi tiết sự kiện";
+      });
+
+    /* -------- manager: update event -------- */
+    builder
+      .addCase(updateEventThunk.pending, (state) => {
+        state.manager.updateLoading = true;
+        state.manager.updateError = null;
+      })
+      .addCase(updateEventThunk.fulfilled, (state, action) => {
+        state.manager.updateLoading = false;
+
+        const updated = action.payload;
+        if (!updated || !updated.event_id) {
+          console.warn(
+            "[eventSlice] updateEventThunk.fulfilled but updated is",
+            updated
+          );
+          return;
+        }
+
+        // Cập nhật trong danh sách Manager
+        state.manager.myEvents = replaceEventInList(
+          state.manager.myEvents,
+          updated
+        );
+
+        // Cập nhật trong danh sách Admin (nếu cần)
+        state.admin.events = replaceEventInList(state.admin.events, updated);
+
+        // Cập nhật detail nếu đang xem event này
+        if (
+          state.detail.data &&
+          state.detail.data.event_id === updated.event_id
+        ) {
+          state.detail.data = { ...state.detail.data, ...updated };
+        }
+      })
+      .addCase(updateEventThunk.rejected, (state, action) => {
+        state.manager.updateLoading = false;
+        state.manager.updateError =
+          action.payload || "Cập nhật sự kiện thất bại";
+      });
+
+    /* -------- manager/admin: delete event -------- */
+    builder
+      .addCase(deleteEventThunk.pending, (state) => {
+        state.manager.deleteLoading = true;
+        state.manager.deleteError = null;
+      })
+      .addCase(deleteEventThunk.fulfilled, (state, action) => {
+        state.manager.deleteLoading = false;
+        const id = action.payload?.eventId;
+        if (!id) return;
+
+        state.manager.myEvents = state.manager.myEvents.filter(
+          (ev) => ev.event_id !== id
+        );
+        state.admin.events = state.admin.events.filter(
+          (ev) => ev.event_id !== id
+        );
+
+        if (state.detail.data && state.detail.data.event_id === id) {
+          state.detail.data = null;
+        }
+      })
+      .addCase(deleteEventThunk.rejected, (state, action) => {
+        state.manager.deleteLoading = false;
+        state.manager.deleteError = action.payload || "Xóa sự kiện thất bại";
       });
   },
 });

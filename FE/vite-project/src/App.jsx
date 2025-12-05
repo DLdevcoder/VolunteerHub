@@ -1,3 +1,4 @@
+// src/App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "./components/AppLayout/AppLayout";
 
@@ -15,10 +16,13 @@ import EventDetailPage from "./pages/EventDetailPage";
 
 import ManagerCreateEvent from "./components/manager/ManagerCreateEvent/ManagerCreateEvent";
 import ManagerMyEvents from "./components/manager/ManagerMyEvents/ManagerMyEvents";
+import ManagerEditEvent from "./components/manager/ManagerEditEvent/ManagerEditEvent";
 
 import AdminEventRequests from "./components/admin/AdminEventRequests/AdminEventRequests";
 import AdminUsers from "./components/admin/AdminUsers/AdminUsers";
 import AdminExport from "./components/admin/AdminExport/AdminExport";
+
+// (nhớ cũng đã có EventDetailPage được mount ở /events/:event_id)
 
 const App = () => {
   return (
@@ -29,9 +33,11 @@ const App = () => {
       <Route path="/profile" element={<Profile />} />
 
       <Route path="/" element={<AppLayout />}>
+        {/* chi tiết event */}
+        <Route path="events/:event_id" element={<EventDetailPage />} />
         <Route index element={<Navigate to="/events" />} />
         <Route path="events" element={<EventsPage />} />
-        <Route path="events/:event_id" element={<EventDetailPage />} />
+
         <Route path="history" element={<HistoryPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
@@ -40,6 +46,7 @@ const App = () => {
         <Route path="manager">
           <Route path="events" element={<ManagerMyEvents />} />
           <Route path="events/create" element={<ManagerCreateEvent />} />
+          <Route path="events/:event_id/edit" element={<ManagerEditEvent />} />
         </Route>
 
         {/* Admin routes */}

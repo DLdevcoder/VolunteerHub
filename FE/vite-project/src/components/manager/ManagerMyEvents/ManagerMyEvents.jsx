@@ -1,7 +1,8 @@
 // src/components/manager/ManagerMyEvents/ManagerMyEvents.jsx
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Table, Tag, message, Card } from "antd";
+import { useNavigate } from "react-router-dom";
+import { Table, Tag, message, Card, Button } from "antd";
 
 import { fetchManagerEvents } from "../../../redux/slices/eventSlice";
 import {
@@ -13,6 +14,7 @@ import {
 
 const ManagerMyEvents = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const events = useSelector(managerEventsSelector);
   const pagination = useSelector(managerEventsPaginationSelector);
@@ -88,6 +90,21 @@ const ManagerMyEvents = () => {
         return <Tag color={color}>{status || "unknown"}</Tag>;
       },
     },
+    {
+      title: "Hành động",
+      key: "actions",
+      render: (_, record) => (
+        <Button
+          type="link"
+          onClick={(e) => {
+            e.stopPropagation(); // không trigger onRow click
+            navigate(`/manager/events/${record.event_id}/edit`);
+          }}
+        >
+          Chỉnh sửa
+        </Button>
+      ),
+    },
   ];
 
   const pag = pagination || {};
@@ -105,6 +122,10 @@ const ManagerMyEvents = () => {
           total: pag.total || 0,
         }}
         onChange={handleTableChange}
+        onRow={(record) => ({
+          onClick: () => navigate(`/events/${record.event_id}`),
+          style: { cursor: "pointer" },
+        })}
       />
     </Card>
   );

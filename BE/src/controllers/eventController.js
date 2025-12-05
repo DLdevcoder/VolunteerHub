@@ -475,15 +475,34 @@ const eventController = {
         category_id,
       } = req.body;
 
+      console.log("[updateEvent] event_id =", event_id);
+      console.log("[updateEvent] RAW BODY =", req.body);
+
       if (title) title = title.trim();
       if (description) description = description.trim();
       if (location) location = location.trim();
 
-      // Format ngày tháng
       if (start_date) start_date = formatDateAsIs(start_date);
       if (end_date) end_date = formatDateAsIs(end_date);
 
-      let dataToUpdate = {
+      const currentEvent = req.event; // set by eventPermission
+      if (!currentEvent) {
+        return res.status(500).json({
+          success: false,
+          message:
+            "Lỗi hệ thống: Không tìm thấy thông tin sự kiện từ Middleware",
+        });
+      }
+
+      console.log("[updateEvent] currentEvent =", currentEvent);
+
+      const now = new Date();
+      const eventStart = new Date(currentEvent.start_date);
+      const isRunning = eventStart <= now;
+      const hasParticipants = currentEvent.current_participants > 0;
+      const isRestrictedMode = isRunning || hasParticipants;
+
+      const dataToUpdate = {
         title,
         description,
         target_participants,
@@ -493,29 +512,14 @@ const eventController = {
         category_id,
       };
 
-      Object.keys(dataToUpdate).forEach(
-        (key) => dataToUpdate[key] === undefined && delete dataToUpdate[key]
-      );
-
-      const currentEvent = req.event;
-      if (!currentEvent) {
-        return res.status(500).json({
-          success: false,
-          message:
-            "Lỗi hệ thống: Không tìm thấy thông tin sự kiện từ Middleware",
-        });
-      }
-      const now = new Date();
-      const eventStart = new Date(currentEvent.start_date);
-
-      const isRunning = eventStart <= now; // Sự kiện đã bắt đầu hoặc kết thúc
-      const hasParticipants = currentEvent.current_participants > 0; // Đã có người đăng ký
-
-      // Nếu rơi vào 1 trong 2 trường hợp -> hot fix
-      const isRestrictedMode = isRunning || hasParticipants;
+      // Xoá field undefined
+      Object.keys(dataToUpdate).forEach((k) => {
+        if (dataToUpdate[k] === undefined) delete dataToUpdate[k];
+      });
 
       let message = "Cập nhật sự kiện thành công";
 
+      // ---------- Trường hợp đang chạy / đã có người tham gia ----------
       if (isRestrictedMode) {
         if (start_date || end_date) {
           const reason = isRunning
@@ -526,9 +530,12 @@ const eventController = {
             message: `Không thể thay đổi thời gian vì ${reason}. Chỉ được sửa thông tin mô tả/địa điểm.`,
           });
         }
+
+        // Vẫn cho phép đổi title/description/location/target_participants/category_id
         message =
           "Cập nhật thông tin nóng thành công (Trạng thái sự kiện được giữ nguyên).";
       } else {
+        // ---------- Sự kiện chưa chạy, cho phép đổi thời gian ----------
         if (
           start_date &&
           end_date &&
@@ -558,7 +565,7 @@ const eventController = {
           }
         }
 
-        // Reset trạng thái (Nếu Approved -> Reset về Pending để duyệt lại)
+        // Nếu đang approved thì reset về pending để duyệt lại
         if (currentEvent.approval_status === "approved") {
           dataToUpdate.approval_status = "pending";
           dataToUpdate.approved_by = null;
@@ -568,11 +575,16 @@ const eventController = {
         }
       }
 
+      // Nếu bị rejected -> reset về pending
       if (currentEvent.approval_status === "rejected") {
         dataToUpdate.approval_status = "pending";
         dataToUpdate.approved_by = null;
+        dataToUpdate.approval_date = null;
         message = "Cập nhật thành công. Sự kiện đã được gửi lại để duyệt.";
       }
+
+      console.log("[updateEvent] DATA TO UPDATE =", dataToUpdate);
+
       const updated = await Event.updateEvent(event_id, dataToUpdate);
 
       if (!updated) {
@@ -581,11 +593,13 @@ const eventController = {
           message: "Không có thông tin nào thay đổi hoặc lỗi cập nhật",
         });
       }
-      const updatedEvent = await Event.getEventById(event_id);
 
-      res.json({
+      const updatedEvent = await Event.getEventById(event_id);
+      console.log("[updateEvent] UPDATED EVENT =", updatedEvent);
+
+      return res.json({
         success: true,
-        message: message,
+        message,
         data: { event: updatedEvent },
       });
     } catch (error) {
