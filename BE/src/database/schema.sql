@@ -56,6 +56,7 @@ CREATE TABLE `Events` (
     `manager_id` INT NOT NULL,
     `category_id` INT NULL,
     `approval_status` ENUM('pending','approved','rejected') DEFAULT 'pending' NOT NULL,
+    `rejection_reason` VARCHAR(255),
     `approved_by` INT,
     `approval_date` DATETIME NULL COMMENT 'Ngày duyệt sự kiện',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -148,7 +149,7 @@ CREATE TABLE `Notifications` (
     `user_id` INT NOT NULL,
     `type` ENUM(
         'event_approved', 'event_rejected', 'registration_approved', 'registration_rejected',
-        'registration_completed', 'event_reminder', 'new_post', 'new_comment', 'reaction_received'
+        'registration_completed', 'event_reminder', 'new_post', 'new_comment', 'reaction_received', 'new_registration'
     ) NOT NULL,
     `payload` JSON COMMENT 'Dữ liệu bổ sung (event_id, message, etc.)',
     `is_read` BOOLEAN DEFAULT FALSE NOT NULL,
@@ -271,6 +272,29 @@ LEFT JOIN `Comments` c ON u.user_id = c.user_id
 WHERE u.status = 'Active'
 GROUP BY u.user_id;
 
+-- Thêm type mới vào bảng Notifications
+ALTER TABLE Notifications 
+MODIFY COLUMN type ENUM(
+    'event_approved', 'event_rejected', 'registration_approved', 'registration_rejected',
+    'registration_completed', 'event_reminder', 'new_post', 'new_comment', 'reaction_received',
+    'new_registration', 'event_updated_urgent', 'account_locked', 'manager_account_locked', 
+    'event_starting_soon', 'event_cancelled'
+) NOT NULL;
+
+CREATE TABLE `PushSubscriptions` (
+  `subscription_id` INT PRIMARY KEY AUTO_INCREMENT,
+  `user_id` INT NOT NULL,
+  `endpoint` TEXT NOT NULL,
+  `keys` JSON NOT NULL,
+  `is_active` BOOLEAN DEFAULT TRUE,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `Users`(`user_id`) ON DELETE CASCADE,
+  INDEX idx_user_id (user_id),
+  INDEX idx_endpoint (endpoint(255))
+) ENGINE=InnoDB COMMENT='Lưu trữ subscription cho Web Push';
+
+-- ====================================================================
 -- ====================================================================
 -- VII. STORED PROCEDURES
 -- ====================================================================
@@ -285,10 +309,11 @@ BEGIN
     UPDATE `Events`
     SET `approval_status` = 'approved',
         `approved_by` = p_admin_id,
-        `approval_date` = NOW()
-    WHERE `event_id` = p_event_id;
-    
-    SELECT 'Event approved successfully' AS message;
+        `approval_date` = NOW(),
+        `rejection_reason` = NULL 
+    WHERE `event_id` = p_event_id 
+      AND `is_deleted` = FALSE; 
+    SELECT ROW_COUNT() as affected;
 END//
 
 CREATE PROCEDURE `sp_complete_registration`(

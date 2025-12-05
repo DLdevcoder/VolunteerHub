@@ -1,0 +1,195 @@
+authSlice = {
+  currentUser: {
+    id: number;
+    email: string;
+    fullName: string;
+    role: Role;
+    accountStatus: 'ACTIVE' | 'BLOCKED' | 'PENDING';
+  } | null;
+
+  accessToken: string | null;
+  refreshToken: string | null;
+
+  isAuthenticated: boolean; // true nếu đã login thành công
+  loading: boolean;         // đang call API login / refresh token
+  error: string | null;     // thông báo lỗi đăng nhập / refresh
+}
+
+eventsSlice = {
+  // tất cả categories dùng cho filter
+  categories: {
+    items: EventCategory[];
+    loading: boolean;
+    error: string | null;
+  };
+
+  // danh sách event theo filter/search
+  list: {
+    items: Event[];             // list events hiện đang show trên page
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+    };
+    loading: boolean;
+    error: string | null;
+  };
+
+  // filter hiện tại cho list
+  filters: {
+    keyword: string;
+    dateRange: [string | null, string | null]; // ISO date
+    categoryId: number | null;
+    status: EventStatus | 'ALL';
+  };
+
+  // event đang xem chi tiết (trang event detail)
+  selectedEvent: {
+    data: Event | null;
+    loading: boolean;
+    error: string | null;
+  };
+}
+
+
+eventMembersSlice = {
+  // 3.1. Lịch sử / trạng thái của chính user hiện tại
+  myParticipation: {
+    // key = eventId
+    byEventId: {
+      [eventId: number]: EventMember;  // 1 record per event
+    };
+    loading: boolean;
+    error: string | null;
+  };
+
+  // 3.2. Manager xem tất cả thành viên của từng event
+  membersByEventId: {
+    [eventId: number]: {
+      items: EventMember[];    // list volunteers + managers của event
+      loading: boolean;
+      error: string | null;
+    };
+  };
+}
+
+
+wallSlice = {
+  // mỗi event có 1 "wall"
+  byEventId: {
+    [eventId: number]: {
+      posts: {
+        items: Post[];          // đã include likeCount, commentCount,...
+        loading: boolean;
+        error: string | null;
+        hasMore: boolean;      // nếu có phân trang / load more
+      };
+
+      commentsByPostId: {
+        [postId: number]: {
+          items: Comment[];
+          loading: boolean;
+          error: string | null;
+          hasMore: boolean;
+        };
+      };
+    };
+  };
+}
+
+
+notificationsSlice = {
+  items: NotificationItem[];
+  unreadCount: number;
+
+  loading: boolean;
+  error: string | null;
+
+  // nếu sau này phân trang / infinite scroll
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+  };
+}
+
+
+userManagementSlice = {
+  list: {
+    items: User[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+    };
+    loading: boolean;
+    error: string | null;
+  };
+
+  filters: {
+    keyword: string;             // tìm theo email / tên
+    role: Role | 'ALL';
+    accountStatus: 'ACTIVE' | 'BLOCKED' | 'PENDING' | 'ALL';
+  };
+
+  selectedUser: {
+    data: User | null;           // popup xem chi tiết / edit
+    loading: boolean;
+    error: string | null;
+  };
+}
+
+
+userManagementSlice = {
+  list: {
+    items: User[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+    };
+    loading: boolean;
+    error: string | null;
+  };
+
+  filters: {
+    keyword: string;             // tìm theo email / tên
+    role: Role | 'ALL';
+    accountStatus: 'ACTIVE' | 'BLOCKED' | 'PENDING' | 'ALL';
+  };
+
+  selectedUser: {
+    data: User | null;           // popup xem chi tiết / edit
+    loading: boolean;
+    error: string | null;
+  };
+}
+
+
+dashboardSlice = {
+  // cho volunteer (user hiện tại)
+  volunteerStats: {
+    totalRegistered: number;     // tổng event đã đăng ký (status APPROVED + PENDING)
+    totalCompleted: number;      // số event đã hoàn thành (status COMPLETED)
+    upcomingCount: number;       // số event sắp diễn ra
+    totalHours: number;          // tổng giờ tham gia (nếu BE tính)
+  } | null;
+
+  // cho manager
+  managerStats: {
+    managedEvents: number;       // số event mình quản lý
+    pendingRegistrations: number;// số đơn đăng ký chờ duyệt
+    activeEvents: number;        // event đang mở
+  } | null;
+
+  // cho admin
+  adminStats: {
+    totalUsers: number;
+    totalEvents: number;
+    activeEvents: number;
+    blockedUsers: number;
+  } | null;
+
+  loading: boolean;
+  error: string | null;
+}

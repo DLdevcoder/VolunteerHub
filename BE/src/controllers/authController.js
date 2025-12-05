@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import pool from "../config/db.js";
+import User from "../models/User.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_super_secret_key";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 const authController = {
@@ -18,10 +18,11 @@ const authController = {
       } = req.body;
 
       // Kiểm tra input
-      if (!email || !password || !full_name) {
+      if (!email || !password || !full_name || !phone) {
         return res.status(400).json({
           success: false,
-          message: "Vui lòng điền đầy đủ thông tin: email, password, full_name",
+          message:
+            "Vui lòng điền đầy đủ thông tin: email, password, full_name, phone",
         });
       }
 
@@ -43,27 +44,17 @@ const authController = {
       }
 
       // Tìm role_id từ role_name
-      const [roles] = await pool.execute(
-        "SELECT role_id FROM Roles WHERE name = ?",
-        [role_name]
-      );
-
-      if (roles.length === 0) {
+      const role_id = await User.getRoleId(role_name);
+      if (!role_id) {
         return res.status(400).json({
           success: false,
           message: "Role không hợp lệ",
         });
       }
 
-      const role_id = roles[0].role_id;
-
       // Kiểm tra email đã tồn tại
-      const [existingUsers] = await pool.execute(
-        "SELECT user_id FROM Users WHERE email = ?",
-        [email]
-      );
-
-      if (existingUsers.length > 0) {
+      const emailExists = await User.emailExists(email);
+      if (emailExists) {
         return res.status(409).json({
           success: false,
           message: "Email đã được sử dụng",
@@ -75,21 +66,16 @@ const authController = {
       const password_hash = await bcrypt.hash(password, saltRounds);
 
       // Tạo user mới
-      const [result] = await pool.execute(
-        "INSERT INTO Users (email, password_hash, full_name, phone, role_id) VALUES (?, ?, ?, ?, ?)",
-        [email, password_hash, full_name, phone, role_id]
-      );
+      const newUserId = await User.create({
+        email,
+        password_hash,
+        full_name,
+        phone,
+        role_id,
+      });
 
-      // Lấy thông tin user vừa tạo với role name
-      const [newUsers] = await pool.execute(
-        `SELECT u.user_id, u.email, u.full_name, u.phone, u.avatar_url, r.name as role_name, u.status 
-                 FROM Users u 
-                 JOIN Roles r ON u.role_id = r.role_id 
-                 WHERE u.user_id = ?`,
-        [result.insertId]
-      );
-
-      const newUser = newUsers[0];
+      // Lấy thông tin user vừa tạo
+      const newUser = await User.findById(newUserId);
 
       // Tạo JWT token
       const token = jwt.sign(
@@ -132,24 +118,14 @@ const authController = {
         });
       }
 
-      // Tìm user với role name
-      const [users] = await pool.execute(
-        `SELECT u.user_id, u.email, u.password_hash, u.full_name, u.phone, 
-                        u.avatar_url, r.name as role_name, u.status 
-                 FROM Users u 
-                 JOIN Roles r ON u.role_id = r.role_id 
-                 WHERE u.email = ?`,
-        [email]
-      );
-
-      if (users.length === 0) {
+      // Tìm user theo email
+      const user = await User.findByEmail(email);
+      if (!user) {
         return res.status(401).json({
           success: false,
           message: "Email hoặc mật khẩu không đúng",
         });
       }
-
-      const user = users[0];
 
       // Kiểm tra tài khoản có bị khóa không
       if (user.status !== "Active") {
@@ -259,23 +235,14 @@ const authController = {
     try {
       const user_id = req.user.user_id;
 
-      const [users] = await pool.execute(
-        `SELECT u.user_id, u.email, u.full_name, u.phone, 
-                        u.avatar_url, r.name as role_name, u.status, u.created_at
-                 FROM Users u 
-                 JOIN Roles r ON u.role_id = r.role_id 
-                 WHERE u.user_id = ?`,
-        [user_id]
-      );
-
-      if (users.length === 0) {
+      const user = await User.findById(user_id);
+      if (!user) {
         return res.status(404).json({
           success: false,
           message: "User không tồn tại",
         });
       }
 
-      const user = users[0];
       res.json({
         success: true,
         data: {

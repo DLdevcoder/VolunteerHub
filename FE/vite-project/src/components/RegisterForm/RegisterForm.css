@@ -1,0 +1,46 @@
+.registerForm-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  width: 100vw;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 100px 0;
+}
+
+.registerForm-box {
+  width: 40%;
+  min-height: 40%;
+  box-sizing: border-box;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 10px;
+}
+
+.registerForm-options {
+  display: flex;
+  justify-content: center;
+}
+
+.registerForm-options .login-option > span {
+  cursor: pointer;
+  text-decoration: underline;
+  cursor: pointer;
+  color: #1677ff;
+}
+
+/* @media (max-width: 1200px) {
+  .registerForm-box {
+    width: 60%;
+    height: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .registerForm-box {
+    width: 60%;
+    height: auto;
+  }
+} */

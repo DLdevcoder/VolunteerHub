@@ -1,0 +1,96 @@
+.card-container {
+  height: 100%;
+  display: flex; /* card là flex-column */
+  flex-direction: column;
+
+  .ant-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1; /*body chiếm toàn bộ chiều cao card */
+  }
+}
+
+.card-header-container {
+  display: flex;
+  gap: 4px;
+
+  /* để tag không bị cao bằng title */
+  align-items: flex-start;
+
+  .header-title {
+    font-size: 20px;
+    font-weight: 700;
+    flex: 1; /* chiếm hết ngang, Tag ôm sát ở bên phải */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2; /* tối đa 2 dòng */
+    overflow: hidden;
+  }
+
+  .header-tag {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+
+.card-content-container {
+  font-size: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  flex: 1; /*nội dung chiếm hết phần còn lại */
+
+  .date {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    .date-icon {
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  .location {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+
+    .location-icon {
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+    }
+
+    .location-content {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 1;
+      overflow: hidden;
+    }
+  }
+
+  .description {
+    color: rgb(134, 134, 134);
+  }
+}
+
+.register-container {
+  display: flex;
+  justify-content: space-between;
+  margin-top: auto;
+
+  .participants {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    .participants-icon {
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+    }
+  }
+}

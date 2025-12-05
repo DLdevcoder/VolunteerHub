@@ -1,0 +1,31 @@
+/* src/pages/EventDetailPage.css */
+.event-detail-page {
+  padding: 24px;
+}
+
+.event-detail-summary {
+  display: flex;
+  flex-direction: column;
+}
+
+.event-detail-composer {
+  flex: 1;
+}
+
+.event-detail-composer-actions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.event-detail-post-item {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+}
+
+.event-detail-post-content {
+  margin-top: 4px;
+  white-space: pre-wrap;
+}

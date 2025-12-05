@@ -1,16 +1,30 @@
 import express from "express";
 import authRoutes from "./authRoutes.js";
-// import eventRoutes from './eventRoutes.js';
-// import userRoutes from './userRoutes.js';
-// import postRoutes from './postRoutes.js';
+import userRoutes from "./userRoutes.js";
+import notificationRoutes from "./notificationRoutes.js";
+import eventRoutes from "./eventRoutes.js";
+import dashboardRoutes from "./dashboardRoutes.js";
+import exportRoutes from "./exportRoutes.js";
+import registrationRoutes from "./registrationRoutes.js";
+import postRoutes from "./postRoutes.js";
+import commentRoutes from "./commentRoutes.js";
+import reactionRoutes from "./reactionRoutes.js";
+import webPushRoutes from "./webPushRoutes.js";
 
 const router = express.Router();
 
 // Sử dụng các route
 router.use("/auth", authRoutes);
-// router.use('/events', eventRoutes);
-// router.use('/users', userRoutes);
-// router.use('/posts', postRoutes);
+router.use("/users", userRoutes);
+router.use("/notifications", notificationRoutes);
+router.use("/events", eventRoutes);
+router.use("/dashboard", dashboardRoutes);
+router.use("/export", exportRoutes);
+router.use("/registrations", registrationRoutes);
+router.use("/posts", postRoutes);
+router.use("/comments", commentRoutes);
+router.use("/reactions", reactionRoutes);
+router.use("/push", webPushRoutes);
 
 // Route mặc định để test
 router.get("/", (req, res) => {
