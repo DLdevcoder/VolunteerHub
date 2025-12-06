@@ -54,15 +54,24 @@ class Dashboard {
 
       // Sự kiện có tin bài mới (trong 24h)
       const [eventsWithNewPosts] = await pool.execute(
-        `SELECT DISTINCT
-          e.event_id, e.title, e.location,
-          p.created_at as latest_post_time
-         FROM Events e
-         JOIN Posts p ON e.event_id = p.event_id
-         WHERE e.approval_status = 'approved'
-           AND p.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-         ORDER BY p.created_at DESC
-         LIMIT 10`
+        `SELECT 
+            p.post_id, 
+            p.content,           
+            p.created_at as latest_post_time, -- Giữ alias này để khớp với FE cũ nếu cần
+            p.user_id,
+            u.full_name,         
+            u.avatar_url,        
+            e.event_id, 
+            e.title,             -- Tên sự kiện
+            e.location,
+            e.manager_id 
+         FROM Posts p
+         JOIN Users u ON p.user_id = u.user_id       
+         JOIN Events e ON p.event_id = e.event_id    
+         WHERE e.approval_status = 'approved' 
+           AND e.is_deleted = FALSE
+         ORDER BY p.created_at DESC                  
+         LIMIT 20`
       );
 
       return {
