@@ -1,6 +1,7 @@
 // src/redux/slices/userSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import userApi from "../../../apis/userApi";
+import authApi from "../../../apis/authApi";
 import { loginThunk } from "./authSlice";
 
 /* ========== THUNKS ========== */
@@ -113,6 +114,30 @@ export const updateUserRoleThunk = createAsyncThunk(
   }
 );
 
+// Admin: tạo user mới (Volunteer / Manager / Admin)
+export const adminCreateUserThunk = createAsyncThunk(
+  "user/adminCreateUser",
+  async (payload, { rejectWithValue }) => {
+    try {
+      // payload: { full_name, phone, email, password, role_name }
+      const res = await authApi.register(payload);
+
+      if (!res.success) {
+        return rejectWithValue(res.message || "Không thể tạo tài khoản");
+      }
+
+      // Nếu BE trả về user đã tạo thì lấy ra, còn không cũng không sao
+      return res.data?.user || null;
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err.message ||
+        "Lỗi khi tạo tài khoản mới";
+      return rejectWithValue(msg);
+    }
+  }
+);
+
 /* ========== SLICE ========== */
 
 const savedUser = localStorage.getItem("vh_user");
@@ -193,6 +218,10 @@ const userSlice = createSlice({
       })
 
       /* --- updateUserStatus (admin) --- */
+      .addCase(updateUserStatusThunk.pending, (state) => {
+        // clear old admin error when starting a new status update
+        state.admin.errorList = null;
+      })
       .addCase(updateUserStatusThunk.fulfilled, (state, action) => {
         const updated = action.payload;
         const idx = state.admin.list.findIndex(
@@ -202,8 +231,16 @@ const userSlice = createSlice({
           state.admin.list[idx] = updated;
         }
       })
+      .addCase(updateUserStatusThunk.rejected, (state, action) => {
+        state.admin.errorList =
+          action.payload || "Không thể cập nhật trạng thái người dùng";
+      })
 
       /* --- updateUserRole (admin) --- */
+      .addCase(updateUserRoleThunk.pending, (state) => {
+        // clear old admin error when starting a new role update
+        state.admin.errorList = null;
+      })
       .addCase(updateUserRoleThunk.fulfilled, (state, action) => {
         const updated = action.payload;
         const idx = state.admin.list.findIndex(
@@ -212,6 +249,28 @@ const userSlice = createSlice({
         if (idx !== -1) {
           state.admin.list[idx] = updated;
         }
+      })
+      .addCase(updateUserRoleThunk.rejected, (state, action) => {
+        state.admin.errorList =
+          action.payload || "Không thể cập nhật quyền người dùng";
+      })
+
+      /* --- adminCreateUser (admin) --- */
+      .addCase(adminCreateUserThunk.pending, (state) => {
+        state.admin.creatingUser = true;
+        state.admin.createUserError = null;
+      })
+      .addCase(adminCreateUserThunk.fulfilled, (state, action) => {
+        state.admin.creatingUser = false;
+        // Nếu BE trả về user, có thể thêm luôn vào list để UI thấy ngay
+        if (action.payload) {
+          state.admin.list.unshift(action.payload);
+        }
+      })
+      .addCase(adminCreateUserThunk.rejected, (state, action) => {
+        state.admin.creatingUser = false;
+        state.admin.createUserError =
+          action.payload || "Không thể tạo tài khoản mới";
       });
   },
 });

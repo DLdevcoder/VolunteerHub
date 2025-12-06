@@ -26,11 +26,6 @@ import {
   deleteNotificationThunk,
 } from "../../redux/slices/notificationSlice";
 
-import {
-  getNotificationTypeLabel,
-  getNotificationMainText,
-} from "../../utils/notificationUtils";
-
 const { Title, Text } = Typography;
 
 const Notifications = () => {
@@ -83,6 +78,30 @@ const Notifications = () => {
     }
   };
 
+  // helper: get body text from item.body or payload
+  const getBodyText = (item) => {
+    if (item.body) return item.body;
+
+    // fallback: try payload.message
+    const rawPayload = item.payload;
+    if (!rawPayload) return "";
+
+    if (typeof rawPayload === "string") {
+      try {
+        const obj = JSON.parse(rawPayload);
+        if (obj?.message) return obj.message;
+      } catch {
+        // not JSON, just return string
+        return rawPayload;
+      }
+    } else if (typeof rawPayload === "object") {
+      if (rawPayload.message) return rawPayload.message;
+      return JSON.stringify(rawPayload);
+    }
+
+    return "";
+  };
+
   return (
     <div style={{ padding: 24 }}>
       <Space
@@ -119,8 +138,8 @@ const Notifications = () => {
             dataSource={notifications}
             locale={{ emptyText: "Không có thông báo nào" }}
             renderItem={(item) => {
-              const typeLabel = getNotificationTypeLabel(item.type);
-              const mainText = getNotificationMainText(item.payload || {});
+              const title = item.title || item.type || "Thông báo";
+              const mainText = getBodyText(item);
 
               return (
                 <List.Item
@@ -149,7 +168,7 @@ const Notifications = () => {
                   <List.Item.Meta
                     title={
                       <Space>
-                        <Text strong>{typeLabel}</Text>
+                        <Text strong>{title}</Text>
                         {!item.is_read && <Tag color="blue">Chưa đọc</Tag>}
                       </Space>
                     }

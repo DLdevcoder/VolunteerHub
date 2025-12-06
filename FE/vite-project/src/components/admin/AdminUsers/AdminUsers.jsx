@@ -1,17 +1,24 @@
+import { CiCirclePlus } from "react-icons/ci";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Table, Tag, Select, Button, Card, Space, message } from "antd";
+import { Table, Tag, Select, Button, Card, Space } from "antd";
+import { useNavigate } from "react-router-dom";
+
 import {
   fetchUsersThunk,
   updateUserStatusThunk,
   updateUserRoleThunk,
 } from "../../../redux/slices/userSlice";
+import useGlobalMessage from "../../../utils/hooks/useGlobalMessage";
 
 const { Option } = Select;
 
 const AdminUsers = () => {
   const dispatch = useDispatch();
-  const { admin } = useSelector((state) => state.user);
+  const navigate = useNavigate();
+  const messageApi = useGlobalMessage();
+
+  const admin = useSelector((state) => state.user.admin);
   const currentUser = useSelector((state) => state.auth.user);
 
   const [roleFilter, setRoleFilter] = useState();
@@ -40,16 +47,21 @@ const AdminUsers = () => {
     loadData(pag.current, pag.pageSize);
   };
 
+  // Toggle Active <-> Locked (UI gọi “Blocked” nhưng DB dùng “Locked”)
   const toggleStatus = async (user) => {
-    const newStatus = user.status === "Active" ? "Blocked" : "Active";
+    const newStatus = user.status === "Active" ? "Locked" : "Active";
     try {
       setRowLoadingId(user.user_id);
       await dispatch(
         updateUserStatusThunk({ userId: user.user_id, status: newStatus })
       ).unwrap();
-      message.success("Cập nhật trạng thái thành công");
+      messageApi.success(
+        newStatus === "Locked"
+          ? "Đã khóa tài khoản người dùng"
+          : "Đã mở khóa tài khoản người dùng"
+      );
     } catch (err) {
-      message.error(err || "Không thể cập nhật trạng thái");
+      messageApi.error(err || "Không thể cập nhật trạng thái");
     } finally {
       setRowLoadingId(null);
     }
@@ -61,9 +73,9 @@ const AdminUsers = () => {
       await dispatch(
         updateUserRoleThunk({ userId: user.user_id, role_name: "Admin" })
       ).unwrap();
-      message.success("Đã nâng quyền user thành Admin");
+      messageApi.success("Đã nâng quyền user thành Admin");
     } catch (err) {
-      message.error(err || "Không thể cập nhật role");
+      messageApi.error(err || "Không thể cập nhật role");
     } finally {
       setRowLoadingId(null);
     }
@@ -75,9 +87,23 @@ const AdminUsers = () => {
       await dispatch(
         updateUserRoleThunk({ userId: user.user_id, role_name: "Manager" })
       ).unwrap();
-      message.success("Đã cập nhật role user thành Manager");
+      messageApi.success("Đã cập nhật role user thành Manager");
     } catch (err) {
-      message.error(err || "Không thể cập nhật role");
+      messageApi.error(err || "Không thể cập nhật role");
+    } finally {
+      setRowLoadingId(null);
+    }
+  };
+
+  const makeVolunteer = async (user) => {
+    try {
+      setRowLoadingId(user.user_id);
+      await dispatch(
+        updateUserRoleThunk({ userId: user.user_id, role_name: "Volunteer" })
+      ).unwrap();
+      messageApi.success("Đã cập nhật role user thành Volunteer");
+    } catch (err) {
+      messageApi.error(err || "Không thể cập nhật role");
     } finally {
       setRowLoadingId(null);
     }
@@ -104,9 +130,14 @@ const AdminUsers = () => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status) => (
-        <Tag color={status === "Active" ? "green" : "red"}>{status}</Tag>
-      ),
+      render: (status) => {
+        const visibleStatus = status === "Locked" ? "Blocked" : status;
+        return (
+          <Tag color={visibleStatus === "Active" ? "green" : "red"}>
+            {visibleStatus}
+          </Tag>
+        );
+      },
     },
     {
       title: "Hành động",
@@ -125,6 +156,17 @@ const AdminUsers = () => {
             >
               {record.status === "Active" ? "Block" : "Unblock"}
             </Button>
+
+            {record.role_name !== "Volunteer" && (
+              <Button
+                size="small"
+                loading={rowLoadingId === record.user_id}
+                disabled={isSelf}
+                onClick={() => makeVolunteer(record)}
+              >
+                Make Volunteer
+              </Button>
+            )}
 
             {record.role_name !== "Manager" && (
               <Button
@@ -170,6 +212,13 @@ const AdminUsers = () => {
         bodyStyle={{ display: "flex", flexDirection: "column" }}
         extra={
           <Space>
+            <Button
+              type="primary"
+              onClick={() => navigate("/admin/users/create")}
+            >
+              Tạo tài khoản mới
+            </Button>
+
             <span>Role:</span>
             <Select
               allowClear
@@ -192,7 +241,7 @@ const AdminUsers = () => {
               onChange={setStatusFilter}
             >
               <Option value="Active">Active</Option>
-              <Option value="Blocked">Blocked</Option>
+              <Option value="Locked">Blocked</Option>
             </Select>
           </Space>
         }
