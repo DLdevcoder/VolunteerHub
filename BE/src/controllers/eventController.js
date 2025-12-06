@@ -741,6 +741,29 @@ const eventController = {
       });
     }
   },
+
+  //[VOLUNTEER] Lấy lịch sử tham gia sự kiện của bản thân
+  async getMyEventHistory(req, res) {
+    try {
+      const userId = req.user.user_id;
+
+      // Lấy danh sách tất cả sự kiện đã đăng ký
+      const history = await Event.getEventHistoryByUserId(userId);
+
+      res.json({
+        success: true,
+        message: "Lấy lịch sử tham gia thành công",
+        data: history,
+      });
+    } catch (error) {
+      console.error("Get my event history error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi lấy lịch sử tham gia",
+        error: error.message,
+      });
+    }
+  },
 };
 
 export default eventController;

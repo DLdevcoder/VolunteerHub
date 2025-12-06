@@ -6,35 +6,49 @@ import eventPermission from "../middlewares/eventPermission.js";
 const router = express.Router();
 
 // ====================================================================
-// ROUTES CHO VOLUNTEER
+// ROUTES CỤ THỂ (SPECIFIC) - ĐẶT TRƯỚC
 // ====================================================================
 
-// Lấy danh sách sự kiện đang hoạt động (approved, chưa kết thúc)
-// Dành cho: Tất cả người dùng (public)
-router.get("/active", eventController.getActiveEvents);
-
-// Lấy danh sách tất cả danh mục (để hiển thị dropdown lọc)
+// Lấy danh sách tất cả danh mục (public)
 router.get("/categories", eventController.getCategories);
 
-// Xem chi tiết sự kiện
-// Dành cho: Tất cả người dùng (public)
-router.get("/:event_id", eventController.getEventById);
+// Lấy danh sách sự kiện đang hoạt động (public)
+router.get("/active", eventController.getActiveEvents);
 
 // ====================================================================
-// ROUTES CHO MANAGER (Quản lý sự kiện)
+// ROUTES CHO ADMIN - ĐẶT TRƯỚC (vì có prefix /admin)
 // ====================================================================
 
-// Tạo sự kiện mới
-// Dành cho: ONLY Manager (Admin không được tạo sự kiện)
-router.post(
-  "/",
+// Lấy tất cả sự kiện (bao gồm pending, rejected, deleted)
+router.get(
+  "/admin/all",
   authMiddleware.authenticateToken,
-  authMiddleware.requireRole(["Manager"]),
-  eventController.createEvent
+  authMiddleware.requireAdmin,
+  eventController.getAllEvents
 );
 
-// Lấy danh sách sự kiện của Manager đang đăng nhập
-// Dành cho: Manager
+// ====================================================================
+// ROUTES CHO VOLUNTEER - /my/history
+// ====================================================================
+
+/**
+ * Lấy lịch sử tham gia sự kiện của Volunteer
+ * GET /api/events/my/history
+ */
+router.get(
+  "/my/history",
+  authMiddleware.authenticateToken,
+  eventController.getMyEventHistory
+);
+
+// ====================================================================
+// ROUTES CHO MANAGER - /my/events
+// ====================================================================
+
+/**
+ * Lấy danh sách sự kiện của Manager đang đăng nhập
+ * GET /api/events/my/events
+ */
 router.get(
   "/my/events",
   authMiddleware.authenticateToken,
@@ -42,8 +56,55 @@ router.get(
   eventController.getMyEvents
 );
 
-// Cập nhật sự kiện
-// Dành cho: ONLY Manager (chủ sở hữu) - Admin KHÔNG được sửa
+/**
+ * Tạo sự kiện mới
+ * POST /api/events
+ */
+router.post(
+  "/",
+  authMiddleware.authenticateToken,
+  authMiddleware.requireRole(["Manager"]),
+  eventController.createEvent
+);
+
+// ====================================================================
+// ROUTES CÓ PARAMS - ĐẶT CUỐI CÙNG
+// ====================================================================
+
+/**
+ * Xem chi tiết sự kiện (public)
+ * GET /api/events/:event_id
+ */
+router.get("/:event_id", eventController.getEventById);
+
+/**
+ * Duyệt sự kiện (Admin only)
+ * PATCH /api/events/:event_id/approve
+ */
+router.patch(
+  "/:event_id/approve",
+  authMiddleware.authenticateToken,
+  authMiddleware.requireAdmin,
+  eventPermission.checkEventNotApproved,
+  eventController.approveEvent
+);
+
+/**
+ * Từ chối sự kiện (Admin only)
+ * PATCH /api/events/:event_id/reject
+ */
+router.patch(
+  "/:event_id/reject",
+  authMiddleware.authenticateToken,
+  authMiddleware.requireAdmin,
+  eventPermission.checkEventNotRejected,
+  eventController.rejectEvent
+);
+
+/**
+ * Cập nhật sự kiện (Manager - owner only)
+ * PUT /api/events/:event_id
+ */
 router.put(
   "/:event_id",
   authMiddleware.authenticateToken,
@@ -53,47 +114,16 @@ router.put(
   eventController.updateEvent
 );
 
-// Xóa mềm sự kiện
-// Dành cho: Manager (chủ sở hữu) hoặc Admin
+/**
+ * Xóa mềm sự kiện (Manager owner hoặc Admin)
+ * DELETE /api/events/:event_id
+ */
 router.delete(
   "/:event_id",
   authMiddleware.authenticateToken,
   authMiddleware.requireManagerOrAdmin,
   eventPermission.checkEventOwnership,
   eventController.deleteEvent
-);
-
-// ====================================================================
-// ROUTES CHO ADMIN (Quản trị viên)
-// ====================================================================
-
-// Lấy tất cả sự kiện (bao gồm pending, rejected, deleted) với filter
-// Dành cho: Admin
-router.get(
-  "/admin/all",
-  authMiddleware.authenticateToken,
-  authMiddleware.requireAdmin,
-  eventController.getAllEvents
-);
-
-// Duyệt sự kiện
-// Dành cho: Admin
-router.patch(
-  "/:event_id/approve",
-  authMiddleware.authenticateToken,
-  authMiddleware.requireAdmin,
-  eventPermission.checkEventNotApproved,
-  eventController.approveEvent
-);
-
-// Từ chối sự kiện
-// Dành cho: Admin
-router.patch(
-  "/:event_id/reject",
-  authMiddleware.authenticateToken,
-  authMiddleware.requireAdmin,
-  eventPermission.checkEventNotRejected,
-  eventController.rejectEvent
 );
 
 export default router;

@@ -383,6 +383,48 @@ const Event = {
 
     return events.length > 0;
   },
+
+  // Lấy lịch sử tham gia sự kiện của một Volunteer
+  async getEventHistoryByUserId(userId) {
+    const query = `
+      SELECT 
+        e.event_id,
+        e.title,
+        e.description,
+        e.start_date,
+        e.end_date,
+        e.location,
+        e.target_participants,
+        e.current_participants,
+        c.name AS category_name,
+        u.full_name AS manager_name,
+        u.email AS manager_email,
+        u.phone AS manager_phone,
+        r.registration_id,
+        r.registration_date,
+        r.status AS registration_status,
+        r.rejection_reason,
+        r.completion_date,
+        mu.full_name AS completed_by_manager_name,
+        -- Tính trạng thái sự kiện
+        CASE 
+          WHEN e.end_date < NOW() THEN 'past'
+          WHEN e.start_date > NOW() THEN 'upcoming'
+          ELSE 'ongoing'
+        END AS event_status
+      FROM Registrations r
+      INNER JOIN Events e ON r.event_id = e.event_id
+      LEFT JOIN Categories c ON e.category_id = c.category_id
+      LEFT JOIN Users u ON e.manager_id = u.user_id
+      LEFT JOIN Users mu ON r.completed_by_manager_id = mu.user_id
+      WHERE r.user_id = ?
+        AND e.is_deleted = FALSE
+      ORDER BY e.start_date DESC, r.registration_date DESC
+    `;
+
+    const [rows] = await pool.query(query, [userId]);
+    return rows;
+  },
 };
 
 export default Event;
