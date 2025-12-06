@@ -1,10 +1,24 @@
+// src/pages/DashboardPage.jsx
 import React from "react";
+import { useSelector } from "react-redux";
 import VolunteerDashboard from "../components/Dashboard/VolunteerDashboard";
+import ManagerDashboard from "../components/Dashboard/ManagerDashboard";
+import AdminDashboard from "../components/Dashboard/AdminDashboard"; // Import mới
 
 const DashboardPage = () => {
-  // Có thể thêm logic check role ở đây nếu muốn hiển thị Dashboard khác cho Admin/Manager
-  // Ví dụ: return user.role === 'Admin' ? <AdminDashboard /> : <VolunteerDashboard />;
+  const { user } = useSelector((state) => state.auth);
 
+  // Check role Admin
+  if (user?.role_name === "Admin" || user?.role === "Admin") {
+    return <AdminDashboard />;
+  }
+
+  // Check role Manager
+  if (user?.role_name === "Manager" || user?.role === "Manager") {
+    return <ManagerDashboard />;
+  }
+
+  // Default: Volunteer
   return <VolunteerDashboard />;
 };
 
