@@ -57,23 +57,27 @@ class Dashboard {
         `SELECT 
             p.post_id, 
             p.content,           
-            p.created_at as latest_post_time, -- Giữ alias này để khớp với FE cũ nếu cần
+            p.created_at as latest_post_time,
             p.user_id,
             u.full_name,         
             u.avatar_url,        
             e.event_id, 
-            e.title,             -- Tên sự kiện
+            e.title,
             e.location,
-            e.manager_id 
+            e.manager_id,
+            (SELECT COUNT(*) FROM PostReactions WHERE post_id = p.post_id) as like_count,
+            (SELECT COUNT(*) FROM Comments WHERE post_id = p.post_id) as comment_count,
+            (SELECT COUNT(*) FROM PostReactions WHERE post_id = p.post_id AND user_id = ?) as is_liked
+
          FROM Posts p
          JOIN Users u ON p.user_id = u.user_id       
          JOIN Events e ON p.event_id = e.event_id    
          WHERE e.approval_status = 'approved' 
            AND e.is_deleted = FALSE
          ORDER BY p.created_at DESC                  
-         LIMIT 20`
+         LIMIT 20`,
+        [user_id]
       );
-
       return {
         new_events: newEvents,
         trending_events: trendingEvents,
