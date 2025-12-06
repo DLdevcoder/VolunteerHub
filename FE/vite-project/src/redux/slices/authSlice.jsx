@@ -8,31 +8,34 @@ const savedUser = localStorage.getItem("vh_user");
 const initialState = {
   user: savedUser ? JSON.parse(savedUser) : null,
   token: savedToken || null,
-  // ban đầu coi như đã đăng nhập nếu có token + user
   isAuthenticated: !!savedToken && !!savedUser,
   loading: false,
   error: null,
+  successMessage: null, // 👈 NEW
 };
 
 /* =====================
    1. LOGIN
 ===================== */
-
 export const loginThunk = createAsyncThunk(
   "auth/login",
-  async ({ email, password }, thunkAPI) => {
+  async ({ email, password }, { rejectWithValue }) => {
     try {
       const res = await authApi.login({ email, password });
+      // res = { success, message, data: { user, token } }
 
       if (!res.success) {
-        return thunkAPI.rejectWithValue(res.message || "Login failed");
+        return rejectWithValue(res.message || "Login failed");
       }
 
-      // backend trả: { success, message, data: { user, token } }
-      return res.data;
+      return {
+        user: res.data.user,
+        token: res.data.token,
+        message: res.message || "Đăng nhập thành công",
+      };
     } catch (error) {
       const msg = error?.response?.data?.message || "Error while logging in";
-      return thunkAPI.rejectWithValue(msg);
+      return rejectWithValue(msg);
     }
   }
 );
@@ -46,12 +49,17 @@ export const registerThunk = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const res = await authApi.register(payload);
+      // res = { success, message, data: { user, token } }
 
       if (!res.success) {
         return rejectWithValue(res.message || "Register failed");
       }
 
-      return res.data; // { user, token }
+      return {
+        user: res.data.user,
+        token: res.data.token,
+        message: res.message || "Đăng ký thành công",
+      };
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
@@ -120,9 +128,14 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       state.error = null;
+      state.successMessage = null; // 👈 reset luôn
 
       localStorage.removeItem("vh_token");
       localStorage.removeItem("vh_user");
+    },
+    clearMessages(state) {
+      state.error = null;
+      state.successMessage = null;
     },
   },
   extraReducers: (builder) => {
@@ -131,14 +144,16 @@ const authSlice = createSlice({
       .addCase(loginThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.successMessage = null;
       })
       .addCase(loginThunk.fulfilled, (state, action) => {
         state.loading = false;
-        const { user, token } = action.payload;
+        const { user, token, message } = action.payload;
 
         state.user = user;
         state.token = token;
         state.isAuthenticated = true;
+        state.successMessage = message || null;
 
         localStorage.setItem("vh_token", token);
         localStorage.setItem("vh_user", JSON.stringify(user));
@@ -152,9 +167,13 @@ const authSlice = createSlice({
       .addCase(registerThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.successMessage = null;
       })
-      .addCase(registerThunk.fulfilled, (state) => {
+      .addCase(registerThunk.fulfilled, (state, action) => {
         state.loading = false;
+        state.successMessage =
+          action.payload?.message || "Register successfully! Please log in.";
+        // (tuỳ ý dùng action.payload.user / token, hiện tại FE chưa cần)
       })
       .addCase(registerThunk.rejected, (state, action) => {
         state.loading = false;
@@ -165,14 +184,13 @@ const authSlice = createSlice({
       .addCase(fetchMeThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
+        // không đụng successMessage
       })
       .addCase(fetchMeThunk.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload;
-        // nếu có user tức là token dùng được → coi như đang đăng nhập
         state.isAuthenticated = true;
 
-        // sync lại user vào localStorage (token giữ nguyên)
         if (state.token) {
           localStorage.setItem("vh_user", JSON.stringify(action.payload));
         }
@@ -181,10 +199,9 @@ const authSlice = createSlice({
         state.loading = false;
         state.error =
           action.payload || "Không thể tải thông tin người dùng hiện tại";
-        // (option) nếu muốn: có thể clear token khi 401/403, nhưng tạm để nguyên
       });
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, clearMessages } = authSlice.actions;
 export default authSlice;
