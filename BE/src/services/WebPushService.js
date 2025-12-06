@@ -32,9 +32,7 @@ class WebPushService {
       if (existing.length > 0) {
         // Update existing
         await pool.execute(
-          `UPDATE PushSubscriptions 
-             SET \`keys\` = ?, is_active = TRUE, updated_at = NOW() 
-           WHERE endpoint = ?`,
+          `UPDATE PushSubscriptions SET keys = ?, is_active = TRUE, updated_at = NOW() WHERE endpoint = ?`,
           [JSON.stringify(keys), endpoint]
         );
         console.log("Updated existing subscription");

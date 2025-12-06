@@ -257,6 +257,78 @@ const authController = {
       });
     }
   },
+  // User: Đổi mật khẩu
+  async changePassword(req, res) {
+    try {
+      const user_id = req.user.user_id;
+      const { current_password, new_password, confirm_password } = req.body;
+
+      // Validate input
+      if (!current_password || !new_password || !confirm_password) {
+        return res.status(400).json({
+          success: false,
+          message: "Vui lòng điền đầy đủ thông tin",
+        });
+      }
+
+      // Kiểm tra mật khẩu mới và xác nhận mật khẩu
+      if (new_password !== confirm_password) {
+        return res.status(400).json({
+          success: false,
+          message: "Mật khẩu mới và xác nhận mật khẩu không khớp",
+        });
+      }
+
+      // Kiểm tra độ dài mật khẩu mới
+      if (new_password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: "Mật khẩu mới phải có ít nhất 6 ký tự",
+        });
+      }
+
+      // Kiểm tra mật khẩu mới không giống mật khẩu cũ
+      if (current_password === new_password) {
+        return res.status(400).json({
+          success: false,
+          message: "Mật khẩu mới không được giống mật khẩu cũ",
+        });
+      }
+
+      // Đổi mật khẩu
+      const isChanged = await User.changePassword(
+        user_id,
+        current_password,
+        new_password
+      );
+
+      if (!isChanged) {
+        return res.status(400).json({
+          success: false,
+          message: "Không thể đổi mật khẩu",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Đổi mật khẩu thành công",
+      });
+    } catch (error) {
+      console.error("Change password error:", error);
+
+      if (error.message === "Mật khẩu hiện tại không đúng") {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi đổi mật khẩu",
+      });
+    }
+  },
 };
 
 export default authController;

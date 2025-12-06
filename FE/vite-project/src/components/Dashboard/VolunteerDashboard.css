@@ -1,0 +1,276 @@
+/* src/components/Dashboard/VolunteerDashboard.css */
+
+.dashboard-container {
+  background-color: #f0f2f5;
+  min-height: 100vh;
+  /* padding-top: 20px; Không cần padding top nếu AppHeader đã có height */
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+}
+
+.dashboard-content {
+  max-width: 1000px; /* Giới hạn chiều rộng để nhìn tập trung hơn */
+  margin: 0 auto;
+  display: grid;
+  /* CHỈNH SỬA: Bỏ cột trái, chia tỉ lệ 2 phần (Feed chiếm 65%, Sidebar phải 35%) */
+  grid-template-columns: 1fr 360px;
+  gap: 32px;
+  padding: 20px;
+  align-items: start;
+}
+
+/* --- Cột News Feed --- */
+.news-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Khung tạo bài viết giả */
+.create-post-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  padding: 12px 16px;
+}
+
+.create-post-top {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e4e6eb;
+}
+
+.user-avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #e4e6eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.status-input {
+  flex: 1;
+  background-color: #f0f2f5;
+  border-radius: 20px;
+  padding: 10px 16px;
+  color: #65676b;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.status-input:hover {
+  background-color: #e4e6eb;
+}
+
+.create-post-actions {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 8px;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  color: #65676b;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background-color: #f0f2f5;
+}
+
+/* Icon màu sắc */
+.icon-video {
+  color: #f02849;
+  font-size: 24px;
+}
+.icon-photo {
+  color: #45bd62;
+  font-size: 24px;
+}
+.icon-feeling {
+  color: #f7b928;
+  font-size: 24px;
+}
+
+/* --- Style cho Bài Đăng (ActivityWidget) --- */
+.fb-post-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.post-header {
+  padding: 12px 16px 0;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.post-avatar-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.post-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.post-author {
+  color: #050505;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+}
+
+.post-event-link {
+  font-weight: 700;
+  color: #050505;
+  text-decoration: none;
+}
+.post-event-link:hover {
+  text-decoration: underline;
+}
+
+.post-meta {
+  font-size: 13px;
+  color: #65676b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.post-content {
+  padding: 4px 16px 16px;
+  font-size: 15px;
+  color: #050505;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.post-stats {
+  padding: 10px 16px;
+  border-bottom: 1px solid #ced0d4;
+  display: flex;
+  justify-content: space-between;
+  color: #65676b;
+  font-size: 14px;
+}
+
+.post-footer {
+  padding: 4px 12px;
+  display: flex;
+}
+
+.post-action {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 4px;
+  color: #65676b;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.post-action:hover {
+  background-color: #f0f2f5;
+}
+
+/* --- Cột Phải (Sidebar) --- */
+.right-sidebar {
+  /* position: sticky; xóa sticky nếu cột trái dài hơn */
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebar-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+}
+
+.sidebar-heading {
+  font-size: 16px;
+  font-weight: 600;
+  color: #65676b;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.event-sidebar-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 8px;
+  text-decoration: none;
+  margin-bottom: 4px;
+  transition: 0.2s;
+}
+
+.event-sidebar-item:hover {
+  background-color: #e4e6eb;
+}
+
+.event-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: #f0f2f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1877f2;
+  font-size: 20px;
+}
+
+.event-sidebar-info h4 {
+  margin: 0 0 2px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #050505;
+  line-height: 1.2;
+}
+
+.event-sidebar-info p {
+  margin: 0;
+  font-size: 13px;
+  color: #65676b;
+}
+
+/* Responsive Mobile */
+@media (max-width: 900px) {
+  .dashboard-content {
+    grid-template-columns: 1fr; /* Mobile chỉ hiện 1 cột */
+  }
+  .right-sidebar {
+    display: none; /* Ẩn sidebar trên mobile */
+  }
+}

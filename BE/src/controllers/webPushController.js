@@ -12,6 +12,12 @@ class WebPushController {
           message: "Subscription is required",
         });
       }
+      if (!subscription.endpoint || !subscription.keys) {
+        return res.status(400).json({
+          success: false,
+          message: "Subscription không hợp lệ",
+        });
+      }
 
       await WebPushService.saveSubscription(user_id, subscription);
 
