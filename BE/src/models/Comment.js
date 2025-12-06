@@ -35,15 +35,21 @@ const Comment = {
       ORDER BY c.created_at ASC
       LIMIT ? OFFSET ?
     `;
-    
-    const [comments] = await pool.query(sql, [post_id, Number(limit), Number(offset)]);
+
+    const [comments] = await pool.query(sql, [
+      post_id,
+      Number(limit),
+      Number(offset),
+    ]);
 
     return {
       comments,
       pagination: {
-        total, page: Number(page), limit: Number(limit),
-        totalPages: Math.ceil(total / limit)
-      }
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / limit),
+      },
     };
   },
 
@@ -52,11 +58,13 @@ const Comment = {
     const sql = `
       SELECT 
         c.*, 
+        u.full_name, u.avatar_url,  -- <--- THÊM DÒNG NÀY QUAN TRỌNG
         p.event_id,
         e.manager_id as event_manager_id,
         e.is_deleted as event_is_deleted,
         e.approval_status as event_status
       FROM Comments c
+      JOIN Users u ON c.user_id = u.user_id
       JOIN Posts p ON c.post_id = p.post_id
       JOIN Events e ON p.event_id = e.event_id
       WHERE c.comment_id = ?
@@ -70,7 +78,7 @@ const Comment = {
     const sql = "DELETE FROM Comments WHERE comment_id = ?";
     const [result] = await pool.execute(sql, [comment_id]);
     return result.affectedRows > 0;
-  }
+  },
 };
 
 export default Comment;
