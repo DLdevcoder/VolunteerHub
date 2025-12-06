@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import Notification from "../models/Notification.js";
+import WebPushService from "./WebPushService.js";
 
 class NotificationService {
   // Tạo thông báo từ trigger
@@ -276,16 +277,50 @@ class NotificationService {
   // Cron job để chạy reminders hàng ngày
   static async startReminderCronJob() {
     // Chạy mỗi ngày một lần
-    setInterval(async () => {
-      try {
-        await this.sendEventReminders();
-      } catch (error) {
-        console.error("Lỗi trong cron job reminders:", error);
-      }
-    }, 24 * 60 * 60 * 1000); // 24 giờ
+    setInterval(
+      async () => {
+        try {
+          await this.sendEventReminders();
+        } catch (error) {
+          console.error("Lỗi trong cron job reminders:", error);
+        }
+      },
+      24 * 60 * 60 * 1000
+    ); // 24 giờ
 
     // Chạy ngay lần đầu
     await this.sendEventReminders();
+  }
+
+  static async sendPushNotification(user_id, type, payload) {
+    try {
+      const notificationConfig = {
+        event_approved: {
+          title: "Sự kiện đã được duyệt",
+          body: `Sự kiện "${payload.title}" đã được phê duyệt`,
+        },
+        registration_approved: {
+          title: "Đăng ký thành công",
+          body: "Đăng ký tham gia sự kiện đã được chấp nhận",
+        },
+        // ... thêm các type khác
+      };
+
+      const config = notificationConfig[type] || {
+        title: "VolunteerHub",
+        body: "Bạn có thông báo mới",
+      };
+
+      await WebPushService.sendPushNotification(user_id, {
+        ...config,
+        notification_id: payload.notification_id,
+        type: type,
+        url: `/notifications/${payload.notification_id}`,
+        data: payload,
+      });
+    } catch (error) {
+      console.error("Send push notification error:", error);
+    }
   }
 
   // Thông báo sự kiện bị hủy cho tất cả volunteers đã đăng ký

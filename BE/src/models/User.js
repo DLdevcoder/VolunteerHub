@@ -1,4 +1,5 @@
 import pool from "../config/db.js";
+import bcrypt from "bcryptjs";
 
 class User {
   // Lấy user by ID với role name
@@ -213,6 +214,48 @@ class User {
       return roles[0]?.role_id || null;
     } catch (error) {
       throw new Error(`Database error in getRoleId: ${error.message}`);
+    }
+  }
+
+  // Đổi mật khẩu
+  static async changePassword(user_id, current_password, new_password) {
+    try {
+      // Lấy thông tin user hiện tại để kiểm tra mật khẩu cũ
+      const [users] = await pool.execute(
+        `SELECT password_hash FROM Users WHERE user_id = ?`,
+        [user_id]
+      );
+
+      if (users.length === 0) {
+        throw new Error("User không tồn tại");
+      }
+
+      const user = users[0];
+
+      // Kiểm tra mật khẩu hiện tại
+      const isPasswordValid = await bcrypt.compare(
+        current_password,
+        user.password_hash
+      );
+      if (!isPasswordValid) {
+        throw new Error("Mật khẩu hiện tại không đúng");
+      }
+
+      // Mã hóa mật khẩu mới
+      const saltRounds = 12;
+      const new_password_hash = await bcrypt.hash(new_password, saltRounds);
+
+      // Cập nhật mật khẩu mới
+      const [result] = await pool.execute(
+        `UPDATE Users 
+             SET password_hash = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE user_id = ?`,
+        [new_password_hash, user_id]
+      );
+
+      return result.affectedRows > 0;
+    } catch (error) {
+      throw new Error(`Database error in changePassword: ${error.message}`);
     }
   }
 
