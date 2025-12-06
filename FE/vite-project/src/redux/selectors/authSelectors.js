@@ -1,7 +1,5 @@
-// Whole auth slice (if you ever need it)
 export const authStateSelector = (state) => state.auth;
 
-// Individual fields
 export const authUserSelector = (state) => state.auth.user;
 export const authTokenSelector = (state) => state.auth.token;
 export const authIsAuthenticatedSelector = (state) =>

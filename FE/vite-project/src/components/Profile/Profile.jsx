@@ -1,30 +1,44 @@
 import "./Profile.css";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { FaUser } from "react-icons/fa";
 import { Button, Input, Divider, Spin, Space, message, Tag } from "antd";
+
 import { fetchMeThunk, updateMeThunk } from "../../redux/slices/userSlice";
+import {
+  authTokenSelector,
+  authIsAuthenticatedSelector,
+} from "../../redux/selectors/authSelectors.js";
+import {
+  meSelector,
+  loadingMeSelector,
+  errorMeSelector,
+  updatingMeSelector,
+} from "../../redux/selectors/userSelectors.js";
 
 const Profile = () => {
   const dispatch = useDispatch();
-  const [isEditing, setIsEditing] = useState(false);
+  const navigate = useNavigate();
 
   // local editable state
+  const [isEditing, setIsEditing] = useState(false);
   const [formValues, setFormValues] = useState({
     full_name: "",
     phone: "",
   });
-  const [avatarPreview, setAvatarPreview] = useState(null); // string URL for preview
-  const [avatarFile, setAvatarFile] = useState(null); // File (for later real upload)
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [, setAvatarFile] = useState(null);
 
-  // auth slice
-  const { token, isAuthenticated } = useSelector((state) => state.auth);
+  // auth slice via selectors
+  const token = useSelector(authTokenSelector);
+  const isAuthenticated = useSelector(authIsAuthenticatedSelector);
 
-  // user slice
-  const { me, loadingMe, errorMe, updatingMe } = useSelector(
-    (state) => state.user
-  );
+  // user slice via selectors
+  const me = useSelector(meSelector);
+  const loadingMe = useSelector(loadingMeSelector);
+  const errorMe = useSelector(errorMeSelector);
+  const updatingMe = useSelector(updatingMeSelector);
 
   // Fetch /users/me if needed
   useEffect(() => {
@@ -63,7 +77,6 @@ const Profile = () => {
   /* ========= Handlers ========= */
 
   const handleEditButtonClick = () => {
-    // fill local state from current user when entering edit mode
     setFormValues({
       full_name: user.full_name || "",
       phone: user.phone || "",
@@ -74,7 +87,6 @@ const Profile = () => {
   };
 
   const handleCancelButtonClick = () => {
-    // revert to original user info and exit edit mode
     setFormValues({
       full_name: user.full_name || "",
       phone: user.phone || "",
@@ -88,7 +100,6 @@ const Profile = () => {
     const payload = {
       full_name: formValues.full_name,
       phone: formValues.phone,
-      // for now we just send preview or old url
       avatar_url: avatarPreview || user.avatar_url || null,
     };
 
@@ -119,7 +130,6 @@ const Profile = () => {
 
     setAvatarFile(file);
 
-    // just for preview in UI; not a real URL for backend yet
     const url = URL.createObjectURL(file);
     setAvatarPreview(url);
   };
@@ -150,7 +160,6 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* File input appears only in edit mode, under upper div */}
         {isEditing && (
           <div className="change-avatar">
             <span className="title">Avatar</span>
@@ -197,6 +206,12 @@ const Profile = () => {
             <div className="info-item">
               <div className="item-title">Updated at</div>
               <Input value={user.updated_at} disabled />
+            </div>
+            <div className="info-item">
+              <div className="item-title">Change password</div>
+              <Button onClick={() => navigate("/reset-password")}>
+                Change password
+              </Button>
             </div>
           </div>
         </div>

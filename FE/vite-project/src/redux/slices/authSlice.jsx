@@ -116,6 +116,35 @@ export const fetchMeThunk = createAsyncThunk(
 );
 
 /* =====================
+   4. CHANGE PASSWORD
+===================== */
+
+export const changePasswordThunk = createAsyncThunk(
+  "auth/changePassword",
+  async (payload, { rejectWithValue }) => {
+    try {
+      // payload = { current_password, new_password, confirm_password }
+      const res = await authApi.changePassword(payload);
+
+      if (!res.success) {
+        return rejectWithValue(res.message || "Change password failed");
+      }
+
+      // BE: { success, message }
+      return {
+        message: res.message || "Đổi mật khẩu thành công",
+      };
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err.message ||
+        "Error while changing password";
+      return rejectWithValue(msg);
+    }
+  }
+);
+
+/* =====================
    SLICE
 ===================== */
 
@@ -199,6 +228,21 @@ const authSlice = createSlice({
         state.loading = false;
         state.error =
           action.payload || "Không thể tải thông tin người dùng hiện tại";
+      })
+
+      /* --- CHANGE PASSWORD --- */
+      .addCase(changePasswordThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMessage = null;
+      })
+      .addCase(changePasswordThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.successMessage = action.payload.message;
+      })
+      .addCase(changePasswordThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Change password failed";
       });
   },
 });
