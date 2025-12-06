@@ -91,67 +91,54 @@ class Dashboard {
   }
 
   // ==================== DASHBOARD CHO QUẢN LÝ SỰ KIỆN ====================
+  // Trong BE/src/models/Dashboard.js
+
   static async getManagerDashboard(user_id) {
     try {
-      // Sự kiện của manager này
+      // 1. Thống kê nhanh (Stats)
+      const [stats] = await pool.execute(
+        `SELECT 
+           COUNT(*) as total_events,
+           SUM(CASE WHEN approval_status = 'pending' THEN 1 ELSE 0 END) as pending_events,
+           SUM(CASE WHEN approval_status = 'approved' THEN 1 ELSE 0 END) as approved_events,
+           COALESCE(SUM(current_participants), 0) as total_participants
+         FROM Events WHERE manager_id = ? AND is_deleted = FALSE`,
+        [user_id]
+      );
+
+      // 2. Danh sách sự kiện tôi quản lý
       const [myEvents] = await pool.execute(
-        `SELECT 
-          e.event_id, e.title, e.approval_status, e.start_date,
-          e.current_participants, e.target_participants,
-          COUNT(DISTINCT p.post_id) as total_posts,
-          COUNT(DISTINCT r.registration_id) as pending_registrations
-         FROM Events e
-         LEFT JOIN Posts p ON e.event_id = p.event_id
-         LEFT JOIN Registrations r ON e.event_id = r.event_id AND r.status = 'pending'
-         WHERE e.manager_id = ? AND e.is_deleted = FALSE
-         GROUP BY e.event_id
-         ORDER BY e.created_at DESC`,
+        `SELECT event_id, title, approval_status, start_date, location, current_participants, target_participants
+         FROM Events WHERE manager_id = ? AND is_deleted = FALSE
+         ORDER BY created_at DESC LIMIT 5`,
         [user_id]
       );
 
-      // Sự kiện mới công bố (của các manager khác)
-      const [newEvents] = await pool.execute(
+      // 3. [MỚI] Hoạt động mới trên các sự kiện CỦA TÔI (để hiện ActivityWidget)
+      const [activities] = await pool.execute(
         `SELECT 
-          e.event_id, e.title, e.location, e.start_date,
-          u.full_name as manager_name,
-          e.current_participants
-         FROM Events e
-         JOIN Users u ON e.manager_id = u.user_id
-         WHERE e.approval_status = 'approved' 
-           AND e.manager_id != ?
-           AND e.start_date > NOW()
-           AND e.is_deleted = FALSE
-         ORDER BY e.created_at DESC
-         LIMIT 10`,
-        [user_id]
-      );
-
-      // Sự kiện thu hút (toàn hệ thống)
-      const [trendingEvents] = await pool.execute(
-        `SELECT 
-          e.event_id, e.title, e.location,
-          u.full_name as manager_name,
-          e.current_participants,
-          COUNT(DISTINCT p.post_id) as recent_posts
-         FROM Events e
-         JOIN Users u ON e.manager_id = u.user_id
-         LEFT JOIN Posts p ON e.event_id = p.event_id AND p.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-         WHERE e.approval_status = 'approved' 
-           AND e.is_deleted = FALSE
-         GROUP BY e.event_id
-         ORDER BY e.current_participants DESC, recent_posts DESC
-         LIMIT 10`
+            p.post_id, p.content, p.created_at as latest_post_time, p.user_id,
+            u.full_name, u.avatar_url,
+            e.event_id, e.title, e.location, e.manager_id,
+            (SELECT COUNT(*) FROM PostReactions WHERE post_id = p.post_id) as like_count,
+            (SELECT COUNT(*) FROM Comments WHERE post_id = p.post_id) as comment_count,
+            (SELECT COUNT(*) FROM PostReactions WHERE post_id = p.post_id AND user_id = ?) as is_liked
+         FROM Posts p
+         JOIN Users u ON p.user_id = u.user_id
+         JOIN Events e ON p.event_id = e.event_id
+         WHERE e.manager_id = ? AND e.is_deleted = FALSE -- Chỉ lấy bài trên sự kiện của tôi
+         ORDER BY p.created_at DESC
+         LIMIT 20`,
+        [user_id, user_id] // Tham số 1 cho is_liked, Tham số 2 cho manager_id
       );
 
       return {
+        stats: stats[0],
         my_events: myEvents,
-        new_events: newEvents,
-        trending_events: trendingEvents,
+        recent_activities: activities,
       };
     } catch (error) {
-      throw new Error(
-        `Database error in getManagerDashboard: ${error.message}`
-      );
+      throw error;
     }
   }
 
