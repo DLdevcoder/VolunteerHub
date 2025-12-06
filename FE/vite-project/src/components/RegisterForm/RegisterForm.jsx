@@ -1,12 +1,34 @@
+// src/components/RegisterForm/RegisterForm.jsx
 import "./RegisterForm.css";
-import { Button, Form, Input, message } from "antd";
+import { Button, Form, Input } from "antd";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { registerThunk } from "../../redux/slices/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { useEffect } from "react";
+
+import { registerThunk, clearMessages } from "../../redux/slices/authSlice";
+import {
+  authErrorSelector,
+  authLoadingSelector,
+} from "../../redux/selectors/authSelectors.js";
+import useGlobalMessage from "../../utils/hooks/useGlobalMessage.js";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const messageApi = useGlobalMessage();
+
+  const error = useSelector(authErrorSelector);
+  const loading = useSelector(authLoadingSelector);
+
+  useEffect(() => {
+    if (error && messageApi) {
+      messageApi.error({
+        content: error,
+        duration: 3,
+      });
+      dispatch(clearMessages());
+    }
+  }, [error, messageApi, dispatch]);
 
   const handleLoginOptionClicked = () => {
     navigate("/login");
@@ -25,22 +47,21 @@ const RegisterForm = () => {
       const resultAction = await dispatch(registerThunk(payload));
 
       if (registerThunk.fulfilled.match(resultAction)) {
-        message.success("Register successfully! Please log in.");
-        alert("Register successfully!");
+        // success toast here
+        if (messageApi) {
+          messageApi.success({
+            content: "Register successfully! Please log in.",
+            duration: 2,
+          });
+        }
         navigate("/login");
-      } else {
-        // lỗi do rejectWithValue
-        const errMsg =
-          resultAction.payload || "Register failed, please try again.";
-        alert(
-          `${resultAction.payload || "Register failed, please try again."}`
-        );
-        message.error(errMsg);
       }
+      // if rejected, auth.error → effect shows error toast
     } catch (err) {
       console.error(err);
-      alert("Unexpected error while registering");
-      message.error("Unexpected error while registering");
+      if (messageApi) {
+        messageApi.error("Unexpected error while registering");
+      }
     }
   };
 
@@ -67,7 +88,7 @@ const RegisterForm = () => {
             <Input.Password placeholder="Confirm your password" />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit" block>
+            <Button type="primary" htmlType="submit" block loading={loading}>
               Register
             </Button>
           </Form.Item>
