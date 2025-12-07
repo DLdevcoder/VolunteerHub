@@ -9,7 +9,7 @@ const router = express.Router();
 // URL: POST /api/registrations/events/:event_id
 router.post(
   "/events/:event_id",
-  authMiddleware.authenticateToken, 
+  authMiddleware.authenticateToken,
   authMiddleware.requireRole(["Volunteer"]),
   registrationController.registerEvent
 );
@@ -27,7 +27,7 @@ router.delete(
 router.get(
   "/events/:event_id",
   authMiddleware.authenticateToken,
-  authMiddleware.requireRole(["Manager"]), 
+  authMiddleware.requireRole(["Manager"]),
   registrationController.getEventRegistrations
 );
 
@@ -56,6 +56,15 @@ router.patch(
   authMiddleware.authenticateToken,
   authMiddleware.requireRole(["Manager"]),
   registrationController.completeRegistration
+);
+
+// NEW: Volunteer – trạng thái đăng ký của bản thân cho 1 event
+// GET /api/registrations/events/:event_id/my-status
+router.get(
+  "/events/:event_id/my-status",
+  authMiddleware.authenticateToken,
+  authMiddleware.requireRole(["Volunteer"]),
+  registrationController.getMyRegistrationStatus
 );
 
 export default router;

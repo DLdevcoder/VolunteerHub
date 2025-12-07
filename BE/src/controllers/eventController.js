@@ -287,20 +287,20 @@ const eventController = {
   // Lấy danh sách sự kiện đang hoạt động (đã duyệt, chưa kết thúc)
   async getActiveEvents(req, res) {
     try {
-      let page = parseInt(req.query.page);
-      let limit = parseInt(req.query.limit);
+      const userId = req.user?.user_id;
+      const userRole = req.user?.role_name;
 
-      // Nếu page không phải số hoặc < 1 -> Mặc định là 1
+      // Chỉ Volunteer mới cần JOIN Registrations
+      const includeUserRegistration = userId && userRole === "Volunteer";
+
+      let page = parseInt(req.query.page, 10);
+      let limit = parseInt(req.query.limit, 10);
+
       if (isNaN(page) || page < 1) page = 1;
-
-      // Nếu limit không phải số hoặc < 1 -> Mặc định 10
       if (isNaN(limit) || limit < 1) limit = 10;
-
-      // Ngăn chặn user gửi ?limit=1000000 làm tràn bộ nhớ server
       if (limit > 100) limit = 100;
 
       let category_id = req.query.category_id;
-      // Nếu category_id gửi lên -> Bỏ qua
       if (category_id && isNaN(Number(category_id))) {
         category_id = undefined;
       }
@@ -315,10 +315,8 @@ const eventController = {
 
       let { start_date_from, start_date_to } = req.query;
 
-      // Hàm kiểm tra ngày hợp lệ
       const isValidDate = (d) => !isNaN(new Date(d).getTime());
 
-      // Nếu gửi ngày tào lao -> Báo lỗi
       if (start_date_from && !isValidDate(start_date_from)) {
         return res.status(400).json({
           success: false,
@@ -352,16 +350,19 @@ const eventController = {
         start_date_to,
       };
 
-      const result = await Event.getActiveEvents(filters);
+      const result = await Event.getActiveEvents(
+        filters,
+        includeUserRegistration ? userId : null
+      );
 
-      res.json({
+      return res.json({
         success: true,
         message: "Lấy danh sách sự kiện thành công",
         data: result,
       });
     } catch (error) {
       console.error("Get active events error:", error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: "Lỗi máy chủ nội bộ khi tải danh sách sự kiện",
       });

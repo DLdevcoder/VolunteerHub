@@ -62,6 +62,12 @@ const registrationApi = {
     );
     return response.data;
   },
+
+  getMyRegistrationStatus(eventId) {
+    return api
+      .get(`/registrations/events/${eventId}/my-status`)
+      .then((res) => res.data);
+  },
 };
 
 export default registrationApi;
