@@ -1,0 +1,243 @@
+/* =========================================
+   1. GLOBAL CONTAINER
+   ========================================= */
+.dashboard-container {
+  max-width: 1400px;
+  margin: 20px auto;
+  background-color: #f4f6f8;
+  min-height: calc(100vh - 80px);
+  padding: 24px;
+  border-radius: 8px;
+}
+
+.dashboard-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #262626;
+  margin-bottom: 24px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* =========================================
+   2. STATS CARDS (Dùng cho Manager/Admin - Các ô thống kê trên cùng)
+   ========================================= */
+.stats-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  border-top: 4px solid transparent;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.stats-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Màu sắc viền trên của Stats Card */
+.stats-blue {
+  border-top-color: #1890ff;
+}
+.stats-orange {
+  border-top-color: #faad14;
+}
+.stats-green {
+  border-top-color: #52c41a;
+}
+.stats-red {
+  border-top-color: #f5222d;
+}
+.stats-grey {
+  border-top-color: #8c8c8c;
+}
+
+.stats-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #262626;
+  line-height: 1.2;
+}
+
+.stats-label {
+  font-size: 13px;
+  color: #8c8c8c;
+  text-transform: uppercase;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+/* =========================================
+   3. DASHBOARD SECTIONS (Các cột nội dung)
+   ========================================= */
+.dashboard-section {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  height: calc(100vh - 220px); /* Chiều cao cố định để scroll nội dung */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 20px;
+  border: 1px solid #f0f0f0;
+}
+
+/* Header của từng cột */
+.section-header {
+  padding: 14px 16px;
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+  border-bottom: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #fff;
+}
+
+/* Màu sắc Header cột */
+.header-blue {
+  background-color: #f0f5ff;
+  border-bottom-color: #1890ff;
+  color: #1890ff;
+}
+
+.header-orange {
+  background-color: #fff7e6;
+  border-bottom-color: #fa8c16;
+  color: #fa8c16;
+}
+
+.header-red {
+  background-color: #fff1f0;
+  border-bottom-color: #f5222d;
+  color: #f5222d;
+}
+
+.header-yellow {
+  background-color: #fffbe6;
+  border-bottom-color: #faad14;
+  color: #faad14;
+}
+
+/* Body của cột (Phần cuộn) */
+.section-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background-color: #fff;
+}
+
+/* =========================================
+   4. ITEM CARDS (Các thẻ bên trong cột)
+   ========================================= */
+.dashboard-item {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.dashboard-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #d9d9d9;
+}
+
+/* --- Style riêng cho từng loại thẻ --- */
+
+/* 1. Thẻ Feed (Tin mới) */
+.feed-item {
+  border-left: 3px solid #ccc; /* Mặc định */
+}
+.feed-item.feed-post {
+  border-left-color: #1890ff;
+}
+.feed-item.feed-comment {
+  border-left-color: #fa8c16;
+}
+
+.feed-quote {
+  background: #f9f9f9;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 8px 0;
+  font-size: 13px;
+  font-style: italic;
+  color: #595959;
+  border-left: 3px solid #d9d9d9;
+}
+
+/* 2. Thẻ Trending (Sự kiện Hot) */
+.trending-item {
+  border: 1px solid #f0f0f0;
+}
+.rank-1 {
+  background-color: #fff2f0;
+  border: 1px solid #ffccc7;
+}
+.rank-1 .ant-tag {
+  border-color: transparent;
+}
+
+.growth-box {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 6px;
+  padding: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin: 8px 0;
+}
+
+/* 3. Thẻ Pending (Chờ duyệt - Manager) */
+.pending-item {
+  background-color: #fffbe6;
+  border: 1px solid #ffe58f;
+}
+
+/* 4. Thẻ New (Mới công bố) */
+.new-item {
+  border-left: 4px solid #1890ff;
+}
+
+/* =========================================
+   5. UTILITIES (Thanh cuộn, Text nhỏ...)
+   ========================================= */
+
+/* Custom Scrollbar */
+.section-body::-webkit-scrollbar {
+  width: 6px;
+}
+.section-body::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+.section-body::-webkit-scrollbar-thumb {
+  background: #bfbfbf;
+  border-radius: 4px;
+}
+.section-body::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Text helpers */
+.text-xs {
+  font-size: 12px;
+}
+.text-sm {
+  font-size: 13px;
+}
+.text-bold {
+  font-weight: 600;
+}
+.text-grey {
+  color: #8c8c8c;
+}
