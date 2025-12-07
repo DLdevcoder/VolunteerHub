@@ -1,12 +1,35 @@
+// src/components/LoginForm/LoginForm.jsx
 import "./LoginForm.css";
-import { Button, Form, Input, message } from "antd";
+import { Button, Form, Input } from "antd";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { loginThunk } from "../../redux/slices/authSlice.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { useEffect } from "react";
+
+import { loginThunk, clearMessages } from "../../redux/slices/authSlice.jsx";
+import {
+  authErrorSelector,
+  authLoadingSelector,
+} from "../../redux/selectors/authSelectors.js";
+import useGlobalMessage from "../../utils/hooks/useGlobalMessage.js";
 
 const LoginForm = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const messageApi = useGlobalMessage(); // global message instance
+
+  const error = useSelector(authErrorSelector);
+  const loading = useSelector(authLoadingSelector);
+
+  // Show error toast whenever auth.error changes
+  useEffect(() => {
+    if (error && messageApi) {
+      messageApi.error({
+        content: error,
+        duration: 3,
+      });
+      dispatch(clearMessages());
+    }
+  }, [error, messageApi, dispatch]);
 
   const handleForgotPasswordOptionClicked = () => {
     navigate("/reset-password");
@@ -17,7 +40,6 @@ const LoginForm = () => {
   };
 
   const handleFinish = async (values) => {
-    // values = { email: '...', password: '...' }
     try {
       const resultAction = await dispatch(
         loginThunk({
@@ -27,18 +49,21 @@ const LoginForm = () => {
       );
 
       if (loginThunk.fulfilled.match(resultAction)) {
-        message.success("Login successful");
-        alert("Login successful");
-        // chuyển sang trang events (hoặc dashboard)
+        // Show success before navigating away
+        if (messageApi) {
+          messageApi.success({
+            content: "Login successful",
+            duration: 2,
+          });
+        }
         navigate("/events");
-      } else {
-        alert("Login failed: " + (resultAction.payload || "Unknown error"));
-        message.error(resultAction.payload || "Login failed");
       }
+      // If rejected: auth.error will be set → useEffect will show messageApi.error
     } catch (err) {
-      alert("Unexpected error occurred");
       console.error(err);
-      message.error("Unexpected error");
+      if (messageApi) {
+        messageApi.error("Unexpected error");
+      }
     }
   };
 
@@ -60,7 +85,7 @@ const LoginForm = () => {
               <Input.Password placeholder="Enter your password" />
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="submit" block>
+              <Button type="primary" htmlType="submit" block loading={loading}>
                 Submit
               </Button>
             </Form.Item>

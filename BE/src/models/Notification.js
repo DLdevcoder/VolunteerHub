@@ -277,7 +277,7 @@ class Notification {
       "event_starting_soon",
       "event_cancelled",
 
-      // NEW: manager tạo event → admin phải duyệt
+      // manager tạo event → admin phải duyệt
       "event_pending_approval",
 
       // Registration related
@@ -296,6 +296,10 @@ class Notification {
       "manager_account_locked",
       "account_unlocked",
       "manager_account_unlocked",
+
+      // 🔥 NEW TYPES
+      "role_changed", // đổi quyền user (Volunteer/Manager/Admin)
+      "test_notification", // dùng cho /notifications/test-push
     ];
 
     return validTypes.includes(type);
@@ -329,6 +333,10 @@ class Notification {
       manager_account_locked: "Manager bị khóa",
       account_unlocked: "Tài khoản đã được mở khóa",
       manager_account_unlocked: "Manager đã được mở khóa",
+
+      // 🔥 NEW
+      role_changed: "Quyền tài khoản đã thay đổi",
+      test_notification: "Thông báo thử hệ thống",
     };
 
     return titles[type] || "Thông báo mới";
@@ -363,6 +371,10 @@ class Notification {
       manager_account_locked: "Tài khoản manager đã bị khóa",
       account_unlocked: "Tài khoản volunteer mở bị khóa",
       manager_account_unlocked: "Tài khoản manager đã mở khóa",
+
+      // 🔥 NEW
+      role_changed: "Quyền tài khoản của bạn đã được thay đổi.",
+      test_notification: "Đây là thông báo test từ hệ thống.",
     };
 
     return defaultBodies[type] || "Bạn có thông báo mới";
@@ -400,6 +412,12 @@ class Notification {
         // Account related - đi đến trang tài khoản
         account_locked: `/profile`,
         manager_account_locked: `/admin/users`,
+        account_unlocked: `/profile`,
+        manager_account_unlocked: `/admin/users`,
+
+        // 🔥 NEW
+        role_changed: `/profile`,
+        test_notification: `/notifications`,
       };
 
       return urlMap[notification.type] || "/notifications";

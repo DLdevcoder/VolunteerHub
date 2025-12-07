@@ -1,4 +1,3 @@
-// src/components/AppHeader/AppHeader.jsx
 import "./AppHeader.css";
 import { Input, Avatar, Badge, Dropdown, List, Spin } from "antd";
 import { BellOutlined } from "@ant-design/icons";
@@ -18,15 +17,12 @@ import {
   markNotificationReadThunk,
 } from "../../redux/slices/notificationSlice";
 import { useEffect } from "react";
-
-import {
-  getNotificationTypeLabel,
-  getNotificationMainText,
-} from "../../utils/notificationUtils";
+import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 
 const AppHeader = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const messageApi = useGlobalMessage();
 
   const user = useSelector(meSelector);
   const { token } = useSelector((state) => state.auth);
@@ -46,7 +42,7 @@ const AppHeader = () => {
       navigate("/profile");
     } else if (key === "2") {
       dispatch(authSlice.actions.logout());
-      alert("Logged out successfully!");
+      messageApi.success("Đăng xuất thành công");
       navigate("/login");
     }
   };
@@ -55,7 +51,7 @@ const AppHeader = () => {
     if (!item.is_read) {
       dispatch(markNotificationReadThunk(item.notification_id));
     }
-    // có thể điều hướng dựa trên payload.url sau này
+    // sau này có thể điều hướng dựa trên item.url nếu BE trả về
   };
 
   const handleGoToNotificationsPage = () => {
@@ -75,8 +71,22 @@ const AppHeader = () => {
             dataSource={recent}
             locale={{ emptyText: "Không có thông báo" }}
             renderItem={(item) => {
-              const typeLabel = getNotificationTypeLabel(item.type);
-              const mainText = getNotificationMainText(item.payload || {});
+              // Dùng title/body từ BE
+              let notifTitle = item.title || "Thông báo mới";
+              let notifMessage = item.body || "";
+
+              // Fallback: payload.message nếu body không có
+              if (!notifMessage) {
+                try {
+                  const payload =
+                    typeof item.payload === "string"
+                      ? JSON.parse(item.payload || "{}")
+                      : item.payload || {};
+                  notifMessage = payload.message || "";
+                } catch {
+                  // ignore parse error
+                }
+              }
 
               return (
                 <List.Item
@@ -84,8 +94,8 @@ const AppHeader = () => {
                   onClick={() => handleNotificationClick(item)}
                 >
                   <div className="notif-content">
-                    <div className="notif-title">{typeLabel}</div>
-                    <div className="notif-message">{mainText}</div>
+                    <div className="notif-title">{notifTitle}</div>
+                    <div className="notif-message">{notifMessage}</div>
                   </div>
                 </List.Item>
               );
@@ -137,7 +147,12 @@ const AppHeader = () => {
             menu={{
               items: [
                 { key: "1", label: "Profile" },
-                { key: "2", label: "Logout", icon: <SlLogout />, danger: true },
+                {
+                  key: "2",
+                  label: "Logout",
+                  icon: <SlLogout />,
+                  danger: true,
+                },
               ],
               onClick: handleAvatarDropdownClicked,
             }}

@@ -11,7 +11,6 @@ import {
   Select,
   Button,
   Space,
-  message,
   Popconfirm,
   Spin,
 } from "antd";
@@ -34,6 +33,8 @@ import {
   eventDeleteLoadingSelector,
 } from "../../../redux/selectors/eventSelectors";
 
+import useGlobalMessage from "../../../utils/hooks/useGlobalMessage";
+
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 
@@ -42,6 +43,7 @@ const ManagerEditEvent = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const messageApi = useGlobalMessage();
 
   const event = useSelector(eventDetailSelector);
   const detailLoading = useSelector(eventDetailLoadingSelector);
@@ -87,7 +89,6 @@ const ManagerEditEvent = () => {
   }, [event, form]);
 
   const handleSubmit = async (values) => {
-    console.log("SUBMIT VALUES = ", values);
     if (!event_id) return;
     const [start, end] = values.dateRange || [];
 
@@ -112,12 +113,12 @@ const ManagerEditEvent = () => {
       // refetch first page (optional but safe)
       await dispatch(fetchManagerEvents({ page: 1, limit: 10 }));
 
-      message.success("Cập nhật sự kiện thành công");
+      messageApi.success("Cập nhật sự kiện thành công");
       navigate("/manager/events");
     } catch (err) {
       const msg =
         err?.message || err || "Không thể cập nhật sự kiện, thử lại sau";
-      message.error(msg);
+      messageApi.error(msg);
     }
   };
 
@@ -126,11 +127,11 @@ const ManagerEditEvent = () => {
     try {
       await dispatch(deleteEventThunk(event_id)).unwrap();
       await dispatch(fetchManagerEvents({ page: 1, limit: 10 }));
-      message.success("Đã xóa sự kiện thành công");
+      messageApi.success("Đã xóa sự kiện thành công");
       navigate("/manager/events");
     } catch (err) {
       const msg = err?.message || err || "Không thể xóa sự kiện";
-      message.error(msg);
+      messageApi.error(msg);
     }
   };
 
