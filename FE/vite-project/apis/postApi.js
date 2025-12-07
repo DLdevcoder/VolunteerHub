@@ -19,12 +19,22 @@ const postApi = {
     return res.data;
   },
 
-  // --- CÁC HÀM CÒN THIẾU ĐỂ LIKE & COMMENT CHẠY ĐƯỢC ---
-
   // Like/Unlike
   toggleLike: async (postId) => {
     // Gọi API: POST /reactions/posts/:post_id
     const res = await api.post(`/reactions/posts/${postId}`, { type: "like" });
+    return res.data;
+  },
+
+  getPostReactions: async (postId, type = null) => {
+    const params = type ? { type } : {};
+    const res = await api.get(`/reactions/posts/${postId}`, { params });
+    return res.data;
+  },
+
+  // Toggle Reaction (Cập nhật để gửi type)
+  toggleReaction: async (postId, type = "like") => {
+    const res = await api.post(`/reactions/posts/${postId}`, { type });
     return res.data;
   },
 
