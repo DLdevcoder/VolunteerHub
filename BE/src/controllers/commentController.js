@@ -43,12 +43,10 @@ const commentController = {
       }
 
       if (!canView) {
-        return res
-          .status(403)
-          .json({
-            success: false,
-            message: "Bạn không có quyền xem bình luận.",
-          });
+        return res.status(403).json({
+          success: false,
+          message: "Bạn không có quyền xem bình luận.",
+        });
       }
 
       // Lấy dữ liệu
@@ -109,12 +107,10 @@ const commentController = {
       }
 
       if (!canComment) {
-        return res
-          .status(403)
-          .json({
-            success: false,
-            message: "Chỉ thành viên tham gia sự kiện mới được bình luận.",
-          });
+        return res.status(403).json({
+          success: false,
+          message: "Chỉ thành viên tham gia sự kiện mới được bình luận.",
+        });
       }
 
       // Tạo Comment
@@ -123,7 +119,7 @@ const commentController = {
       res.status(201).json({
         success: true,
         message: "Bình luận thành công",
-        data: newComment,
+        data: { comment: newComment },
       });
     } catch (error) {
       console.error("Create comment error:", error);
@@ -173,12 +169,10 @@ const commentController = {
       }
 
       if (!canDelete) {
-        return res
-          .status(403)
-          .json({
-            success: false,
-            message: "Bạn không có quyền xóa bình luận này.",
-          });
+        return res.status(403).json({
+          success: false,
+          message: "Bạn không có quyền xóa bình luận này.",
+        });
       }
 
       // Thực hiện xóa
