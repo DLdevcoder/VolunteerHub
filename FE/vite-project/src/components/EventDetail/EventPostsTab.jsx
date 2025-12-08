@@ -10,7 +10,6 @@ import {
   Spin,
   Empty,
   Typography,
-  message,
 } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 
@@ -24,6 +23,7 @@ import {
   createPostThunk,
   deletePostThunk,
 } from "../../redux/slices/postSlice";
+import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -38,6 +38,7 @@ const EventPostsTab = ({
   canCreatePost,
 }) => {
   const dispatch = useDispatch();
+  const messageApi = useGlobalMessage();
 
   const posts = useSelector(eventPostsSelector);
   const postsPagination = useSelector(eventPostsPaginationSelector);
@@ -53,7 +54,7 @@ const EventPostsTab = ({
     setPage(1);
     dispatch(
       fetchEventPostsThunk({
-        event_id: eventId,
+        eventId, // ✅ đúng key
         page: 1,
         limit: PAGE_SIZE,
       })
@@ -64,7 +65,7 @@ const EventPostsTab = ({
     setPage(nextPage);
     dispatch(
       fetchEventPostsThunk({
-        event_id: eventId,
+        eventId, // ✅ đúng key
         page: nextPage,
         limit: PAGE_SIZE,
       })
@@ -79,19 +80,19 @@ const EventPostsTab = ({
       setCreatingPost(true);
       await dispatch(
         createPostThunk({
-          event_id: eventId,
+          eventId, // ✅ đúng key
           content,
         })
       ).unwrap();
 
       setNewPostContent("");
+      // reload page 1 để chắc chắn đồng bộ pagination
       handleChangePostsPage(1);
-      message.success("Đã đăng bài trong sự kiện");
+      messageApi.success("Đã đăng bài trong sự kiện");
     } catch (err) {
       console.error(err);
-      message.error(
-        err?.message || "Không thể đăng bài. Vui lòng thử lại sau."
-      );
+      const msg = err?.message || "Không thể đăng bài. Vui lòng thử lại sau.";
+      messageApi.error(msg);
     } finally {
       setCreatingPost(false);
     }
@@ -99,12 +100,14 @@ const EventPostsTab = ({
 
   const handleDeletePost = async (postId) => {
     try {
-      await dispatch(deletePostThunk({ event_id: eventId, postId })).unwrap();
+      await dispatch(deletePostThunk(postId)).unwrap(); // ✅ chỉ truyền postId
       handleChangePostsPage(page);
-      message.success("Đã xóa bài viết");
+      messageApi.success("Đã xóa bài viết");
     } catch (err) {
       console.error(err);
-      message.error("Không thể xóa bài viết");
+      const msg =
+        err?.message || "Không thể xóa bài viết. Vui lòng thử lại sau.";
+      messageApi.error(msg);
     }
   };
 
