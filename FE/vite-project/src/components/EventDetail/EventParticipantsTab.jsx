@@ -1,5 +1,5 @@
 // src/pages/EventDetail/EventParticipantsTab.jsx
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Table,
@@ -9,7 +9,7 @@ import {
   Typography,
   Spin,
   Empty,
-  message,
+  Select,
 } from "antd";
 
 import {
@@ -18,6 +18,7 @@ import {
   rejectRegistrationThunk,
   completeRegistrationThunk,
 } from "../../redux/slices/registrationSlice";
+import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 
 const { Text } = Typography;
 
@@ -31,6 +32,9 @@ const statusColorMap = {
 
 const EventParticipantsTab = ({ eventId }) => {
   const dispatch = useDispatch();
+  const messageApi = useGlobalMessage();
+
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const eventState =
     useSelector((state) => state.registration.manager.byEvent[eventId]) || {};
@@ -47,9 +51,9 @@ const EventParticipantsTab = ({ eventId }) => {
 
   useEffect(() => {
     if (error) {
-      message.error(error);
+      messageApi.error(error);
     }
-  }, [error]);
+  }, [error, messageApi]);
 
   const handleApprove = async (record) => {
     try {
@@ -59,11 +63,15 @@ const EventParticipantsTab = ({ eventId }) => {
           eventId,
         })
       ).unwrap();
-      message.success("Đã duyệt đăng ký");
+
+      messageApi.success("Đã duyệt đăng ký");
     } catch (err) {
-      message.error(
-        err?.message || "Không thể duyệt đăng ký. Vui lòng thử lại."
-      );
+      console.error("[approveRegistration] error from thunk:", err);
+      const msg =
+        err?.message ||
+        err?.payload?.message ||
+        "Không thể duyệt đăng ký. Vui lòng thử lại.";
+      messageApi.error(msg);
     }
   };
 
@@ -79,11 +87,15 @@ const EventParticipantsTab = ({ eventId }) => {
           reason,
         })
       ).unwrap();
-      message.success("Đã từ chối đăng ký");
+
+      messageApi.success("Đã từ chối đăng ký");
     } catch (err) {
-      message.error(
-        err?.message || "Không thể từ chối đăng ký. Vui lòng thử lại."
-      );
+      console.error("[rejectRegistration] error from thunk:", err);
+      const msg =
+        err?.message ||
+        err?.payload?.message ||
+        "Không thể từ chối đăng ký. Vui lòng thử lại.";
+      messageApi.error(msg);
     }
   };
 
@@ -95,11 +107,15 @@ const EventParticipantsTab = ({ eventId }) => {
           eventId,
         })
       ).unwrap();
-      message.success("Đã xác nhận hoàn thành cho tình nguyện viên");
+
+      messageApi.success("Đã xác nhận hoàn thành cho tình nguyện viên");
     } catch (err) {
-      message.error(
-        err?.message || "Không thể đánh dấu hoàn thành. Vui lòng thử lại sau."
-      );
+      console.error("[completeRegistration] error from thunk:", err);
+      const msg =
+        err?.message ||
+        err?.payload?.message ||
+        "Không thể đánh dấu hoàn thành. Vui lòng thử lại sau.";
+      messageApi.error(msg);
     }
   };
 
@@ -201,18 +217,54 @@ const EventParticipantsTab = ({ eventId }) => {
     );
   }
 
-  if (!items.length) {
+  if (!loading && !items.length) {
     return <Empty description="Chưa có đăng ký nào cho sự kiện này" />;
   }
 
+  const filteredItems =
+    statusFilter === "all"
+      ? items
+      : items.filter((r) => r.status === statusFilter);
+
   return (
-    <Table
-      rowKey="registration_id"
-      columns={columns}
-      dataSource={items}
-      pagination={false}
-      size="middle"
-    />
+    <>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginBottom: 16,
+        }}
+      >
+        <Space>
+          <Text>Lọc theo trạng thái:</Text>
+          <Select
+            value={statusFilter}
+            onChange={setStatusFilter}
+            style={{ minWidth: 180 }}
+            options={[
+              { value: "all", label: "Tất cả" },
+              { value: "pending", label: "Đang chờ duyệt" },
+              { value: "approved", label: "Đã duyệt" },
+              { value: "rejected", label: "Bị từ chối" },
+              { value: "cancelled", label: "Đã hủy" },
+              { value: "completed", label: "Đã hoàn thành" },
+            ]}
+          />
+        </Space>
+      </div>
+
+      {filteredItems.length ? (
+        <Table
+          rowKey="registration_id"
+          columns={columns}
+          dataSource={filteredItems}
+          pagination={false}
+          size="middle"
+        />
+      ) : (
+        <Empty description="Không có tình nguyện viên với trạng thái này" />
+      )}
+    </>
   );
 };
 

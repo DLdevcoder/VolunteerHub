@@ -67,9 +67,15 @@ const EventCard = ({ event, onRegister, registeringId, userRole }) => {
         disabled = true;
         break;
       case "rejected":
-        buttonText = "Bị từ chối";
-        disabled = true;
+        if (has_available_slots === false) {
+          buttonText = "Đã đủ người";
+          disabled = true;
+        } else {
+          buttonText = "Đăng ký lại";
+          disabled = false;
+        }
         break;
+
       case "cancelled":
         if (has_available_slots === false) {
           buttonText = "Đã đủ người";

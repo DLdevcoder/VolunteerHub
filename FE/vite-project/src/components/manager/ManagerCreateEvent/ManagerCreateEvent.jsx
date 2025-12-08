@@ -68,7 +68,8 @@ const ManagerCreateEvent = () => {
       form.resetFields();
       dispatch(resetCreateEventState());
     } catch (err) {
-      messageApi.error(err || "Tạo sự kiện thất bại");
+      // messageApi.error(err || "Tạo sự kiện thất bại");
+      console.log("in manager create event submit:", err);
     }
   };
 
