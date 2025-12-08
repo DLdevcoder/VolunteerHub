@@ -278,6 +278,22 @@ class User {
       throw new Error(`Database error in getAdmins: ${error.message}`);
     }
   }
+
+  // Cập nhật role (role_id) cho user
+  static async updateRole(user_id, role_id) {
+    try {
+      const [result] = await pool.execute(
+        `UPDATE Users 
+         SET role_id = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ?`,
+        [role_id, user_id]
+      );
+
+      return result.affectedRows > 0;
+    } catch (error) {
+      throw new Error(`Database error in updateRole: ${error.message}`);
+    }
+  }
 }
 
 export default User;

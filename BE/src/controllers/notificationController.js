@@ -19,13 +19,20 @@ const notificationController = {
         type,
       });
 
+      // enrich each notification with title + body
+      const enrichedNotifications = result.notifications.map((n) => ({
+        ...n,
+        title: Notification.getNotificationTitle(n.type),
+        body: Notification.getNotificationBody(n.type, n.payload),
+      }));
+
       // Đếm số thông báo chưa đọc
       const unread_count = await Notification.countUnread(user_id);
 
       res.json({
         success: true,
         data: {
-          notifications: result.notifications,
+          notifications: enrichedNotifications,
           unread_count: unread_count,
           pagination: result.pagination,
         },
@@ -160,10 +167,16 @@ const notificationController = {
         parseInt(limit)
       );
 
+      const enrichedNotifications = notifications.map((n) => ({
+        ...n,
+        title: Notification.getNotificationTitle(n.type),
+        body: Notification.getNotificationBody(n.type, n.payload),
+      }));
+
       res.json({
         success: true,
         data: {
-          notifications: notifications,
+          notifications: enrichedNotifications,
         },
       });
     } catch (error) {

@@ -21,6 +21,7 @@ import ManagerEditEvent from "./components/manager/ManagerEditEvent/ManagerEditE
 import AdminEventRequests from "./components/admin/AdminEventRequests/AdminEventRequests";
 import AdminUsers from "./components/admin/AdminUsers/AdminUsers";
 import AdminExport from "./components/admin/AdminExport/AdminExport";
+import AdminCreateUser from "./components/admin/AdminCreateUser/AdminCreateUser";
 
 // (nhớ cũng đã có EventDetailPage được mount ở /events/:event_id)
 
@@ -54,6 +55,7 @@ const App = () => {
           <Route path="event-requests" element={<AdminEventRequests />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="export" element={<AdminExport />} />
+          <Route path="users/create" element={<AdminCreateUser />} />
         </Route>
       </Route>
     </Routes>

@@ -1,41 +1,47 @@
 // src/apis/userApi.js
 import { api } from "../api";
 
+const USER_API = "/users";
+
 const userApi = {
+  /* ========= USER SELF ========= */
+
   // GET /users/me
-  getMe: async () => {
-    const res = await api.get("/users/me");
-    return res.data; // { success, data: { user } }
+  async getMe() {
+    const response = await api.get(`${USER_API}/me`);
+    return response.data; // { success, data: { user } }
   },
 
   // PUT /users/me
-  updateMe: async (payload) => {
-    const res = await api.put("/users/me", payload);
-    return res.data; // { success, message, data: { user } }
+  async updateMe(payload) {
+    // payload: { full_name, phone, avatar_url? }
+    const response = await api.put(`${USER_API}/me`, payload);
+    return response.data; // { success, message?, data: { user } }
   },
 
-  // Admin: GET /users
-  getAllUsers: async (params) => {
-    const res = await api.get("/users", { params });
-    return res.data; // { success, data: { users, pagination } }
+  /* ========= ADMIN SIDE ========= */
+
+  // GET /users  (with filters & pagination)
+  // params: { page, limit, role?, status? }
+  async getAllUsers(params) {
+    const response = await api.get(`${USER_API}`, { params });
+    return response.data; // { success, data: { users, pagination } } or { success, data: { users, pagination } }
   },
 
-  // Admin: GET /users/:user_id
-  getUserById: async (userId) => {
-    const res = await api.get(`/users/${userId}`);
-    return res.data; // { success, data: { user } }
+  // PUT /users/:user_id/status
+  // body: { status: "Active" | "Locked" }
+  async updateUserStatus(userId, status) {
+    const response = await api.put(`${USER_API}/${userId}/status`, { status });
+    return response.data; // { success, message?, data: { user } }
   },
 
-  // Admin: PUT /users/:user_id/status
-  updateUserStatus: async (userId, status) => {
-    const res = await api.put(`/users/${userId}/status`, { status });
-    return res.data; // { success, message, data: { user } }
-  },
-
-  // 🔥 NEW: Admin – cập nhật role (ví dụ: set Admin/Manager)
-  updateUserRole: async (userId, role_name) => {
-    const res = await api.put(`/users/${userId}/role`, { role_name });
-    return res.data; // { success, message, data: { user } }
+  // PUT /users/:user_id/role
+  // body: { role_name: "Admin" | "Manager" | "Volunteer" }
+  async updateUserRole(userId, role_name) {
+    const response = await api.put(`${USER_API}/${userId}/role`, {
+      role_name,
+    });
+    return response.data; // { success, message?, data: { user } }
   },
 };
 

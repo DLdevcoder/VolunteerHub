@@ -28,4 +28,11 @@ router.put(
   userController.updateUserStatus
 );
 
+router.put(
+  "/:user_id/role",
+  authMiddleware.authenticateToken,
+  authMiddleware.requireAdmin,
+  userController.updateUserRole
+);
+
 export default router;

@@ -1,7 +1,7 @@
 // src/pages/EventsPage.jsx
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Row, Col, Spin, Empty, Pagination, message, Typography } from "antd";
+import { Row, Col, Spin, Empty, Pagination, Typography } from "antd";
 
 import EventCard from "../components/EventCard/EventCard";
 import { fetchActiveEvents } from "../redux/slices/eventSlice";
@@ -20,19 +20,24 @@ import {
   volunteerRegistrationErrorSelector,
 } from "../redux/selectors/registrationSelectors";
 
+// 🔹 import global message hook (đường dẫn giống như bạn dùng ở chỗ khác)
+import useGlobalMessage from "../utils/hooks/useGlobalMessage";
+
 const { Title } = Typography;
 const DEFAULT_LIMIT = 9;
 
 const EventsPage = () => {
   const dispatch = useDispatch();
+  const messageApi = useGlobalMessage(); // 🔹 dùng global message
 
   const items = useSelector(activeEventsSelector);
   const pagination = useSelector(activeEventsPaginationSelector);
   const loading = useSelector(activeEventsLoadingSelector);
   const error = useSelector(activeEventsErrorSelector);
 
-  const { user } = useSelector((state) => state.auth);
+  const { user, token } = useSelector((state) => state.auth);
   const userRole = user?.role_name;
+  const isLoggedIn = !!token;
 
   const registeringId = useSelector(volunteerRegisteringIdSelector);
   const registrationError = useSelector(volunteerRegistrationErrorSelector);
@@ -49,32 +54,39 @@ const EventsPage = () => {
   }, [dispatch, page]);
 
   useEffect(() => {
-    if (error) message.error(error);
-  }, [error]);
+    if (error) messageApi.error(error);
+  }, [error, messageApi]);
 
   useEffect(() => {
-    if (registrationError) message.error(registrationError);
-  }, [registrationError]);
+    if (registrationError) messageApi.error(registrationError);
+  }, [registrationError, messageApi]);
 
   const handleRegister = async (eventId) => {
+    // 🔹 user chưa login → chỉ show message, không gọi API
+    if (!isLoggedIn) {
+      messageApi.info("Bạn cần đăng nhập để đăng ký sự kiện.");
+      return;
+    }
+
     try {
       const result = await dispatch(registerForEventThunk(eventId)).unwrap();
-      message.success(result?.message || "Đăng ký sự kiện thành công");
+      messageApi.success(result?.message || "Đăng ký sự kiện thành công");
+
       dispatch(fetchActiveEvents({ page, limit: DEFAULT_LIMIT }));
     } catch (err) {
       const msg = err?.message || "Không thể đăng ký sự kiện";
-      message.error(msg);
+      messageApi.error(msg);
     }
   };
 
   const handleCancel = async (eventId) => {
     try {
       const result = await dispatch(cancelRegistrationThunk(eventId)).unwrap();
-      message.success(result?.message || "Hủy đăng ký thành công");
+      messageApi.success(result?.message || "Hủy đăng ký thành công");
       dispatch(fetchActiveEvents({ page, limit: DEFAULT_LIMIT }));
     } catch (err) {
       const msg = err?.message || "Không thể hủy đăng ký sự kiện";
-      message.error(msg);
+      messageApi.error(msg);
     }
   };
 

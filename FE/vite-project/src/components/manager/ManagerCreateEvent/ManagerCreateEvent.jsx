@@ -8,7 +8,6 @@ import {
   InputNumber,
   Select,
   DatePicker,
-  message,
   Card,
   Space,
 } from "antd";
@@ -23,6 +22,7 @@ import {
   eventCreateLoadingSelector,
   eventCreateErrorSelector,
 } from "../../../redux/selectors/eventSelectors";
+import useGlobalMessage from "../../../utils/hooks/useGlobalMessage";
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
@@ -30,6 +30,7 @@ const { TextArea } = Input;
 const ManagerCreateEvent = () => {
   const [form] = Form.useForm();
   const dispatch = useDispatch();
+  const messageApi = useGlobalMessage();
 
   const categories = useSelector(eventCategoriesSelector);
   const categoriesLoading = useSelector(eventCategoriesLoadingSelector);
@@ -40,12 +41,13 @@ const ManagerCreateEvent = () => {
     dispatch(fetchEventCategories());
   }, [dispatch]);
 
+  // Show BE error via global message
   useEffect(() => {
     if (createError) {
-      message.error(createError);
+      messageApi.error(createError);
       dispatch(resetCreateEventState());
     }
-  }, [createError, dispatch]);
+  }, [createError, dispatch, messageApi]);
 
   const handleSubmit = async (values) => {
     const [start, end] = values.timeRange || [];
@@ -62,11 +64,12 @@ const ManagerCreateEvent = () => {
 
     try {
       await dispatch(createEventThunk(payload)).unwrap();
-      message.success("Tạo sự kiện thành công");
+      messageApi.success("Tạo sự kiện thành công");
       form.resetFields();
       dispatch(resetCreateEventState());
     } catch (err) {
-      message.error(err || "Tạo sự kiện thất bại");
+      // messageApi.error(err || "Tạo sự kiện thất bại");
+      console.log("in manager create event submit:", err);
     }
   };
 

@@ -1,6 +1,7 @@
 import Event from "../models/Event.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
+import Registration from "../models/Registration.js";
 
 // Hàm helper: Format ngày giữ nguyên giờ nhập vào
 const formatDateAsIs = (dateInput) => {
@@ -287,20 +288,20 @@ const eventController = {
   // Lấy danh sách sự kiện đang hoạt động (đã duyệt, chưa kết thúc)
   async getActiveEvents(req, res) {
     try {
-      let page = parseInt(req.query.page);
-      let limit = parseInt(req.query.limit);
+      const userId = req.user?.user_id;
+      const userRole = req.user?.role_name;
 
-      // Nếu page không phải số hoặc < 1 -> Mặc định là 1
+      // Chỉ Volunteer mới cần JOIN Registrations
+      const includeUserRegistration = userId && userRole === "Volunteer";
+
+      let page = parseInt(req.query.page, 10);
+      let limit = parseInt(req.query.limit, 10);
+
       if (isNaN(page) || page < 1) page = 1;
-
-      // Nếu limit không phải số hoặc < 1 -> Mặc định 10
       if (isNaN(limit) || limit < 1) limit = 10;
-
-      // Ngăn chặn user gửi ?limit=1000000 làm tràn bộ nhớ server
       if (limit > 100) limit = 100;
 
       let category_id = req.query.category_id;
-      // Nếu category_id gửi lên -> Bỏ qua
       if (category_id && isNaN(Number(category_id))) {
         category_id = undefined;
       }
@@ -315,10 +316,8 @@ const eventController = {
 
       let { start_date_from, start_date_to } = req.query;
 
-      // Hàm kiểm tra ngày hợp lệ
       const isValidDate = (d) => !isNaN(new Date(d).getTime());
 
-      // Nếu gửi ngày tào lao -> Báo lỗi
       if (start_date_from && !isValidDate(start_date_from)) {
         return res.status(400).json({
           success: false,
@@ -352,16 +351,19 @@ const eventController = {
         start_date_to,
       };
 
-      const result = await Event.getActiveEvents(filters);
+      const result = await Event.getActiveEvents(
+        filters,
+        includeUserRegistration ? userId : null
+      );
 
-      res.json({
+      return res.json({
         success: true,
         message: "Lấy danh sách sự kiện thành công",
         data: result,
       });
     } catch (error) {
       console.error("Get active events error:", error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: "Lỗi máy chủ nội bộ khi tải danh sách sự kiện",
       });
@@ -613,6 +615,8 @@ const eventController = {
     try {
       const { event_id } = req.params;
       const role_name = req.user.role_name;
+
+      // Lấy thông tin sự kiện hiện tại
       const currentEvent = await Event.getEventById(event_id);
 
       // Sự kiện đã bị xoá rồi
@@ -622,14 +626,15 @@ const eventController = {
           .json({ success: false, message: "Sự kiện không tồn tại" });
       }
 
+      // Nếu không phải Admin -> áp dụng các giới hạn hiện tại
       if (role_name !== "Admin") {
         // Check có người đăng ký
-        if (currentEvent.current_participants > 0) {
-          return res.status(400).json({
-            success: false,
-            message: `Không thể xóa sự kiện đang có ${currentEvent.current_participants} người tham gia.`,
-          });
-        }
+        // if (currentEvent.current_participants > 0) {
+        //   return res.status(400).json({
+        //     success: false,
+        //     message: `Không thể xóa sự kiện đang có ${currentEvent.current_participants} người tham gia.`,
+        //   });
+        // }
 
         // Nếu là manager -> không thể xoá sự kiện đang chạy hoặc đã kết thúc
         const now = new Date();
@@ -641,6 +646,17 @@ const eventController = {
         }
       }
 
+      // 🔹 Lấy danh sách đăng ký trước khi xóa (cả pending / approved / completed)
+      let registrations = [];
+      try {
+        registrations = await Registration.getByEventId(event_id);
+      } catch (listErr) {
+        console.error(
+          "Load registrations before delete failed (still continue delete):",
+          listErr
+        );
+      }
+
       // Xóa mềm sự kiện (an toàn, có thể khôi phục)
       const deleted = await Event.softDeleteEvent(event_id);
 
@@ -649,6 +665,49 @@ const eventController = {
           success: false,
           message: "Xóa sự kiện thất bại",
         });
+      }
+
+      // 🔔 Gửi thông báo cho TNV đã đăng ký (kể cả pending chưa được duyệt)
+      try {
+        if (registrations && registrations.length) {
+          const affectedStatuses = [
+            "pending",
+            "approved",
+            "completed",
+            "rejected",
+          ];
+          const toNotify = registrations.filter((r) =>
+            affectedStatuses.includes(r.status)
+          );
+
+          for (const reg of toNotify) {
+            try {
+              await Notification.createAndPush({
+                user_id: reg.user_id,
+                type: "event_cancelled", // đã có trong ENUM Notifications.type
+                payload: {
+                  event_id,
+                  event_title: currentEvent.title,
+                  registration_id: reg.registration_id,
+                  previous_status: reg.status,
+                  message: `Sự kiện "${currentEvent.title}" đã bị hủy bởi ban tổ chức.`,
+                  url: `/events/${event_id}`, // FE có thể điều hướng tới trang chi tiết (hoặc history)
+                },
+              });
+            } catch (notifyErr) {
+              console.error(
+                `Notify volunteer (event_cancelled) failed for registration_id=${reg.registration_id}:`,
+                notifyErr
+              );
+            }
+          }
+        }
+      } catch (outerNotifyErr) {
+        console.error(
+          "Event delete: notify volunteers failed:",
+          outerNotifyErr
+        );
+        // Không throw nữa để không ảnh hưởng tới kết quả xóa
       }
 
       res.json({

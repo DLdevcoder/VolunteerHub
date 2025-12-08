@@ -27,6 +27,31 @@ const authMiddleware = {
     });
   },
 
+  // NEW: Xác thực *nếu có* token, còn không thì coi như guest
+  authenticateTokenOptional: (req, res, next) => {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader) {
+      req.user = null;
+      return next();
+    }
+
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      req.user = null;
+      return next();
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+      if (err) {
+        // Token sai / hết hạn → coi như chưa đăng nhập
+        req.user = null;
+        return next();
+      }
+      req.user = user;
+      next();
+    });
+  },
+
   // Kiểm tra role
   requireRole: (allowedRoles) => {
     return (req, res, next) => {

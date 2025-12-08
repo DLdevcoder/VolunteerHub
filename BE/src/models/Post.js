@@ -10,7 +10,7 @@ const Post = {
   },
 
   // Lấy danh sách bài đăng của 1 sự kiện (Có phân trang)
-  async getByEventId(event_id, page = 1, limit = 10) {
+  async getByEventId(event_id, page = 1, limit = 10, current_user_id = null) {
     const offset = (page - 1) * limit;
 
     // Đếm tổng số bài viết để tính totalPages
@@ -22,26 +22,57 @@ const Post = {
 
     // Lấy dữ liệu bài đăng
     const sql = `
-                SELECT 
-                    p.post_id, p.content, p.created_at,
-                    u.user_id, u.full_name, u.avatar_url,
-                    r.name as role_name
-                FROM Posts p
-                JOIN Users u ON p.user_id = u.user_id
-                JOIN Roles r ON u.role_id = r.role_id
-                WHERE p.event_id = ?
-                ORDER BY p.created_at DESC
-                LIMIT ? OFFSET ?
-                `;
+        SELECT 
+            p.post_id, p.content, p.created_at,
+            u.user_id, u.full_name, u.avatar_url,
+            r.name as role_name,
+            
+            -- Đếm tổng số reaction
+            (SELECT COUNT(*) FROM PostReactions WHERE post_id = p.post_id) as like_count,
+            
+            -- Đếm tổng số comment
+            (SELECT COUNT(*) FROM Comments WHERE post_id = p.post_id) as comment_count,
+
+            -- Kiểm tra user hiện tại đã react chưa (trả về type hoặc null)
+            (SELECT reaction_type FROM PostReactions WHERE post_id = p.post_id AND user_id = ?) as current_reaction,
+            
+            -- Lấy thống kê từng loại (để hiển thị Stack Icon 3 cái)
+            (SELECT COUNT(*) FROM PostReactions WHERE post_id = p.post_id AND reaction_type='like') as count_like,
+            (SELECT COUNT(*) FROM PostReactions WHERE post_id = p.post_id AND reaction_type='love') as count_love,
+            (SELECT COUNT(*) FROM PostReactions WHERE post_id = p.post_id AND reaction_type='haha') as count_haha,
+            (SELECT COUNT(*) FROM PostReactions WHERE post_id = p.post_id AND reaction_type='wow') as count_wow,
+            (SELECT COUNT(*) FROM PostReactions WHERE post_id = p.post_id AND reaction_type='sad') as count_sad,
+            (SELECT COUNT(*) FROM PostReactions WHERE post_id = p.post_id AND reaction_type='angry') as count_angry
+
+        FROM Posts p
+        JOIN Users u ON p.user_id = u.user_id
+        JOIN Roles r ON u.role_id = r.role_id
+        WHERE p.event_id = ?
+        ORDER BY p.created_at DESC
+        LIMIT ? OFFSET ?
+    `;
 
     const [rows] = await pool.query(sql, [
+      current_user_id,
       event_id,
       Number(limit),
       Number(offset),
     ]);
 
+    const posts = rows.map((post) => ({
+      ...post,
+      reaction_stats: {
+        like: post.count_like,
+        love: post.count_love,
+        haha: post.count_haha,
+        wow: post.count_wow,
+        sad: post.count_sad,
+        angry: post.count_angry,
+      },
+    }));
+
     return {
-      posts: rows,
+      posts: posts,
       pagination: {
         total,
         page: Number(page),

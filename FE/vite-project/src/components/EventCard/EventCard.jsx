@@ -1,5 +1,5 @@
 // src/components/EventCard/EventCard.jsx
-import { Card, Tag, Button, Space } from "antd";
+import { Card, Tag, Button } from "antd";
 import { IoIosTime } from "react-icons/io";
 import { FaLocationDot } from "react-icons/fa6";
 import { FaUserFriends } from "react-icons/fa";
@@ -20,13 +20,7 @@ const formatDateRange = (start, end) => {
   return `${fmt(s)} - ${fmt(e)}`;
 };
 
-const EventCard = ({
-  event,
-  onRegister,
-  onCancel,
-  registeringId,
-  userRole,
-}) => {
+const EventCard = ({ event, onRegister, registeringId, userRole }) => {
   const navigate = useNavigate();
 
   const {
@@ -39,6 +33,9 @@ const EventCard = ({
     category_name,
     target_participants,
     current_participants,
+    // 🔹 2 field mới từ backend:
+    has_available_slots,
+    user_registration_status,
   } = event;
 
   const participantsText =
@@ -46,10 +43,72 @@ const EventCard = ({
       ? `${current_participants}/${target_participants}`
       : `${current_participants ?? 0} người tham gia`;
 
-  const canRegister = userRole === "Volunteer";
+  const now = new Date();
+  const hasStarted = start_date && new Date(start_date) <= now;
+
+  let buttonText = "Đăng ký";
+  let disabled = false;
+
+  if (hasStarted) {
+    buttonText = "Đã bắt đầu";
+    disabled = true;
+  } else {
+    switch (user_registration_status) {
+      case "pending":
+        buttonText = "Đang chờ duyệt";
+        disabled = true;
+        break;
+      case "approved":
+        buttonText = "Đã tham gia";
+        disabled = true;
+        break;
+      case "completed":
+        buttonText = "Đã hoàn thành";
+        disabled = true;
+        break;
+      case "rejected":
+        if (has_available_slots === false) {
+          buttonText = "Đã đủ người";
+          disabled = true;
+        } else {
+          buttonText = "Đăng ký lại";
+          disabled = false;
+        }
+        break;
+
+      case "cancelled":
+        if (has_available_slots === false) {
+          buttonText = "Đã đủ người";
+          disabled = true;
+        } else {
+          buttonText = "Đăng ký lại";
+          disabled = false;
+        }
+        break;
+      default:
+        if (has_available_slots === false) {
+          buttonText = "Đã đủ người";
+          disabled = true;
+        } else {
+          buttonText = "Đăng ký";
+          disabled = false;
+        }
+        break;
+    }
+  }
+
+  // Hiển thị nút cho Volunteer + user chưa login
+  const showButton = !userRole || userRole === "Volunteer";
 
   const handleCardClick = () => {
     navigate(`/events/${event_id}`);
+  };
+
+  const handleRegisterClick = (e) => {
+    e.stopPropagation();
+    if (!disabled && onRegister) {
+      onRegister(event_id);
+    }
   };
 
   return (
@@ -60,6 +119,7 @@ const EventCard = ({
           {category_name && <Tag color="blue">{category_name}</Tag>}
         </div>
       </div>
+
       <div className="card-content-container">
         <div className="date">
           <div className="date-icon">
@@ -69,13 +129,16 @@ const EventCard = ({
             {formatDateRange(start_date, end_date)}
           </div>
         </div>
+
         <div className="location">
           <div className="location-icon">
             <FaLocationDot />
           </div>
           <div className="location-content">{location}</div>
         </div>
+
         <div className="description">{description}</div>
+
         <div className="register-container">
           <div className="participants">
             <div className="participants-icon">
@@ -83,35 +146,18 @@ const EventCard = ({
             </div>
             <div className="participants-content">{participantsText}</div>
           </div>
-          <div className="buttons">
-            {canRegister && (
-              <Space>
-                <Button
-                  type="primary"
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRegister(event_id);
-                  }}
-                  loading={registeringId === event_id}
-                >
-                  Đăng ký
-                </Button>
 
-                {onCancel && (
-                  <Button
-                    size="small"
-                    danger
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCancel(event_id);
-                    }}
-                    loading={registeringId === `cancel-${event_id}`}
-                  >
-                    Hủy
-                  </Button>
-                )}
-              </Space>
+          <div className="buttons">
+            {showButton && (
+              <Button
+                type="primary"
+                size="small"
+                onClick={handleRegisterClick}
+                loading={registeringId === event_id}
+                disabled={disabled}
+              >
+                {buttonText}
+              </Button>
             )}
           </div>
         </div>
