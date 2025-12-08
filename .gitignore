@@ -1,0 +1,69 @@
+# Tạo file với nội dung tối ưu
+cat > .gitignore << 'EOF'
+# Node modules
+node_modules/
+*/node_modules/
+yarn.lock
+package-lock.json
+yarn-error.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.development
+.env.production
+
+# Build outputs
+dist/
+build/
+out/
+*.exe
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+log/
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# Database (nếu có)
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache
+.cache/
+.tmp/
+tmp/
+
+# Coverage
+coverage/
+.nyc_output
+
+# Vite specific
+.vite/
+
+# Optional
+.eslintcache
+.stylelintcache
+
+# Development files
+global_states.txt
+EOF
+/Users/hius103/Downloads/VolunteerHub/FE/vite-project/package-lock.json
