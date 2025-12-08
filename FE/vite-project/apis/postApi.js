@@ -19,20 +19,14 @@ const postApi = {
     return res.data;
   },
 
-  // Like/Unlike
-  toggleLike: async (postId) => {
-    // Gọi API: POST /reactions/posts/:post_id
-    const res = await api.post(`/reactions/posts/${postId}`, { type: "like" });
-    return res.data;
-  },
-
+  // Lấy danh sách Reaction (để hiển thị modal)
   getPostReactions: async (postId, type = null) => {
     const params = type ? { type } : {};
     const res = await api.get(`/reactions/posts/${postId}`, { params });
     return res.data;
   },
 
-  // Toggle Reaction (Cập nhật để gửi type)
+  // Toggle Reaction (Gộp chung Like/Unlike vào đây luôn cho gọn)
   toggleReaction: async (postId, type = "like") => {
     const res = await api.post(`/reactions/posts/${postId}`, { type });
     return res.data;
@@ -40,14 +34,12 @@ const postApi = {
 
   // Lấy danh sách Comment
   getComments: async (postId) => {
-    // Gọi API: GET /comments/posts/:post_id
     const res = await api.get(`/comments/posts/${postId}`);
     return res.data;
   },
 
   // Viết Comment
   createComment: async (postId, content) => {
-    // Gọi API: POST /comments/posts/:post_id
     const res = await api.post(`/comments/posts/${postId}`, { content });
     return res.data;
   },
