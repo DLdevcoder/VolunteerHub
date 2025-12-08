@@ -344,3 +344,31 @@
   position: sticky;
   bottom: 0;
 }
+
+/* Reaction Hover Effect */
+.reaction-icon-hover:hover {
+  transform: scale(1.3) translateY(-5px);
+}
+
+.reaction-popover .ant-popover-inner-content {
+  padding: 8px 12px;
+  background: white;
+  border-radius: 50px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+/* Fix lỗi icon emoji làm phình nút */
+.post-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px; /* Cố định chiều cao nút */
+  padding: 0 12px; /* Giảm padding ngang nếu cần */
+}
+
+/* Đảm bảo icon emoji không có line-height thừa */
+.post-action span[role="img"],
+.post-action span {
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}

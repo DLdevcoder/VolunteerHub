@@ -1,12 +1,28 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Avatar, Input, Button, Spin, message, Modal } from "antd";
+import {
+  Avatar,
+  Input,
+  Button,
+  Spin,
+  message,
+  Modal,
+  Popover,
+  Tooltip,
+} from "antd";
 import { UserOutlined, SendOutlined, ExportOutlined } from "@ant-design/icons";
-import { AiOutlineLike, AiFillLike } from "react-icons/ai";
+import { AiOutlineLike } from "react-icons/ai"; // Icon like rỗng
 import { FaRegCommentAlt, FaGlobeAmericas } from "react-icons/fa";
 import postApi from "../../../apis/postApi";
+import {
+  REACTION_TYPES,
+  getReactionIcon,
+  getReactionColor,
+  getReactionLabel,
+} from "../../utils/reactionIcons";
+import ReactionModal from "./ReactionModal"; // Import Modal danh sách người thả tim (đã tạo ở bước trước)
 
-// Helper: Tính thời gian
+// --- HELPER: Thời gian ---
 const timeAgo = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -20,7 +36,7 @@ const timeAgo = (dateString) => {
   return date.toLocaleDateString("vi-VN");
 };
 
-// Helper: Màu avatar
+// --- HELPER: Màu Avatar ---
 const stringToColor = (string) => {
   if (!string) return "#ccc";
   const colors = ["#1877f2", "#42b72a", "#f7b928", "#fa383e", "#a333c8"];
@@ -31,47 +47,92 @@ const stringToColor = (string) => {
 };
 
 const PostCard = ({ post, currentUser }) => {
-  // State Like
-  const [isLiked, setIsLiked] = useState(post.is_liked > 0);
-  const [likeCount, setLikeCount] = useState(post.like_count || 0);
+  // --- STATE REACTION ---
+  // currentReaction nhận giá trị: null, 'like', 'love', 'haha', ...
+  const [currentReaction, setCurrentReaction] = useState(
+    post.current_reaction || null
+  );
+  const [reactionCount, setReactionCount] = useState(post.like_count || 0);
+  const [isReactionListOpen, setIsReactionListOpen] = useState(false); // Modal danh sách người thả tim
 
-  // State Comment
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // --- STATE COMMENT ---
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const commentsEndRef = useRef(null); // Để auto scroll
 
-  // Ref để cuộn xuống cuối danh sách comment
-  const commentsEndRef = useRef(null);
-
-  // Tự động cuộn xuống khi có comment mới
+  // Auto scroll xuống cuối khi có comment mới
   useEffect(() => {
-    if (isModalOpen && commentsEndRef.current) {
+    if (isCommentModalOpen && commentsEndRef.current) {
       commentsEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [comments, isModalOpen]);
+  }, [comments, isCommentModalOpen]);
 
-  // --- 1. XỬ LÝ LIKE ---
-  const handleLike = async () => {
-    const newStatus = !isLiked;
-    setIsLiked(newStatus);
-    setLikeCount((prev) => (newStatus ? prev + 1 : prev - 1));
+  // ==================== LOGIC REACTION ====================
 
-    try {
-      await postApi.toggleLike(post.post_id);
-    } catch (error) {
-      console.error("Lỗi like:", error);
-      setIsLiked(!newStatus);
-      setLikeCount((prev) => (newStatus ? prev - 1 : prev + 1));
+  const handleReaction = async (type) => {
+    const oldReaction = currentReaction;
+    const oldCount = reactionCount;
+
+    // Logic Optimistic UI (Cập nhật giao diện ngay lập tức)
+    if (currentReaction === type) {
+      // Bấm lại icon đang chọn -> Gỡ bỏ (Unlike)
+      setCurrentReaction(null);
+      setReactionCount((prev) => (prev > 0 ? prev - 1 : 0));
+      // Gọi API type cũ để gỡ
+      try {
+        await postApi.toggleReaction(post.post_id, type);
+      } catch (e) {
+        setCurrentReaction(oldReaction);
+        setReactionCount(oldCount);
+      }
+    } else {
+      // Đổi icon hoặc thả mới
+      setCurrentReaction(type);
+      // Nếu trước đó chưa thả gì thì tăng 1, nếu đổi icon thì giữ nguyên số lượng
+      if (!oldReaction) setReactionCount((prev) => prev + 1);
+
+      try {
+        await postApi.toggleReaction(post.post_id, type);
+      } catch (e) {
+        setCurrentReaction(oldReaction);
+        setReactionCount(oldCount);
+      }
     }
   };
 
-  // --- 2. MỞ MODAL & TẢI COMMENT ---
-  const openCommentModal = async () => {
-    setIsModalOpen(true);
+  // Menu Icon khi Hover vào nút Thích
+  const reactionMenu = (
+    <div style={{ display: "flex", gap: 8, padding: "4px 8px" }}>
+      {Object.keys(REACTION_TYPES).map((type) => (
+        <div
+          key={type}
+          onClick={() => handleReaction(type)}
+          className="reaction-icon-hover" // Class CSS animation
+          style={{
+            fontSize: 24,
+            cursor: "pointer",
+            transition: "transform 0.2s",
+          }}
+          title={REACTION_TYPES[type].label}
+        >
+          {REACTION_TYPES[type].icon}
+        </div>
+      ))}
+    </div>
+  );
 
-    // Chỉ tải nếu chưa tải lần nào
+  // Tooltip hiển thị khi hover vào số lượng like
+  const reactionTooltipText = currentReaction
+    ? `Bạn${reactionCount > 1 ? ` và ${reactionCount - 1} người khác` : ""}`
+    : `${reactionCount} người đã bày tỏ cảm xúc`;
+
+  // ==================== LOGIC COMMENT ====================
+
+  const openCommentModal = async () => {
+    setIsCommentModalOpen(true);
     if (!commentsLoaded) {
       try {
         setCommentsLoading(true);
@@ -81,35 +142,31 @@ const PostCard = ({ post, currentUser }) => {
           setCommentsLoaded(true);
         }
       } catch (error) {
-        console.error("Lỗi tải comment:", error);
+        console.error(error);
       } finally {
         setCommentsLoading(false);
       }
     }
   };
 
-  // --- 3. GỬI COMMENT (QUAN TRỌNG: CẬP NHẬT STATE NGAY) ---
   const handleSendComment = async () => {
     if (!commentText.trim()) return;
-
     try {
       const res = await postApi.createComment(post.post_id, commentText);
       if (res.success) {
+        // Lấy data trả về (cấu trúc tùy BE: res.data hoặc res.data.comment)
         const newComment = res.data.comment || res.data;
-
-        // Cập nhật danh sách comment ngay lập tức
-        setComments((prevComments) => [...prevComments, newComment]);
-
-        // Reset ô nhập
+        setComments((prev) => [...prev, newComment]);
         setCommentText("");
       }
     } catch (error) {
-      console.error("Lỗi gửi comment:", error);
       message.error("Không thể gửi bình luận.");
     }
   };
 
-  // Component con Header (Dùng chung cho Card và Modal)
+  // ==================== RENDER ====================
+
+  // Header dùng chung
   const PostHeader = () => (
     <div className="post-header">
       <Link to="#">
@@ -146,30 +203,53 @@ const PostCard = ({ post, currentUser }) => {
 
   return (
     <>
-      {/* CARD Ở NGOÀI DASHBOARD */}
+      {/* --- CARD CHÍNH --- */}
       <div className="fb-post-card">
         <PostHeader />
         <div className="post-content">{post.content}</div>
 
-        {/* Stats */}
+        {/* STATS BAR */}
         <div className="post-stats">
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            {likeCount > 0 && (
-              <>
-                <div
-                  style={{
-                    background: "#1877f2",
-                    borderRadius: "50%",
-                    padding: 3,
-                    display: "flex",
-                  }}
-                >
-                  <AiFillLike color="white" size={10} />
+          <div
+            style={{ display: "flex", alignItems: "center", cursor: "pointer" }}
+            onClick={() => setIsReactionListOpen(true)}
+          >
+            {reactionCount > 0 && (
+              <Tooltip title={reactionTooltipText}>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  {}
+                  <span
+                    style={{
+                      fontSize: 16,
+                      marginRight: 4,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    {getReactionIcon(currentReaction) || (
+                      <div
+                        style={{
+                          background: "#1877f2",
+                          borderRadius: "50%",
+                          padding: 3,
+                          display: "flex",
+                          color: "white",
+                          fontSize: 10,
+                        }}
+                      >
+                        <AiOutlineLike />
+                      </div>
+                    )}
+                  </span>
+                  <span style={{ color: "#65676b", fontSize: 13 }}>
+                    {reactionCount}
+                  </span>
                 </div>
-                <span style={{ color: "#65676b" }}>{likeCount}</span>
-              </>
+              </Tooltip>
             )}
           </div>
+
+          {/* Bên phải: Số Comment */}
           <div
             style={{ cursor: "pointer", color: "#65676b" }}
             onClick={openCommentModal}
@@ -181,35 +261,67 @@ const PostCard = ({ post, currentUser }) => {
           </div>
         </div>
 
-        {/* Actions */}
+        {/* ACTION BAR */}
         <div className="post-footer">
-          <div
-            className={`post-action ${isLiked ? "liked" : ""}`}
-            onClick={handleLike}
+          <Popover
+            content={reactionMenu}
+            trigger="hover"
+            overlayClassName="reaction-popover"
           >
-            {isLiked ? <AiFillLike size={20} /> : <AiOutlineLike size={20} />}
-            <span>Thích</span>
-          </div>
+            <div
+              className="post-action"
+              onClick={() => handleReaction(currentReaction || "like")}
+              style={{ color: getReactionColor(currentReaction) }}
+            >
+              {currentReaction ? (
+                // FIX CSS 2: Chỉnh icon ở nút bấm nhỏ lại (fontSize: 18 hoặc 20) để không vỡ khung
+                // Thêm display: flex để căn giữa tốt hơn
+                <span
+                  style={{
+                    fontSize: 18,
+                    marginRight: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    height: 24, // Cố định chiều cao dòng
+                  }}
+                >
+                  {getReactionIcon(currentReaction)}
+                </span>
+              ) : (
+                <AiOutlineLike size={20} style={{ marginRight: 6 }} />
+              )}
+
+              <span style={{ fontWeight: currentReaction ? 600 : 400 }}>
+                {getReactionLabel(currentReaction)}
+              </span>
+            </div>
+          </Popover>
+
           <div className="post-action" onClick={openCommentModal}>
-            <FaRegCommentAlt size={18} />
-            <span>Bình luận</span>
+            <FaRegCommentAlt size={18} /> <span>Bình luận</span>
           </div>
           <Link to={`/events/${post.event_id}`} className="post-action">
-            <ExportOutlined style={{ fontSize: 18 }} />
-            <span>Xem thêm</span>
+            <ExportOutlined style={{ fontSize: 18 }} /> <span>Xem thêm</span>
           </Link>
         </div>
       </div>
 
-      {/* MODAL POPUP (GIỐNG FACEBOOK) */}
+      {/* --- MODAL 1: DANH SÁCH NGƯỜI REACT (POPUP) --- */}
+      <ReactionModal
+        postId={post.post_id}
+        open={isReactionListOpen}
+        onClose={() => setIsReactionListOpen(false)}
+      />
+
+      {/* --- MODAL 2: BÌNH LUẬN (FACEBOOK STYLE) --- */}
       <Modal
         title={
           <div className="fb-post-modal-header">
             Bài viết của {post.full_name}
           </div>
         }
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
+        open={isCommentModalOpen}
+        onCancel={() => setIsCommentModalOpen(false)}
         footer={null}
         width={700}
         centered
@@ -217,57 +329,26 @@ const PostCard = ({ post, currentUser }) => {
         styles={{ body: { padding: 0 } }}
       >
         <div className="fb-post-modal-scroll">
-          {/* Nội dung bài gốc */}
           <div className="modal-post-content">
             <PostHeader />
             <div className="post-content" style={{ fontSize: 16 }}>
               {post.content}
             </div>
-            <div
-              className="post-stats"
-              style={{ borderBottom: "none", paddingBottom: 0 }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <AiFillLike color="#1877f2" /> {likeCount}
-              </div>
-            </div>
-            <div className="post-footer" style={{ marginTop: 8 }}>
-              <div
-                className={`post-action ${isLiked ? "liked" : ""}`}
-                onClick={handleLike}
-              >
-                {isLiked ? (
-                  <AiFillLike size={20} />
-                ) : (
-                  <AiOutlineLike size={20} />
-                )}{" "}
-                Thích
-              </div>
-              <div
-                className="post-action"
-                style={{ cursor: "default", color: "#65676b" }}
-              >
-                <FaRegCommentAlt size={18} /> Bình luận
-              </div>
-            </div>
           </div>
 
-          {/* Danh sách Comment */}
           <div className="comment-list-container">
             {commentsLoading && (
               <div style={{ textAlign: "center", padding: 20 }}>
                 <Spin />
               </div>
             )}
-
             {!commentsLoading && comments.length === 0 && (
               <div
                 style={{ textAlign: "center", color: "#65676b", padding: 20 }}
               >
-                Chưa có bình luận nào. Hãy là người đầu tiên!
+                Chưa có bình luận nào.
               </div>
             )}
-
             {comments.map((cmt) => (
               <div key={cmt.comment_id} className="comment-item">
                 <Avatar
@@ -282,12 +363,10 @@ const PostCard = ({ post, currentUser }) => {
                 </div>
               </div>
             ))}
-            {/* Div rỗng để cuộn xuống đây */}
             <div ref={commentsEndRef} />
           </div>
         </div>
 
-        {/* Ô nhập liệu (Sticky Bottom) */}
         <div className="fb-post-modal-footer">
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <Avatar src={currentUser?.avatar_url} icon={<UserOutlined />} />
