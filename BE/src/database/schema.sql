@@ -372,22 +372,7 @@ DELIMITER ;
 
 DELIMITER //
 
-CREATE TRIGGER `trg_event_approval_notify`
-AFTER UPDATE ON `Events`
-FOR EACH ROW
-BEGIN
-    IF OLD.approval_status != NEW.approval_status THEN
-        IF NEW.approval_status = 'approved' THEN
-            INSERT INTO `Notifications` (`user_id`, `type`, `payload`)
-            VALUES (NEW.manager_id, 'event_approved', 
-                    JSON_OBJECT('event_id', NEW.event_id, 'title', NEW.title));
-        ELSEIF NEW.approval_status = 'rejected' THEN
-            INSERT INTO `Notifications` (`user_id`, `type`, `payload`)
-            VALUES (NEW.manager_id, 'event_rejected', 
-                    JSON_OBJECT('event_id', NEW.event_id, 'title', NEW.title));
-        END IF;
-    END IF;
-END//
+
 
 CREATE TRIGGER `trg_registration_after_insert`
 AFTER INSERT ON `Registrations`
@@ -415,23 +400,8 @@ BEGIN
         SET `current_participants` = GREATEST(`current_participants` - 1, 0)
         WHERE `event_id` = NEW.event_id;
     END IF;
-
-    IF OLD.status != NEW.status THEN
-        IF NEW.status = 'approved' THEN
-            INSERT INTO `Notifications` (`user_id`, `type`, `payload`)
-            VALUES (NEW.user_id, 'registration_approved', 
-                    JSON_OBJECT('event_id', NEW.event_id));
-        ELSEIF NEW.status = 'rejected' THEN 
-            INSERT INTO `Notifications` (`user_id`, `type`, `payload`)
-            VALUES (NEW.user_id, 'registration_rejected', 
-                    JSON_OBJECT('event_id', NEW.event_id, 'reason', NEW.rejection_reason));
-        ELSEIF NEW.status = 'completed' THEN 
-            INSERT INTO `Notifications` (`user_id`, `type`, `payload`)
-            VALUES (NEW.user_id, 'registration_completed', 
-                    JSON_OBJECT('event_id', NEW.event_id));
-        END IF;
-    END IF;
 END//
+
 
 CREATE TRIGGER `trg_registration_after_delete`
 AFTER DELETE ON `Registrations`

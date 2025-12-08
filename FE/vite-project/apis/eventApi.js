@@ -34,6 +34,12 @@ const eventApi = {
     return response.data;
   },
 
+  // Volunteer – lịch sử tham gia sự kiện của chính mình
+  async getMyEventHistory() {
+    const res = await api.get("/events/my/history");
+    return res.data; // { success, message, data: [...] }
+  },
+
   // ==== MANAGER ====
 
   // Tạo sự kiện (Manager)

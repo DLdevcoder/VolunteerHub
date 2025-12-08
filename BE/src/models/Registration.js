@@ -2,7 +2,7 @@
 import pool from "../config/db.js";
 
 const Registration = {
-  // Đăng ký tham gia
+  // Đăng ký tham gia (mới) -> trả về registration_id
   async create(user_id, event_id) {
     const sql = `
       INSERT INTO Registrations (user_id, event_id, status) 
@@ -12,7 +12,7 @@ const Registration = {
     return result.insertId;
   },
 
-  // Hủy đăng ký (Ở đây dùng Soft Cancel (chuyển status = cancelled) để lưu lịch sử)
+  // Hủy đăng ký (Soft cancel -> status = cancelled)
   async cancel(user_id, event_id) {
     const sql = `
       UPDATE Registrations 
@@ -23,7 +23,7 @@ const Registration = {
     return result.affectedRows > 0;
   },
 
-  // Lấy người dùng đăng ký của 1 sự kiện
+  // Lấy người dùng đăng ký của 1 sự kiện (cho Manager xem danh sách)
   async getByEventId(event_id) {
     const sql = `
       SELECT 
@@ -31,7 +31,6 @@ const Registration = {
         r.status, 
         r.registration_date, 
         r.rejection_reason,
-        -- Lấy thông tin người dùng để hiển thị
         u.user_id, 
         u.full_name, 
         u.email, 
@@ -72,8 +71,8 @@ const Registration = {
     const [rows] = await pool.execute(sql, [user_id]);
     return rows;
   },
-  
-  // Đăng ký lại (Cập nhật trạng thái từ cancelled -> pending)
+
+  // Đăng ký lại (Cập nhật trạng thái từ cancelled / rejected -> pending)
   async reRegister(user_id, event_id) {
     const sql = `
       UPDATE Registrations 
@@ -83,9 +82,9 @@ const Registration = {
     `;
     const [result] = await pool.execute(sql, [user_id, event_id]);
     return result.affectedRows > 0;
-  }, 
+  },
 
-  // Đếm tổng số lượng đã đăng ký (bao gồm cả Pending và Approved)
+  // Đếm tổng số lượng đã đăng ký (Pending + Approved)
   async countRequests(event_id) {
     const [rows] = await pool.execute(
       `SELECT COUNT(*) as total FROM Registrations 
@@ -95,8 +94,7 @@ const Registration = {
     return rows[0].total;
   },
 
-  // Lấy chi tiết đăng ký kèm thông tin Manager của sự kiện
-  // Dùng để Controller kiểm tra xem Manager đang thao tác có phải chủ sự kiện không
+  // Lấy chi tiết đăng ký kèm thông tin Manager & Event (cho việc duyệt)
   async getDetailById(registration_id) {
     const sql = `
       SELECT 
@@ -104,7 +102,6 @@ const Registration = {
         r.status, 
         r.user_id,       
         r.event_id,
-        
         e.title as event_title, 
         e.manager_id,
         e.start_date, 
@@ -120,21 +117,22 @@ const Registration = {
       JOIN Users u ON r.user_id = u.user_id
       WHERE r.registration_id = ?
     `;
-    
     const [rows] = await pool.execute(sql, [registration_id]);
     return rows[0];
   },
 
   // Duyệt đăng ký
   async approve(registration_id) {
-    const sql = "UPDATE Registrations SET status = 'approved', rejection_reason = NULL WHERE registration_id = ?";
+    const sql =
+      "UPDATE Registrations SET status = 'approved', rejection_reason = NULL WHERE registration_id = ?";
     const [result] = await pool.execute(sql, [registration_id]);
     return result.affectedRows > 0;
   },
 
   // Từ chối đăng ký
   async reject(registration_id, reason) {
-    const sql = "UPDATE Registrations SET status = 'rejected', rejection_reason = ? WHERE registration_id = ?";
+    const sql =
+      "UPDATE Registrations SET status = 'rejected', rejection_reason = ? WHERE registration_id = ?";
     const [result] = await pool.execute(sql, [reason, registration_id]);
     return result.affectedRows > 0;
   },
@@ -150,7 +148,7 @@ const Registration = {
     `;
     const [result] = await pool.execute(sql, [manager_id, registration_id]);
     return result.affectedRows > 0;
-  }
+  },
 };
 
 export default Registration;

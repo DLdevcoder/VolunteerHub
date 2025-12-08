@@ -1,4 +1,3 @@
-// src/redux/slices/registrationSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import registrationApi from "../../../apis/registrationApi";
 
@@ -12,7 +11,6 @@ export const registerForEventThunk = createAsyncThunk(
   async (eventId, { rejectWithValue }) => {
     try {
       const res = await registrationApi.registerForEvent(eventId);
-      // res: { success, message, data? }
       if (!res?.success) {
         return rejectWithValue({
           eventId,
@@ -51,6 +49,37 @@ export const cancelRegistrationThunk = createAsyncThunk(
     } catch (err) {
       const msg =
         err?.response?.data?.message || "Không thể hủy đăng ký sự kiện";
+      return rejectWithValue({ eventId, message: msg });
+    }
+  }
+);
+
+// Volunteer – lấy trạng thái đăng ký của bản thân cho 1 event
+export const getMyRegistrationStatusThunk = createAsyncThunk(
+  "registration/getMyRegistrationStatus",
+  async (eventId, { rejectWithValue }) => {
+    try {
+      const res = await registrationApi.getMyRegistrationStatus(eventId);
+      // backend: { success, data: { hasRegistration, status, canAccessPosts } }
+      if (!res?.success) {
+        return rejectWithValue({
+          eventId,
+          message: res?.message || "Không thể lấy trạng thái đăng ký sự kiện",
+        });
+      }
+
+      return {
+        eventId,
+        statusData: res.data || {
+          hasRegistration: false,
+          status: null,
+          canAccessPosts: false,
+        },
+      };
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        "Không thể lấy trạng thái đăng ký sự kiện";
       return rejectWithValue({ eventId, message: msg });
     }
   }
@@ -174,8 +203,16 @@ export const completeRegistrationThunk = createAsyncThunk(
 
    state.registration = {
      volunteer: {
-       registeringId: null,   // eventId hoặc "cancel-<eventId>"
+       registeringId: null,
        error: null,
+       byEventStatus: {
+         [eventId]: {
+           loading: false,
+           hasRegistration: boolean,
+           status: string | null,
+           canAccessPosts: boolean,
+         }
+       }
      },
      manager: {
        byEvent: {
@@ -185,7 +222,7 @@ export const completeRegistrationThunk = createAsyncThunk(
            error: null,
          },
        },
-       updatingId: null,      // registrationId đang duyệt / từ chối / complete
+       updatingId: null,
        error: null,
      },
    }
@@ -195,6 +232,7 @@ const initialState = {
   volunteer: {
     registeringId: null,
     error: null,
+    byEventStatus: {}, // eventId -> { loading, hasRegistration, status, canAccessPosts }
   },
   manager: {
     byEvent: {}, // eventId -> { items, loading, error }
@@ -221,8 +259,21 @@ const registrationSlice = createSlice({
         state.volunteer.registeringId = eventId;
         state.volunteer.error = null;
       })
-      .addCase(registerForEventThunk.fulfilled, (state) => {
+      .addCase(registerForEventThunk.fulfilled, (state, action) => {
+        const { eventId } = action.payload;
         state.volunteer.registeringId = null;
+
+        if (!state.volunteer.byEventStatus[eventId]) {
+          state.volunteer.byEventStatus[eventId] = {
+            loading: false,
+            hasRegistration: false,
+            status: null,
+            canAccessPosts: false,
+          };
+        }
+        state.volunteer.byEventStatus[eventId].hasRegistration = true;
+        state.volunteer.byEventStatus[eventId].status = "pending";
+        state.volunteer.byEventStatus[eventId].canAccessPosts = false;
       })
       .addCase(registerForEventThunk.rejected, (state, action) => {
         state.volunteer.registeringId = null;
@@ -234,11 +285,56 @@ const registrationSlice = createSlice({
         state.volunteer.registeringId = `cancel-${eventId}`;
         state.volunteer.error = null;
       })
-      .addCase(cancelRegistrationThunk.fulfilled, (state) => {
+      .addCase(cancelRegistrationThunk.fulfilled, (state, action) => {
+        const { eventId } = action.payload;
         state.volunteer.registeringId = null;
+
+        // reset status – xem như chưa đăng ký
+        state.volunteer.byEventStatus[eventId] = {
+          loading: false,
+          hasRegistration: false,
+          status: null,
+          canAccessPosts: false,
+        };
       })
       .addCase(cancelRegistrationThunk.rejected, (state, action) => {
         state.volunteer.registeringId = null;
+        state.volunteer.error = action.payload?.message || action.error.message;
+      })
+
+      // getMyRegistrationStatus
+      .addCase(getMyRegistrationStatusThunk.pending, (state, action) => {
+        const eventId = action.meta.arg;
+        if (!state.volunteer.byEventStatus[eventId]) {
+          state.volunteer.byEventStatus[eventId] = {
+            loading: false,
+            hasRegistration: false,
+            status: null,
+            canAccessPosts: false,
+          };
+        }
+        state.volunteer.byEventStatus[eventId].loading = true;
+      })
+      .addCase(getMyRegistrationStatusThunk.fulfilled, (state, action) => {
+        const { eventId, statusData } = action.payload;
+        state.volunteer.byEventStatus[eventId] = {
+          loading: false,
+          hasRegistration: !!statusData.hasRegistration,
+          status: statusData.status || null,
+          canAccessPosts: !!statusData.canAccessPosts,
+        };
+      })
+      .addCase(getMyRegistrationStatusThunk.rejected, (state, action) => {
+        const eventId = action.payload?.eventId || action.meta.arg;
+        if (!state.volunteer.byEventStatus[eventId]) {
+          state.volunteer.byEventStatus[eventId] = {
+            loading: false,
+            hasRegistration: false,
+            status: null,
+            canAccessPosts: false,
+          };
+        }
+        state.volunteer.byEventStatus[eventId].loading = false;
         state.volunteer.error = action.payload?.message || action.error.message;
       });
 

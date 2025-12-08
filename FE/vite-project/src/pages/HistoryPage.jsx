@@ -1,5 +1,7 @@
+import History from "../components/History/History.jsx";
+
 const HistoryPage = () => {
-  return <div>History page (lịch sử tham gia)</div>;
+  return <History />;
 };
 
 export default HistoryPage;

@@ -13,7 +13,12 @@ const router = express.Router();
 router.get("/categories", eventController.getCategories);
 
 // Lấy danh sách sự kiện đang hoạt động (public)
-router.get("/active", eventController.getActiveEvents);
+// router.get("/active", eventController.getActiveEvents);
+router.get(
+  "/active",
+  authMiddleware.authenticateTokenOptional,
+  eventController.getActiveEvents
+);
 
 // ====================================================================
 // ROUTES CHO ADMIN - ĐẶT TRƯỚC (vì có prefix /admin)

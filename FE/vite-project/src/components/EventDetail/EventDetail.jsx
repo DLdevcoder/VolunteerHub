@@ -1,19 +1,18 @@
+// src/pages/EventDetail/EventDetail.jsx
 import "./EventDetail.css";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Card,
-  Avatar,
-  Button,
-  Input,
-  List,
-  Space,
   Typography,
   Spin,
   Empty,
+  Tabs,
+  Button,
+  Space,
+  message,
 } from "antd";
-import { UserOutlined } from "@ant-design/icons";
 
 import {
   eventDetailSelector,
@@ -22,22 +21,16 @@ import {
 import { fetchEventDetailThunk } from "../../redux/slices/eventSlice";
 
 import {
-  eventPostsSelector,
-  eventPostsPaginationSelector,
-  eventPostsLoadingSelector,
-} from "../../redux/selectors/postSelectors";
-import {
-  fetchEventPostsThunk,
-  createPostThunk,
-  deletePostThunk,
-} from "../../redux/slices/postSlice";
+  getMyRegistrationStatusThunk,
+  cancelRegistrationThunk,
+} from "../../redux/slices/registrationSlice";
+
+import EventPostsTab from "./EventPostsTab";
+import EventParticipantsTab from "./EventParticipantsTab";
 
 const { Title, Text, Paragraph } = Typography;
-const { TextArea } = Input;
 
-const PAGE_SIZE = 10;
-
-// reuse the helper format from EventCard
+// same format helper as EventCard
 const formatDateRange = (start, end) => {
   if (!start || !end) return "";
   const s = new Date(start);
@@ -58,82 +51,71 @@ const EventDetail = () => {
 
   const event = useSelector(eventDetailSelector);
   const detailLoading = useSelector(eventDetailLoadingSelector);
-
-  console.log("Event detail, event id = ", event_id);
-
-  const posts = useSelector(eventPostsSelector);
-  const postsPagination = useSelector(eventPostsPaginationSelector);
-  const postsLoading = useSelector(eventPostsLoadingSelector);
-
   const authUser = useSelector((state) => state.auth.user);
 
-  const [page, setPage] = useState(1);
-  const [newPostContent, setNewPostContent] = useState("");
-  const [creatingPost, setCreatingPost] = useState(false);
+  const [activeTab, setActiveTab] = useState("posts");
+  const [cancelLoading, setCancelLoading] = useState(false);
 
-  // Load event + first page of posts
+  // ----- registration status for this event -----
+  const defaultRegState = {
+    loading: false,
+    hasRegistration: false,
+    status: null,
+    canAccessPosts: false,
+  };
+
+  const registrationState = useSelector((state) => {
+    const map = state.registration?.volunteer?.byEventStatus || {};
+    return map[event_id] || defaultRegState;
+  });
+
+  const registrationStatus = registrationState.status; // pending | approved | completed | rejected | cancelled | null
+  const hasRegistration = registrationState.hasRegistration;
+  const canAccessPostsFlag = registrationState.canAccessPosts;
+
+  // ----- role helpers -----
+  const isManager = useMemo(() => {
+    if (!authUser || !event) return false;
+    return authUser.user_id === event.manager_id;
+  }, [authUser, event]);
+
+  const isVolunteer = authUser?.role_name === "Volunteer";
+
+  // Final "can view posts" rule:
+  //  - Manager: always
+  //  - Volunteer: only when backend says canAccessPosts (approved/completed)
+  const canViewPosts = isManager || (isVolunteer && canAccessPostsFlag);
+
+  // ----- load event detail + my registration status -----
   useEffect(() => {
     if (!event_id) return;
 
     dispatch(fetchEventDetailThunk(event_id));
-    dispatch(
-      fetchEventPostsThunk({
-        event_id,
-        page: 1,
-        limit: PAGE_SIZE,
-      })
-    );
-    // ⬆️ we do NOT call setPage(1) here (no warning)
-  }, [dispatch, event_id]);
 
-  const handleChangePostsPage = (nextPage) => {
-    setPage(nextPage);
-    dispatch(
-      fetchEventPostsThunk({
-        event_id,
-        page: nextPage,
-        limit: PAGE_SIZE,
-      })
-    );
-  };
+    // only Volunteer needs per-event registration status
+    if (authUser && authUser.role_name === "Volunteer") {
+      dispatch(getMyRegistrationStatusThunk(event_id));
+    }
+  }, [dispatch, event_id, authUser?.user_id, authUser?.role_name]);
 
-  const handleCreatePost = async () => {
-    const content = newPostContent.trim();
-    if (!content) return;
-
+  // ----- cancel registration -----
+  const handleCancelRegistration = async () => {
     try {
-      setCreatingPost(true);
-      await dispatch(
-        createPostThunk({
-          event_id,
-          content,
-        })
-      ).unwrap();
+      setCancelLoading(true);
+      await dispatch(cancelRegistrationThunk(event_id)).unwrap();
+      message.success("Hủy đăng ký thành công");
 
-      setNewPostContent("");
-
-      // reload first page (or current page)
-      handleChangePostsPage(1);
+      // reload registration status + event detail
+      dispatch(getMyRegistrationStatusThunk(event_id));
+      dispatch(fetchEventDetailThunk(event_id));
     } catch (err) {
-      // optional: show message.error here
-      // message.error(err || "Không thể đăng bài");
-      console.error(err);
+      const msg = err?.message || "Không thể hủy đăng ký sự kiện";
+      message.error(msg);
     } finally {
-      setCreatingPost(false);
+      setCancelLoading(false);
     }
   };
 
-  const handleDeletePost = async (postId) => {
-    try {
-      await dispatch(deletePostThunk({ event_id, postId })).unwrap();
-      // reload current page
-      handleChangePostsPage(page);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // ===== Top summary block helpers =====
   const participantsText = (() => {
     if (!event) return "";
     const current = event.current_participants ?? 0;
@@ -145,9 +127,126 @@ const EventDetail = () => {
     return `${current} người tham gia`;
   })();
 
+  const canShowCancelButton =
+    isVolunteer && ["pending", "approved"].includes(registrationStatus);
+
+  // =========================================================
+  //  CONTENT BELOW INFO BLOCK
+  // =========================================================
+  const renderTabsOrInfo = () => {
+    // 1. Chưa đăng nhập -> chỉ xem info, không xem bài viết
+    if (!authUser) {
+      return (
+        <Card bordered={false}>
+          <Empty description="Bạn cần đăng nhập và đăng ký tham gia sự kiện để xem bài viết." />
+        </Card>
+      );
+    }
+
+    // 2. Manager: luôn xem được cả 2 tab
+    if (isManager) {
+      return (
+        <Card bordered={false}>
+          <Tabs activeKey={activeTab} onChange={setActiveTab}>
+            <Tabs.TabPane tab="Bài viết" key="posts">
+              <EventPostsTab
+                eventId={event_id}
+                event={event}
+                authUser={authUser}
+                canViewPosts={true}
+                canCreatePost={true}
+              />
+            </Tabs.TabPane>
+
+            <Tabs.TabPane tab="Người tham gia" key="participants">
+              <EventParticipantsTab eventId={event_id} />
+            </Tabs.TabPane>
+          </Tabs>
+        </Card>
+      );
+    }
+
+    // 3. Volunteer (đã đăng nhập)
+    if (isVolunteer) {
+      // Chưa hề đăng ký
+      if (!hasRegistration) {
+        return (
+          <Card bordered={false}>
+            <Empty description="Bạn cần đăng ký tham gia sự kiện và được chấp thuận để xem các bài viết." />
+          </Card>
+        );
+      }
+
+      // Đang chờ duyệt
+      if (registrationStatus === "pending") {
+        return (
+          <Card bordered={false}>
+            <Empty description="Đăng ký của bạn đang chờ duyệt. Bạn sẽ xem được bài viết sau khi được chấp thuận." />
+          </Card>
+        );
+      }
+
+      // Bị từ chối
+      if (registrationStatus === "rejected") {
+        return (
+          <Card bordered={false}>
+            <Empty description="Đăng ký của bạn đã bị từ chối, nên bạn không thể xem bài viết của sự kiện này." />
+          </Card>
+        );
+      }
+
+      // Đã hủy
+      if (registrationStatus === "cancelled") {
+        return (
+          <Card bordered={false}>
+            <Empty description="Bạn đã hủy đăng ký sự kiện này. Hãy đăng ký lại nếu muốn tham gia và xem bài viết." />
+          </Card>
+        );
+      }
+
+      // Được duyệt / đã hoàn thành -> xem được bài viết
+      if (canViewPosts) {
+        return (
+          <Card bordered={false}>
+            <Tabs activeKey={activeTab} onChange={setActiveTab}>
+              <Tabs.TabPane tab="Bài viết" key="posts">
+                <EventPostsTab
+                  eventId={event_id}
+                  event={event}
+                  authUser={authUser}
+                  canViewPosts={true}
+                  canCreatePost={true}
+                />
+              </Tabs.TabPane>
+
+              {/* Volunteer không xem tab người tham gia */}
+              <Tabs.TabPane tab="Người tham gia" key="participants" disabled>
+                <Empty description="Chỉ Quản lý sự kiện mới xem được danh sách người tham gia." />
+              </Tabs.TabPane>
+            </Tabs>
+          </Card>
+        );
+      }
+
+      // fallback an toàn
+      return (
+        <Card bordered={false}>
+          <Empty description="Bạn không có quyền xem các bài viết của sự kiện này." />
+        </Card>
+      );
+    }
+
+    // Role khác (nếu có) => xử lý giống chưa đăng nhập
+    return (
+      <Card bordered={false}>
+        <Empty description="Bạn không có quyền xem các bài viết của sự kiện này." />
+      </Card>
+    );
+  };
+
   return (
     <div className="event-detail-page">
-      {/* Top event info */}
+      {/* ======= Top info block ======= */}
       <Card bordered={false} style={{ marginBottom: 16 }}>
         {detailLoading && !event ? (
           <div style={{ textAlign: "center", padding: 24 }}>
@@ -181,103 +280,26 @@ const EventDetail = () => {
                 {event.description}
               </Paragraph>
             )}
-          </div>
-        )}
-      </Card>
 
-      {/* Post composer */}
-      <Card bordered={false} style={{ marginBottom: 16 }}>
-        <Space align="start" style={{ width: "100%" }}>
-          <Avatar
-            size="large"
-            src={authUser?.avatar_url}
-            icon={!authUser?.avatar_url && <UserOutlined />}
-          />
-          <div className="event-detail-composer">
-            <TextArea
-              rows={3}
-              placeholder="Bạn đang nghĩ gì về sự kiện này?"
-              value={newPostContent}
-              onChange={(e) => setNewPostContent(e.target.value)}
-            />
-            <div className="event-detail-composer-actions">
-              <Button
-                type="primary"
-                disabled={!newPostContent.trim()}
-                loading={creatingPost}
-                onClick={handleCreatePost}
-              >
-                Đăng
-              </Button>
-            </div>
-          </div>
-        </Space>
-      </Card>
-
-      {/* Posts list */}
-      <Card bordered={false}>
-        {postsLoading && !posts.length ? (
-          <div style={{ textAlign: "center", padding: 24 }}>
-            <Spin />
-          </div>
-        ) : !posts.length ? (
-          <Empty description="Chưa có bài viết nào" />
-        ) : (
-          <List
-            itemLayout="vertical"
-            dataSource={posts}
-            renderItem={(post) => (
-              <List.Item
-                key={post.post_id}
-                className="event-detail-post-item"
-                actions={
-                  post.user_id === authUser?.user_id ||
-                  event?.manager_id === authUser?.user_id
-                    ? [
-                        <Button
-                          key="delete"
-                          type="link"
-                          danger
-                          onClick={() => handleDeletePost(post.post_id)}
-                        >
-                          Xóa
-                        </Button>,
-                      ]
-                    : []
-                }
-              >
-                <List.Item.Meta
-                  avatar={
-                    <Avatar
-                      src={post.avatar_url}
-                      icon={!post.avatar_url && <UserOutlined />}
-                    />
-                  }
-                  title={
-                    <Space direction="vertical" size={0}>
-                      <Text strong>{post.full_name}</Text>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {new Date(post.created_at).toLocaleString("vi-VN")}
-                      </Text>
-                    </Space>
-                  }
-                />
-                <div className="event-detail-post-content">{post.content}</div>
-              </List.Item>
+            {/* Nút Hủy tham gia (Volunteer đã đăng ký) */}
+            {canShowCancelButton && (
+              <Space style={{ marginTop: 8 }}>
+                <Button
+                  danger
+                  size="small"
+                  loading={cancelLoading}
+                  onClick={handleCancelRegistration}
+                >
+                  Hủy tham gia
+                </Button>
+              </Space>
             )}
-            pagination={
-              postsPagination?.total > PAGE_SIZE
-                ? {
-                    current: postsPagination.page || page,
-                    pageSize: postsPagination.limit || PAGE_SIZE,
-                    total: postsPagination.total,
-                    onChange: handleChangePostsPage,
-                  }
-                : false
-            }
-          />
+          </div>
         )}
       </Card>
+
+      {/* ======= Below: Tabs or info depending on role + status ======= */}
+      {renderTabsOrInfo()}
     </div>
   );
 };

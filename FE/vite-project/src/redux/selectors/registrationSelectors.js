@@ -30,3 +30,9 @@ export const managerUpdatingIdSelector = (state) =>
 
 export const managerRegistrationErrorSelector = (state) =>
   state.registration.manager.error;
+
+export const registrationVolunteerSelector = (state) =>
+  state.registration.volunteer;
+
+export const registrationRegisteringIdSelector = (state) =>
+  state.registration.volunteer.registeringId;

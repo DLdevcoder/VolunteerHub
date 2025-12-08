@@ -180,106 +180,152 @@ const Event = {
   // Lấy danh sách sự kiện đang hoạt động (approved và chưa kết thúc)
   // models/Event.js (chỉ thay hàm này)
 
-  async getActiveEvents(filters = {}) {
-    let {
-      page = 1,
-      limit = 10,
-      category_id,
-      search,
-      start_date_from,
-      start_date_to,
-    } = filters;
+  // Lấy danh sách sự kiện đang hoạt động (đã duyệt, chưa kết thúc)
+  // Nếu truyền userId (Volunteer) thì JOIN thêm Registrations
+  async getActiveEvents(filters = {}, userId = null) {
+    try {
+      let {
+        page = 1,
+        limit = 10,
+        category_id,
+        search,
+        start_date_from,
+        start_date_to,
+      } = filters;
 
-    // Đảm bảo page / limit là số hợp lệ
-    page = Number(page) || 1;
-    limit = Number(limit) || 10;
+      // Đảm bảo page / limit là số hợp lệ
+      page = Number(page) || 1;
+      limit = Number(limit) || 10;
 
-    if (page < 1) page = 1;
-    if (limit < 1) limit = 10;
-    if (limit > 100) limit = 100;
+      if (page < 1) page = 1;
+      if (limit < 1) limit = 10;
+      if (limit > 100) limit = 100;
 
-    const offset = (page - 1) * limit;
+      const offset = (page - 1) * limit;
 
-    // Điều kiện cứng: Chỉ lấy sự kiện chưa xóa, đã duyệt và chưa kết thúc
-    let whereConditions = [
-      "e.is_deleted = FALSE",
-      "e.approval_status = 'approved'",
-      "e.end_date >= NOW()",
-    ];
-    let params = [];
+      // Điều kiện cứng: Chỉ lấy sự kiện chưa xóa, đã duyệt và chưa kết thúc
+      const whereConditions = [
+        "e.is_deleted = FALSE",
+        "e.approval_status = 'approved'",
+        "e.end_date >= NOW()",
+      ];
+      const params = [];
 
-    // Lọc theo category
-    if (category_id) {
-      whereConditions.push("e.category_id = ?");
-      params.push(Number(category_id));
-    }
+      // Lọc theo category
+      if (category_id) {
+        whereConditions.push("e.category_id = ?");
+        params.push(Number(category_id));
+      }
 
-    // Lọc theo search (mình cho thêm location cho tiện, bạn muốn giữ nguyên thì bỏ OR e.location)
-    if (search) {
-      whereConditions.push(
-        "(e.title LIKE ? OR e.description LIKE ? OR e.location LIKE ?)"
+      // Lọc theo search
+      if (search) {
+        whereConditions.push(
+          "(e.title LIKE ? OR e.description LIKE ? OR e.location LIKE ?)"
+        );
+        const likeVal = `%${search}%`;
+        params.push(likeVal, likeVal, likeVal);
+      }
+
+      // Lọc theo khoảng thời gian bắt đầu
+      if (start_date_from) {
+        whereConditions.push("e.start_date >= ?");
+        params.push(start_date_from);
+      }
+
+      if (start_date_to) {
+        whereConditions.push("e.start_date <= ?");
+        params.push(start_date_to);
+      }
+
+      const whereClause =
+        whereConditions.length > 0
+          ? `WHERE ${whereConditions.join(" AND ")}`
+          : "";
+
+      // -------- 1) Đếm tổng số event phù hợp --------
+      const [countResult] = await pool.query(
+        `SELECT COUNT(*) AS total FROM Events e ${whereClause}`,
+        params
       );
-      const likeVal = `%${search}%`;
-      params.push(likeVal, likeVal, likeVal);
-    }
+      const total = countResult[0]?.total ?? 0;
 
-    // Lọc theo khoảng thời gian bắt đầu
-    if (start_date_from) {
-      whereConditions.push("e.start_date >= ?");
-      params.push(start_date_from);
-    }
+      // Nếu không có bản ghi nào thì trả rỗng luôn cho nhanh
+      if (total === 0) {
+        return {
+          events: [],
+          pagination: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+          },
+        };
+      }
 
-    if (start_date_to) {
-      whereConditions.push("e.start_date <= ?");
-      params.push(start_date_to);
-    }
+      // -------- 2) Lấy dữ liệu trang hiện tại --------
+      // LEFT JOIN Registrations để lấy trạng thái đăng ký của user (nếu có)
+      let userRegistrationSelect = "";
+      let userRegistrationJoin = "";
+      const queryParams = [...params];
 
-    const whereClause = `WHERE ${whereConditions.join(" AND ")}`;
+      if (userId) {
+        userRegistrationSelect = `
+        , r.status AS user_registration_status
+        , r.registration_id AS user_registration_id
+      `;
+        userRegistrationJoin = `
+        LEFT JOIN Registrations r 
+          ON e.event_id = r.event_id 
+         AND r.user_id = ?
+      `;
+        // userId là tham số đầu tiên (ứng với r.user_id = ?)
+        queryParams.unshift(userId);
+      } else {
+        // Nếu không login / không phải Volunteer thì để null cho FE
+        userRegistrationSelect = `
+        , NULL AS user_registration_status
+        , NULL AS user_registration_id
+      `;
+      }
 
-    // -------- 1) Đếm tổng số event phù hợp --------
-    const [countResult] = await pool.query(
-      `SELECT COUNT(*) AS total FROM Events e ${whereClause}`,
-      params
-    );
-    const total = countResult[0]?.total ?? 0;
+      // Thêm limit + offset cuối cùng
+      queryParams.push(Number(limit), Number(offset));
 
-    // Nếu không có bản ghi nào thì trả rỗng luôn cho nhanh
-    if (total === 0) {
+      const [events] = await pool.query(
+        `SELECT 
+         e.*, 
+         c.name AS category_name, 
+         u.full_name AS manager_name,
+         -- Kiểm tra còn chỗ không
+         CASE 
+           WHEN e.target_participants IS NULL THEN TRUE
+           WHEN e.current_participants < e.target_participants THEN TRUE
+           ELSE FALSE
+         END AS has_available_slots
+         ${userRegistrationSelect}
+       FROM Events e
+       LEFT JOIN Categories c ON e.category_id = c.category_id
+       LEFT JOIN Users u ON e.manager_id = u.user_id
+       ${userRegistrationJoin}
+       ${whereClause}
+       ORDER BY e.start_date ASC
+       LIMIT ? OFFSET ?`,
+        queryParams
+      );
+
       return {
-        events: [],
+        events,
         pagination: {
-          total: 0,
+          total,
           page,
           limit,
-          totalPages: 0,
+          totalPages: Math.ceil(total / limit),
         },
       };
+    } catch (error) {
+      console.error("[Event.getActiveEvents] Error:", error);
+      throw error;
     }
-
-    // -------- 2) Lấy dữ liệu trang hiện tại --------
-    const [events] = await pool.query(
-      `SELECT 
-        e.*, 
-        c.name AS category_name, 
-        u.full_name AS manager_name
-     FROM Events e
-     LEFT JOIN Categories c ON e.category_id = c.category_id
-     LEFT JOIN Users u ON e.manager_id = u.user_id
-     ${whereClause}
-     ORDER BY e.start_date ASC
-     LIMIT ? OFFSET ?`,
-      [...params, Number(limit), Number(offset)]
-    );
-
-    return {
-      events,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
   },
 
   // Cập nhật thông tin sự kiện (chỉ cập nhật các trường được gửi lên)
