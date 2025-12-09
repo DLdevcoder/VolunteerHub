@@ -57,7 +57,8 @@ const ManagerCreateEvent = () => {
       description: values.description,
       target_participants: values.target_participants || 0,
       location: values.location,
-      category_id: values.category_id || null,
+      // category now required, so send directly
+      category_id: values.category_id,
       start_date: start?.format("YYYY-MM-DD HH:mm:ss"),
       end_date: end?.format("YYYY-MM-DD HH:mm:ss"),
     };
@@ -68,7 +69,6 @@ const ManagerCreateEvent = () => {
       form.resetFields();
       dispatch(resetCreateEventState());
     } catch (err) {
-      // messageApi.error(err || "Tạo sự kiện thất bại");
       console.log("in manager create event submit:", err);
     }
   };
@@ -99,11 +99,17 @@ const ManagerCreateEvent = () => {
           <TextArea rows={4} placeholder="Mô tả chi tiết nội dung sự kiện" />
         </Form.Item>
 
-        <Form.Item label="Danh mục" name="category_id">
+        <Form.Item
+          label="Danh mục"
+          name="category_id"
+          rules={[
+            { required: true, message: "Vui lòng chọn danh mục cho sự kiện" },
+          ]}
+        >
           <Select
             loading={categoriesLoading}
-            allowClear
-            placeholder="Chọn danh mục (không bắt buộc)"
+            placeholder="Chọn danh mục"
+            // bỏ allowClear để tránh gửi null
           >
             {categories.map((c) => (
               <Select.Option key={c.category_id} value={c.category_id}>

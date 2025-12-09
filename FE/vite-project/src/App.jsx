@@ -36,11 +36,11 @@ const App = () => {
       <Route path="/" element={<AppLayout />}>
         {/* chi tiết event */}
         <Route path="events/:event_id" element={<EventDetailPage />} />
-        <Route index element={<Navigate to="/events" />} />
+        <Route element={<Navigate to="/events" />} />
         <Route path="events" element={<EventsPage />} />
 
         <Route path="history" element={<HistoryPage />} />
-        <Route path="dashboard" element={<DashboardPage />} />
+        <Route index path="dashboard" element={<DashboardPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
 
         {/* Manager routes */}

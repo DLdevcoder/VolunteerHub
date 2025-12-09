@@ -275,10 +275,31 @@ GROUP BY u.user_id;
 -- Thêm type mới vào bảng Notifications
 ALTER TABLE Notifications 
 MODIFY COLUMN type ENUM(
-    'event_approved', 'event_rejected', 'registration_approved', 'registration_rejected',
-    'registration_completed', 'event_reminder', 'new_post', 'new_comment', 'reaction_received',
-    'new_registration', 'event_updated_urgent', 'account_locked', 'manager_account_locked', 
-    'event_starting_soon', 'event_cancelled'
+    -- Sự kiện & duyệt sự kiện
+  'event_pending_approval',   -- Manager tạo event -> gửi Admin
+  'event_approved',           -- Admin duyệt event -> gửi Manager
+  'event_rejected',           -- Admin từ chối event -> gửi Manager
+  'event_updated_urgent',     -- Event đã/đang chạy, đổi info quan trọng -> gửi TNV
+  'event_starting_soon',      -- Nhắc sắp bắt đầu
+  'event_cancelled',          -- Event bị hủy -> gửi TNV
+
+  -- Đăng ký tham gia
+  'new_registration',         -- Volunteer đăng ký mới -> gửi Manager
+  'registration_approved',    -- Manager duyệt -> gửi Volunteer
+  'registration_rejected',    -- Manager từ chối -> gửi Volunteer
+  'registration_completed',   -- Manager đánh dấu hoàn thành -> gửi Volunteer
+
+  -- Nhắc nhở chung
+  'event_reminder',           -- Nhắc tham gia (có thể dùng thêm cron)
+
+  -- Kênh trao đổi / social
+  'new_post',                 -- Bài đăng mới trong event
+  'new_comment',              -- Bình luận mới
+  'reaction_received',        -- Ai đó thả reaction vào post/comment của mình
+
+  -- Tài khoản & quyền
+  'account_locked',           -- User bị khóa
+  'manager_account_locked'    -- Manager bị khóa
 ) NOT NULL;
 
 CREATE TABLE `PushSubscriptions` (

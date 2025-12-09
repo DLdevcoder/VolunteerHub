@@ -67,19 +67,19 @@ const AdminUsers = () => {
     }
   };
 
-  const makeAdmin = async (user) => {
-    try {
-      setRowLoadingId(user.user_id);
-      await dispatch(
-        updateUserRoleThunk({ userId: user.user_id, role_name: "Admin" })
-      ).unwrap();
-      messageApi.success("Đã nâng quyền user thành Admin");
-    } catch (err) {
-      messageApi.error(err || "Không thể cập nhật role");
-    } finally {
-      setRowLoadingId(null);
-    }
-  };
+  // const makeAdmin = async (user) => {
+  //   try {
+  //     setRowLoadingId(user.user_id);
+  //     await dispatch(
+  //       updateUserRoleThunk({ userId: user.user_id, role_name: "Admin" })
+  //     ).unwrap();
+  //     messageApi.success("Đã nâng quyền user thành Admin");
+  //   } catch (err) {
+  //     messageApi.error(err || "Không thể cập nhật role");
+  //   } finally {
+  //     setRowLoadingId(null);
+  //   }
+  // };
 
   const makeManager = async (user) => {
     try {
@@ -179,7 +179,7 @@ const AdminUsers = () => {
               </Button>
             )}
 
-            {record.role_name !== "Admin" && (
+            {/* {record.role_name !== "Admin" && (
               <Button
                 size="small"
                 type="primary"
@@ -189,7 +189,7 @@ const AdminUsers = () => {
               >
                 Make Admin
               </Button>
-            )}
+            )} */}
           </Space>
         );
       },

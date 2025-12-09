@@ -7,24 +7,19 @@ class Notification {
     { page = 1, limit = 20, is_read, type } = {}
   ) {
     try {
-      // 1. Ép và validate page/limit an toàn
       const numPage = Number(page);
       const numLimit = Number(limit);
 
       const safePage = Number.isInteger(numPage) && numPage > 0 ? numPage : 1;
-
       const safeLimit =
         Number.isInteger(numLimit) && numLimit > 0 ? numLimit : 20;
 
       const offset = (safePage - 1) * safeLimit;
 
-      // 2. Build WHERE + params như cũ
       let whereConditions = ["user_id = ?"];
       let queryParams = [user_id];
 
       if (is_read !== undefined) {
-        // is_read lấy từ query string: "true" | "false" | ...
-        // -> convert rõ ràng sang 0/1 cho chắc
         const isReadBool =
           is_read === true ||
           is_read === "true" ||
@@ -44,24 +39,22 @@ class Notification {
           ? `WHERE ${whereConditions.join(" AND ")}`
           : "";
 
-      // 3. Query list: LIMIT/OFFSET dùng số đã sanitize, không dùng ?
       const listSql = `
-      SELECT 
-        notification_id, type, payload, is_read, created_at, updated_at
-      FROM Notifications
-      ${whereClause}
-      ORDER BY created_at DESC
-      LIMIT ${safeLimit} OFFSET ${offset}
-    `;
+        SELECT 
+          notification_id, user_id, type, payload, is_read, created_at, updated_at
+        FROM Notifications
+        ${whereClause}
+        ORDER BY created_at DESC
+        LIMIT ${safeLimit} OFFSET ${offset}
+      `;
 
       const [notifications] = await pool.execute(listSql, queryParams);
 
-      // 4. Query count: vẫn dùng params bình thường
       const countSql = `
-      SELECT COUNT(*) as total
-      FROM Notifications
-      ${whereClause}
-    `;
+        SELECT COUNT(*) as total
+        FROM Notifications
+        ${whereClause}
+      `;
       const [countResult] = await pool.execute(countSql, queryParams);
 
       const total = countResult[0]?.total || 0;
@@ -75,7 +68,7 @@ class Notification {
           total_records: total,
           has_next: safePage < totalPages,
           has_prev: safePage > 1,
-          limit: safeLimit, // thêm luôn cho tiện FE đọc
+          limit: safeLimit,
         },
       };
     } catch (error) {
@@ -108,7 +101,6 @@ class Notification {
     }
 
     try {
-      // Tự động stringify nếu payload là object
       let processedPayload = payload;
       if (payload && typeof payload === "object") {
         processedPayload = JSON.stringify(payload);
@@ -120,7 +112,6 @@ class Notification {
         [user_id, type, processedPayload]
       );
 
-      // Lấy thông báo vừa tạo
       const [notifications] = await pool.execute(
         `SELECT * FROM Notifications WHERE notification_id = ?`,
         [result.insertId]
@@ -297,9 +288,9 @@ class Notification {
       "account_unlocked",
       "manager_account_unlocked",
 
-      // 🔥 NEW TYPES
-      "role_changed", // đổi quyền user (Volunteer/Manager/Admin)
-      "test_notification", // dùng cho /notifications/test-push
+      // NEW TYPES
+      "role_changed",
+      "test_notification",
     ];
 
     return validTypes.includes(type);
@@ -334,7 +325,7 @@ class Notification {
       account_unlocked: "Tài khoản đã được mở khóa",
       manager_account_unlocked: "Manager đã được mở khóa",
 
-      // 🔥 NEW
+      // NEW
       role_changed: "Quyền tài khoản đã thay đổi",
       test_notification: "Thông báo thử hệ thống",
     };
@@ -342,7 +333,19 @@ class Notification {
     return titles[type] || "Thông báo mới";
   }
 
+  // 🔥 UPDATED: Ưu tiên payload.message, sau đó build từ event_title / reason
   static getNotificationBody(type, payload) {
+    let payloadObj = null;
+    try {
+      if (typeof payload === "string") {
+        payloadObj = JSON.parse(payload);
+      } else if (typeof payload === "object" && payload !== null) {
+        payloadObj = payload;
+      }
+    } catch {
+      payloadObj = null;
+    }
+
     const defaultBodies = {
       // Event related
       event_approved: "Sự kiện của bạn đã được phê duyệt",
@@ -369,14 +372,154 @@ class Notification {
       // Account related
       account_locked: "Tài khoản volunteer đã bị khóa",
       manager_account_locked: "Tài khoản manager đã bị khóa",
-      account_unlocked: "Tài khoản volunteer mở bị khóa",
-      manager_account_unlocked: "Tài khoản manager đã mở khóa",
+      account_unlocked: "Tài khoản volunteer đã được mở khóa",
+      manager_account_unlocked: "Tài khoản manager đã được mở khóa",
 
-      // 🔥 NEW
+      // NEW
       role_changed: "Quyền tài khoản của bạn đã được thay đổi.",
       test_notification: "Đây là thông báo test từ hệ thống.",
     };
 
+    // 1️⃣ Nếu controller đã set payload.message (đa số case) -> dùng luôn
+    if (
+      payloadObj &&
+      typeof payloadObj.message === "string" &&
+      payloadObj.message.trim().length > 0
+    ) {
+      return payloadObj.message.trim();
+    }
+
+    // 2️⃣ Nếu không có message, build thông minh từ event_title, reason,...
+    const eventTitle = payloadObj?.event_title;
+    const reason = payloadObj?.reason || payloadObj?.rejection_reason;
+    const userName =
+      payloadObj?.user_name ||
+      payloadObj?.manager_name ||
+      payloadObj?.reactor_name;
+
+    switch (type) {
+      // ===== EVENT =====
+      case "event_approved":
+        if (eventTitle) {
+          return `Sự kiện "${eventTitle}" đã được phê duyệt.`;
+        }
+        break;
+
+      case "event_rejected":
+        if (eventTitle && reason) {
+          return `Sự kiện "${eventTitle}" đã bị từ chối. \n Lý do: ${reason}`;
+        }
+        if (eventTitle) {
+          return `Sự kiện "${eventTitle}" đã bị từ chối.`;
+        }
+        if (reason) {
+          return `Sự kiện của bạn đã bị từ chối. \n Lý do: ${reason}`;
+        }
+        break;
+
+      case "event_cancelled":
+        if (eventTitle && reason) {
+          return `Sự kiện "${eventTitle}" đã bị hủy. \n Lý do: ${reason}`;
+        }
+        if (eventTitle) {
+          return `Sự kiện "${eventTitle}" đã bị hủy.`;
+        }
+        if (reason) {
+          return `Một sự kiện đã bị hủy. \n Lý do: ${reason}`;
+        }
+        break;
+
+      case "event_reminder":
+        if (eventTitle) {
+          return `Nhắc nhở: Sự kiện "${eventTitle}" sắp diễn ra.`;
+        }
+        break;
+
+      case "event_starting_soon":
+        if (eventTitle) {
+          return `Sự kiện "${eventTitle}" sẽ bắt đầu trong thời gian ngắn.`;
+        }
+        break;
+
+      case "event_updated_urgent":
+        if (eventTitle) {
+          return `Sự kiện "${eventTitle}" có cập nhật quan trọng. Vui lòng kiểm tra chi tiết.`;
+        }
+        break;
+
+      case "event_pending_approval":
+        if (eventTitle) {
+          return `Sự kiện "${eventTitle}" vừa được tạo và đang chờ duyệt.`;
+        }
+        break;
+
+      // ===== REGISTRATION =====
+      case "registration_approved":
+        if (eventTitle) {
+          return `Đăng ký của bạn cho sự kiện "${eventTitle}" đã được chấp nhận.`;
+        }
+        break;
+
+      case "registration_rejected":
+        if (eventTitle && reason) {
+          return `Đăng ký của bạn cho sự kiện "${eventTitle}" đã bị từ chối. \n Lý do: ${reason}`;
+        }
+        if (eventTitle) {
+          return `Đăng ký của bạn cho sự kiện "${eventTitle}" đã bị từ chối.`;
+        }
+        if (reason) {
+          return `Đăng ký của bạn đã bị từ chối. \n Lý do: ${reason}`;
+        }
+        break;
+
+      case "registration_completed":
+        if (eventTitle) {
+          return `Bạn đã được xác nhận hoàn thành sự kiện "${eventTitle}". Cảm ơn bạn đã tham gia!`;
+        }
+        break;
+
+      case "new_registration":
+        if (eventTitle && userName) {
+          return `Có đăng ký mới từ ${userName} cho sự kiện "${eventTitle}".`;
+        }
+        if (eventTitle) {
+          return `Có đăng ký mới cho sự kiện "${eventTitle}".`;
+        }
+        break;
+
+      // ===== ACCOUNT =====
+      case "account_locked":
+        if (reason) {
+          return `Tài khoản của bạn đã bị khóa. \n Lý do: ${reason}`;
+        }
+        break;
+
+      case "manager_account_locked":
+        if (userName && reason) {
+          return `Manager ${userName} đã bị khóa tài khoản. \n Lý do: ${reason}`;
+        }
+        if (userName) {
+          return `Manager ${userName} đã bị khóa tài khoản.`;
+        }
+        break;
+
+      case "account_unlocked":
+        return "Tài khoản của bạn đã được mở khóa.";
+
+      case "manager_account_unlocked":
+        if (userName) {
+          return `Manager ${userName} đã được mở khóa tài khoản.`;
+        }
+        break;
+
+      case "role_changed":
+        return "Quyền tài khoản của bạn đã được thay đổi.";
+
+      default:
+        break;
+    }
+
+    // 3️⃣ Cuối cùng: fallback về default cũ
     return defaultBodies[type] || "Bạn có thông báo mới";
   }
 
@@ -389,7 +532,7 @@ class Notification {
           : notification.payload;
 
       const urlMap = {
-        // Event related - đi đến trang sự kiện
+        // Event related
         event_approved: `/events/${payload?.event_id}`,
         event_rejected: `/events/${payload?.event_id}`,
         event_reminder: `/events/${payload?.event_id}`,
@@ -398,24 +541,24 @@ class Notification {
         event_cancelled: `/events/${payload?.event_id}`,
         event_pending_approval: `/admin/events?event_id=${payload?.event_id}`,
 
-        // Registration related - đi đến trang đăng ký của tôi
+        // Registration related
         registration_approved: `/my-registrations`,
         registration_rejected: `/my-registrations`,
         registration_completed: `/my-registrations`,
         new_registration: `/events/${payload?.event_id}/registrations`,
 
-        // Content related - đi đến bài viết/comment
+        // Content related
         new_post: `/posts/${payload?.post_id || payload?.content_id}`,
         new_comment: `/posts/${payload?.post_id}`,
         reaction_received: `/posts/${payload?.post_id || payload?.content_id}`,
 
-        // Account related - đi đến trang tài khoản
+        // Account related
         account_locked: `/profile`,
         manager_account_locked: `/admin/users`,
         account_unlocked: `/profile`,
         manager_account_unlocked: `/admin/users`,
 
-        // 🔥 NEW
+        // NEW
         role_changed: `/profile`,
         test_notification: `/notifications`,
       };
@@ -435,7 +578,6 @@ class Notification {
         throw new Error(`Invalid notification type: ${type}`);
       }
 
-      // Tự động stringify payload
       let processedPayload = payload;
       if (payload && typeof payload === "object") {
         processedPayload = JSON.stringify(payload);
@@ -464,22 +606,20 @@ class Notification {
   // Lấy thông báo chưa đọc gần đây
   static async getRecentUnread(user_id, limit = 10) {
     try {
-      // Convert limit to a safe integer
       const safeLimit =
         Number.isInteger(Number(limit)) && Number(limit) > 0
           ? Number(limit)
           : 10;
 
       const sql = `
-      SELECT notification_id, type, payload, created_at
-      FROM Notifications
-      WHERE user_id = ?
-        AND is_read = FALSE
-      ORDER BY created_at DESC
-      LIMIT ${safeLimit}
-    `;
+        SELECT notification_id, user_id, type, payload, is_read, created_at
+        FROM Notifications
+        WHERE user_id = ?
+          AND is_read = FALSE
+        ORDER BY created_at DESC
+        LIMIT ${safeLimit}
+      `;
 
-      // Chỉ còn 1 dấu ? nên chỉ truyền user_id
       const [notifications] = await pool.execute(sql, [user_id]);
       return notifications;
     } catch (error) {
