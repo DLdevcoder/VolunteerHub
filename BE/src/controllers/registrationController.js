@@ -477,7 +477,7 @@ const registrationController = {
   // =========================================================
   // MANAGER – Đánh dấu hoàn thành
   // =========================================================
-  async completeRegistration(req, res) {
+async completeRegistration(req, res) {
     try {
       const { registration_id } = req.params;
       const manager_id = req.user.user_id;
@@ -511,14 +511,35 @@ const registrationController = {
         });
       }
 
-      // Chỉ hoàn thành khi sự kiện đã bắt đầu
+      // 🔥 BỔ SUNG: Kiểm tra thời gian sự kiện
       const now = new Date();
       const eventStart = new Date(reg.start_date);
+      const eventEnd = new Date(reg.end_date);
 
+      // 1. Sự kiện chưa diễn ra
       if (now < eventStart) {
         return res.status(400).json({
           success: false,
           message: "Sự kiện chưa diễn ra, không thể đánh dấu hoàn thành sớm.",
+        });
+      }
+
+      // 2. Sự kiện chưa kết thúc
+      if (now < eventEnd) {
+        return res.status(400).json({
+          success: false,
+          message: "Sự kiện chưa kết thúc, không thể đánh dấu hoàn thành.",
+        });
+      }
+
+      // 🔥 Tùy chọn: Thêm buffer time (ví dụ: cho phép trong 7 ngày sau khi kết thúc)
+      const maxDaysAfterEvent = 7; // Cho phép đánh dấu trong 7 ngày sau khi sự kiện kết thúc
+      const maxCompletionDate = new Date(eventEnd.getTime() + (maxDaysAfterEvent * 24 * 60 * 60 * 1000));
+      
+      if (now > maxCompletionDate) {
+        return res.status(400).json({
+          success: false,
+          message: `Đã quá ${maxDaysAfterEvent} ngày kể từ khi sự kiện kết thúc, không thể đánh dấu hoàn thành.`,
         });
       }
 
@@ -534,6 +555,8 @@ const registrationController = {
             event_id: reg.event_id,
             event_title: reg.event_title,
             registration_id,
+            completed_at: now.toISOString(),
+            event_end_date: reg.end_date,
             message: `Bạn đã được xác nhận hoàn thành sự kiện "${reg.event_title}". Cảm ơn bạn đã tham gia!`,
             url: `/events/${reg.event_id}`,
           },
@@ -545,6 +568,10 @@ const registrationController = {
       res.json({
         success: true,
         message: "Xác nhận hoàn thành công việc cho tình nguyện viên",
+        data: {
+          completed_at: now.toISOString(),
+          event_ended: reg.end_date
+        }
       });
     } catch (error) {
       console.error("Complete reg error:", error);
