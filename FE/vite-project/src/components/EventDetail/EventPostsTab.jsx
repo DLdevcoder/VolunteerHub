@@ -1,3 +1,4 @@
+// src/pages/EventDetail/EventPostsTab.jsx
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -8,10 +9,10 @@ import {
   Space,
   Spin,
   Empty,
-  Popconfirm, // Dùng cái này để xác nhận trước khi xóa
+  Popconfirm,
 } from "antd";
 import { UserOutlined, DeleteOutlined } from "@ant-design/icons";
-import "./EventPostsTab.css";
+
 // --- REDUX ---
 import {
   eventPostsSelector,
@@ -25,8 +26,11 @@ import {
 } from "../../redux/slices/postSlice";
 import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 
-// --- COMPONENTS (Đường dẫn mới theo folder bạn tạo) ---
+// --- COMPONENTS ---
 import PostCard from "../../components/Post/PostCard";
+
+// --- CSS ---
+import "./EventPostsTab.css"; // Import the new scoped CSS
 
 const { TextArea } = Input;
 const PAGE_SIZE = 10;
@@ -89,7 +93,7 @@ const EventPostsTab = ({
       ).unwrap();
 
       setNewPostContent("");
-      handleChangePostsPage(1); // Reload về trang 1
+      handleChangePostsPage(1); // Reload to page 1 to see new post
       messageApi.success("Đã đăng bài viết");
     } catch (err) {
       console.error(err);
@@ -103,7 +107,7 @@ const EventPostsTab = ({
   const handleDeletePost = async (postId) => {
     try {
       await dispatch(deletePostThunk(postId)).unwrap();
-      handleChangePostsPage(page); // Reload trang hiện tại
+      handleChangePostsPage(page); // Reload current page
       messageApi.success("Đã xóa bài viết");
     } catch (err) {
       console.error(err);
@@ -112,91 +116,87 @@ const EventPostsTab = ({
   };
 
   if (!canViewPosts) {
-    return <Empty description="Bạn cần tham gia sự kiện để xem thảo luận." />;
+    return (
+      <div className="ept-empty-container">
+        <Empty description="Bạn cần tham gia sự kiện để xem thảo luận." />
+      </div>
+    );
   }
 
   return (
-    <div
-      className="event-posts-tab"
-      style={{ maxWidth: 800, margin: "0 auto" }}
-    >
-      {/* === KHU VỰC ĐĂNG BÀI (CREATE POST WIDGET) === */}
+    <div className="event-posts-tab-container">
+      {/* === CREATE POST AREA === */}
       {canCreatePost && (
-        <div className="create-post-widget">
-          <div className="create-post-top">
-            <div className="create-post-avatar">
+        <div className="ept-create-post-widget">
+          <div className="ept-create-post-top">
+            <div className="ept-avatar">
               <Avatar
                 size={40}
                 src={authUser?.avatar_url}
                 icon={!authUser?.avatar_url && <UserOutlined />}
               />
             </div>
-            <div className="create-post-input-container">
+            <div className="ept-input-container">
               <TextArea
                 rows={2}
                 placeholder={`Chia sẻ suy nghĩ của bạn, ${authUser?.full_name || "bạn"} ơi...`}
                 value={newPostContent}
                 onChange={(e) => setNewPostContent(e.target.value)}
-                className="create-post-textarea"
-                bordered={false} // Tắt viền mặc định của Antd Input
-                autoSize={{ minRows: 2, maxRows: 6 }} // Tự động giãn dòng
+                className="ept-textarea"
+                bordered={false}
+                autoSize={{ minRows: 2, maxRows: 6 }}
               />
             </div>
           </div>
-          <br />
-          <div className="create-post-actions">
+
+          <div className="ept-divider"></div>
+
+          <div className="ept-actions">
             <Button
               type="primary"
               disabled={!newPostContent.trim()}
               loading={creatingPost}
               onClick={handleCreatePost}
-              className="create-post-btn" // Áp dụng class nút chuẩn FB
+              className="ept-post-btn"
             >
               Đăng
             </Button>
           </div>
         </div>
       )}
-      {/* === DANH SÁCH BÀI VIẾT === */}
+
+      {/* === POST LIST === */}
       {postsLoading && !posts.length ? (
-        <div style={{ textAlign: "center", padding: 40 }}>
+        <div className="ept-loading-container">
           <Spin size="large" />
         </div>
       ) : !posts.length ? (
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="Chưa có bài viết nào"
-        />
+        <div className="ept-empty-container">
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="Chưa có bài viết nào"
+          />
+        </div>
       ) : (
         <List
           itemLayout="vertical"
           dataSource={posts}
-          split={false} // Tắt đường kẻ ngang của List để PostCard tự lo border
+          split={false} // Disable Antd divider
           renderItem={(post) => {
-            // Check quyền xóa: Chủ bài viết HOẶC Chủ sự kiện (Manager)
+            // Check delete permission: Post Owner OR Event Manager
             const isOwner = post.user_id === authUser?.user_id;
             const isManager = event?.manager_id === authUser?.user_id;
             const canDelete = isOwner || isManager;
 
             return (
-              <List.Item
-                key={post.post_id}
-                style={{ padding: 0, marginBottom: 20, border: "none" }}
-              >
+              <List.Item key={post.post_id} className="ept-list-item">
                 <div style={{ position: "relative" }}>
-                  {/* Nhúng PostCard */}
+                  {/* Render PostCard */}
                   <PostCard post={post} currentUser={authUser} />
 
-                  {/* Nút Xóa (Hiển thị góc trên bên phải Card nếu có quyền) */}
+                  {/* Delete Button (Top right overlay) */}
                   {canDelete && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 12,
-                        right: 12,
-                        zIndex: 10,
-                      }}
-                    >
+                    <div className="ept-delete-btn-container">
                       <Popconfirm
                         title="Bạn chắc chắn muốn xóa bài này?"
                         onConfirm={() => handleDeletePost(post.post_id)}
@@ -209,7 +209,7 @@ const EventPostsTab = ({
                           danger
                           size="small"
                           icon={<DeleteOutlined />}
-                          style={{ background: "rgba(255,255,255,0.8)" }} // Nền trắng mờ để dễ nhìn
+                          className="ept-delete-btn"
                         />
                       </Popconfirm>
                     </div>
@@ -226,7 +226,7 @@ const EventPostsTab = ({
                   total: postsPagination.total,
                   onChange: handleChangePostsPage,
                   align: "center",
-                  style: { marginTop: 20 },
+                  style: { marginTop: 20, marginBottom: 20 },
                 }
               : false
           }
