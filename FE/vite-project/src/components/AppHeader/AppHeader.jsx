@@ -124,13 +124,13 @@ const AppHeader = () => {
     <div className="appHeader-container">
       <div className="appHeader-logo">VolunteerHub</div>
 
-      <div className="appHeader-search-input">
+      {/* <div className="appHeader-search-input">
         <Input.Search
           className="search-input"
           placeholder="Search for events or organizations"
           enterButton
         />
-      </div>
+      </div> */}
 
       <div className="appHeader-noti-and-ava-wrapper">
         <div className="appHeader-notification-icon">
