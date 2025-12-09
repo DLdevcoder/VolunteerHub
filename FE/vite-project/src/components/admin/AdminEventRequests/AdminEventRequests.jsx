@@ -1,7 +1,17 @@
 // src/components/admin/AdminEventRequests/AdminEventRequests.jsx
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, Table, Tag, Button, Space, Select, Input, message } from "antd";
+import {
+  Card,
+  Table,
+  Tag,
+  Button,
+  Space,
+  Select,
+  Input,
+  message,
+  Modal,
+} from "antd";
 
 import {
   fetchAdminEvents,
@@ -32,6 +42,11 @@ const AdminEventRequests = () => {
   const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [rowLoadingId, setRowLoadingId] = useState(null);
+
+  // Modal reject
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectingEvent, setRejectingEvent] = useState(null);
 
   const loadData = (page = 1, limit = pageSize) => {
     dispatch(
@@ -75,23 +90,43 @@ const AdminEventRequests = () => {
     }
   };
 
-  const handleReject = async (eventId) => {
-    const reason = window.prompt("Nhập lý do từ chối:");
-    if (!reason || reason.trim().length < 5) {
+  const openRejectModal = (record) => {
+    setRejectingEvent(record);
+    setRejectReason("");
+    setRejectModalOpen(true);
+  };
+
+  const handleRejectConfirm = async () => {
+    const reason = rejectReason.trim();
+    if (!reason || reason.length < 5) {
       message.warning("Lý do cần ít nhất 5 ký tự");
       return;
     }
+    if (!rejectingEvent) return;
+
+    const eventId = rejectingEvent.event_id;
 
     try {
       setRowLoadingId(eventId);
       await dispatch(rejectEventThunk({ eventId, reason })).unwrap();
       message.success("Từ chối sự kiện thành công");
+
+      setRejectModalOpen(false);
+      setRejectingEvent(null);
+      setRejectReason("");
+
       loadData(pagination.page || 1, pageSize);
     } catch (err) {
       message.error(err || "Không thể từ chối sự kiện");
     } finally {
       setRowLoadingId(null);
     }
+  };
+
+  const handleRejectCancel = () => {
+    setRejectModalOpen(false);
+    setRejectingEvent(null);
+    setRejectReason("");
   };
 
   const columns = [
@@ -146,7 +181,7 @@ const AdminEventRequests = () => {
             size="small"
             disabled={record.approval_status === "rejected"}
             loading={rowLoadingId === record.event_id}
-            onClick={() => handleReject(record.event_id)}
+            onClick={() => openRejectModal(record)}
           >
             Reject
           </Button>
@@ -197,6 +232,33 @@ const AdminEventRequests = () => {
         }}
         onChange={handleTableChange}
       />
+
+      <Modal
+        title={
+          rejectingEvent
+            ? `Từ chối sự kiện: ${rejectingEvent.title}`
+            : "Từ chối sự kiện"
+        }
+        open={rejectModalOpen}
+        onOk={handleRejectConfirm}
+        onCancel={handleRejectCancel}
+        okText="Xác nhận từ chối"
+        cancelText="Hủy"
+        confirmLoading={
+          rejectingEvent && rowLoadingId === rejectingEvent.event_id
+        }
+      >
+        <p>Nhập lý do từ chối:</p>
+        <Input.TextArea
+          rows={4}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          maxLength={500}
+          showCount
+          placeholder="Ví dụ: Nội dung sự kiện chưa rõ ràng, cần bổ sung..."
+          style={{ marginTop: 4, marginBottom: 24 }}
+        />
+      </Modal>
     </Card>
   );
 };

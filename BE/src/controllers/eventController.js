@@ -1,3 +1,4 @@
+// src/controllers/eventController.js
 import Event from "../models/Event.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
@@ -7,7 +8,11 @@ import Registration from "../models/Registration.js";
 const formatDateAsIs = (dateInput) => {
   const date = new Date(dateInput);
   const pad = (num) => num.toString().padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate()
+  )} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
+    date.getSeconds()
+  )}`;
 };
 
 const eventController = {
@@ -111,7 +116,7 @@ const eventController = {
 
       const newEvent = await Event.getEventById(eventId);
 
-      // Gửi thông báo cho tất cả Admin: có sự kiện mới chờ duyệt
+      // 🔔 Gửi thông báo cho tất cả Admin: có sự kiện mới chờ duyệt
       try {
         const admins = await User.getAdmins();
         console.log("Admins from getAdmins():", admins);
@@ -126,7 +131,7 @@ const eventController = {
               `Creating event_pending_approval notification for admin_id = ${admin.user_id}`
             );
 
-            await Notification.create({
+            await Notification.createAndPush({
               user_id: admin.user_id,
               type: "event_pending_approval",
               payload: {
@@ -135,6 +140,7 @@ const eventController = {
                 manager_id,
                 manager_name: newEvent.manager_name,
                 message: `Sự kiện "${newEvent.title}" vừa được tạo bởi ${newEvent.manager_name} và đang chờ duyệt.`,
+                url: `/admin/events/${eventId}`,
               },
             });
           }
@@ -599,6 +605,103 @@ const eventController = {
       const updatedEvent = await Event.getEventById(event_id);
       console.log("[updateEvent] UPDATED EVENT =", updatedEvent);
 
+      // 🔔 1) Nếu từ approved/rejected → pending => gửi lại thông báo cho Admin
+      try {
+        const prevStatus = currentEvent.approval_status;
+        const newStatus = updatedEvent.approval_status;
+
+        if (
+          (prevStatus === "approved" || prevStatus === "rejected") &&
+          newStatus === "pending"
+        ) {
+          const admins = await User.getAdmins();
+          if (admins && admins.length) {
+            for (const admin of admins) {
+              await Notification.createAndPush({
+                user_id: admin.user_id,
+                type: "event_pending_approval",
+                payload: {
+                  event_id: updatedEvent.event_id,
+                  event_title: updatedEvent.title,
+                  manager_id: updatedEvent.manager_id,
+                  manager_name: updatedEvent.manager_name,
+                  message: `Sự kiện "${updatedEvent.title}" đã được chỉnh sửa và gửi lại để duyệt.`,
+                  url: `/admin/events/${updatedEvent.event_id}`,
+                },
+              });
+            }
+          }
+        }
+      } catch (notifyErr) {
+        console.error(
+          "Notify admins (event re-submit pending for approval) failed:",
+          notifyErr
+        );
+      }
+
+      // 🔔 2) Nếu sự kiện đang chạy / đã có người tham gia & đổi thông tin quan trọng -> báo TNV
+      try {
+        const wasRestricted =
+          isRestrictedMode || currentEvent.current_participants > 0;
+        if (wasRestricted) {
+          const importantFields = [
+            "title",
+            "description",
+            "location",
+            "target_participants",
+            "category_id",
+          ];
+          const changedFields = {};
+          let hasImportantChange = false;
+
+          for (const field of importantFields) {
+            if (currentEvent[field] !== updatedEvent[field]) {
+              changedFields[field] = {
+                old: currentEvent[field],
+                new: updatedEvent[field],
+              };
+              hasImportantChange = true;
+            }
+          }
+
+          if (hasImportantChange) {
+            const regs = await Registration.getByEventId(event_id);
+            if (regs && regs.length) {
+              const toNotify = regs.filter((r) =>
+                ["approved", "completed", "pending"].includes(r.status)
+              );
+
+              for (const reg of toNotify) {
+                try {
+                  await Notification.createAndPush({
+                    user_id: reg.user_id,
+                    type: "event_updated_urgent",
+                    payload: {
+                      event_id: updatedEvent.event_id,
+                      event_title: updatedEvent.title,
+                      registration_id: reg.registration_id,
+                      changed_fields: changedFields,
+                      message: `Thông tin sự kiện "${updatedEvent.title}" đã được cập nhật. Vui lòng kiểm tra lại chi tiết trước khi tham gia.`,
+                      url: `/events/${updatedEvent.event_id}`,
+                    },
+                  });
+                } catch (notifyErr) {
+                  console.error(
+                    `Notify volunteer (event_updated_urgent) failed for registration_id=${reg.registration_id}:`,
+                    notifyErr
+                  );
+                }
+              }
+            }
+          }
+        }
+      } catch (notifyErr) {
+        console.error(
+          "Event update: notify volunteers (event_updated_urgent) failed:",
+          notifyErr
+        );
+      }
+
       return res.json({
         success: true,
         message,
@@ -628,14 +731,6 @@ const eventController = {
 
       // Nếu không phải Admin -> áp dụng các giới hạn hiện tại
       if (role_name !== "Admin") {
-        // Check có người đăng ký
-        // if (currentEvent.current_participants > 0) {
-        //   return res.status(400).json({
-        //     success: false,
-        //     message: `Không thể xóa sự kiện đang có ${currentEvent.current_participants} người tham gia.`,
-        //   });
-        // }
-
         // Nếu là manager -> không thể xoá sự kiện đang chạy hoặc đã kết thúc
         const now = new Date();
         if (new Date(currentEvent.start_date) <= now) {
@@ -729,7 +824,7 @@ const eventController = {
       const { event_id } = req.params;
       const admin_id = req.user.user_id;
 
-      // Duyệt sự kiện (stored procedure sẽ tự động tạo thông báo)
+      // Duyệt sự kiện (stored procedure chỉ cập nhật trạng thái, notification handle ở đây)
       const approved = await Event.approveEvent(event_id, admin_id);
 
       if (!approved) {
@@ -741,6 +836,26 @@ const eventController = {
 
       // Lấy thông tin sự kiện sau khi duyệt
       const approvedEvent = await Event.getEventById(event_id);
+
+      // 🔔 Gửi thông báo cho Manager: sự kiện đã được duyệt
+      try {
+        if (approvedEvent && approvedEvent.manager_id) {
+          await Notification.createAndPush({
+            user_id: approvedEvent.manager_id,
+            type: "event_approved",
+            payload: {
+              event_id: approvedEvent.event_id,
+              event_title: approvedEvent.title,
+              approved_by: admin_id,
+              approval_date: approvedEvent.approval_date,
+              message: `Sự kiện "${approvedEvent.title}" đã được duyệt.`,
+              url: `/manager/events/${approvedEvent.event_id}`,
+            },
+          });
+        }
+      } catch (notifyErr) {
+        console.error("Notify manager (event_approved) failed:", notifyErr);
+      }
 
       res.json({
         success: true,
@@ -772,7 +887,7 @@ const eventController = {
         });
       }
 
-      // Từ chối sự kiện (trigger sẽ tự động tạo thông báo)
+      // Từ chối sự kiện (stored procedure chỉ update, notification handle ở đây)
       const rejected = await Event.rejectEvent(event_id, admin_id, reason);
 
       if (!rejected) {
@@ -784,6 +899,26 @@ const eventController = {
 
       // Lấy thông tin sự kiện sau khi từ chối
       const rejectedEvent = await Event.getEventById(event_id);
+
+      // 🔔 Gửi thông báo cho Manager: sự kiện đã bị từ chối
+      try {
+        if (rejectedEvent && rejectedEvent.manager_id) {
+          await Notification.createAndPush({
+            user_id: rejectedEvent.manager_id,
+            type: "event_rejected",
+            payload: {
+              event_id: rejectedEvent.event_id,
+              event_title: rejectedEvent.title,
+              rejected_by: admin_id,
+              reason,
+              message: `Sự kiện "${rejectedEvent.title}" đã bị từ chối. Lý do: ${reason}`,
+              url: `/manager/events/${rejectedEvent.event_id}`,
+            },
+          });
+        }
+      } catch (notifyErr) {
+        console.error("Notify manager (event_rejected) failed:", notifyErr);
+      }
 
       res.json({
         success: true,
