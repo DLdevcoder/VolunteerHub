@@ -1,4 +1,5 @@
-import pool from "../config/db.js";
+import { QueryTypes } from "sequelize";
+import sequelize from "../config/db.js";
 
 class Export {
   // Export danh sách users
@@ -29,22 +30,26 @@ class Export {
           ? `WHERE ${whereConditions.join(" AND ")}`
           : "";
 
-      const [users] = await pool.execute(
+      // Sử dụng sequelize.query với replacements là mảng (tương thích với dấu ?)
+      const users = await sequelize.query(
         `SELECT 
-          u.user_id,
-          u.email,
-          u.full_name,
-          u.phone,
-          u.avatar_url,
-          r.name as role_name,
-          u.status,
-          u.created_at,
-          u.updated_at
+           u.user_id,
+           u.email,
+           u.full_name,
+           u.phone,
+           u.avatar_url,
+           r.name as role_name,
+           u.status,
+           u.created_at,
+           u.updated_at
          FROM Users u 
          JOIN Roles r ON u.role_id = r.role_id 
          ${whereClause}
          ORDER BY u.created_at DESC`,
-        queryParams
+        {
+          replacements: queryParams,
+          type: QueryTypes.SELECT,
+        }
       );
 
       return users;
@@ -91,29 +96,32 @@ class Export {
           ? `WHERE ${whereConditions.join(" AND ")}`
           : "";
 
-      const [events] = await pool.execute(
+      const events = await sequelize.query(
         `SELECT 
-          e.event_id,
-          e.title,
-          e.description,
-          e.location,
-          e.start_date,
-          e.end_date,
-          e.target_participants,
-          e.current_participants,
-          c.name as category_name,
-          u.full_name as manager_name,
-          e.approval_status,
-          e.approved_by,
-          e.approval_date,
-          e.created_at,
-          e.updated_at
+           e.event_id,
+           e.title,
+           e.description,
+           e.location,
+           e.start_date,
+           e.end_date,
+           e.target_participants,
+           e.current_participants,
+           c.name as category_name,
+           u.full_name as manager_name,
+           e.approval_status,
+           e.approved_by,
+           e.approval_date,
+           e.created_at,
+           e.updated_at
          FROM Events e
          LEFT JOIN Categories c ON e.category_id = c.category_id
          LEFT JOIN Users u ON e.manager_id = u.user_id
          ${whereClause}
          ORDER BY e.created_at DESC`,
-        queryParams
+        {
+          replacements: queryParams,
+          type: QueryTypes.SELECT,
+        }
       );
 
       return events;
@@ -155,26 +163,29 @@ class Export {
           ? `WHERE ${whereConditions.join(" AND ")}`
           : "";
 
-      const [registrations] = await pool.execute(
+      const registrations = await sequelize.query(
         `SELECT 
-          r.registration_id,
-          u.user_id,
-          u.full_name as volunteer_name,
-          u.email as volunteer_email,
-          e.event_id,
-          e.title as event_title,
-          r.registration_date,
-          r.status,
-          r.rejection_reason,
-          r.completed_by_manager_id,
-          r.completion_date,
-          r.updated_at
+           r.registration_id,
+           u.user_id,
+           u.full_name as volunteer_name,
+           u.email as volunteer_email,
+           e.event_id,
+           e.title as event_title,
+           r.registration_date,
+           r.status,
+           r.rejection_reason,
+           r.completed_by_manager_id,
+           r.completion_date,
+           r.updated_at
          FROM Registrations r
          JOIN Users u ON r.user_id = u.user_id
          JOIN Events e ON r.event_id = e.event_id
          ${whereClause}
          ORDER BY r.registration_date DESC`,
-        queryParams
+        {
+          replacements: queryParams,
+          type: QueryTypes.SELECT,
+        }
       );
 
       return registrations;
@@ -213,19 +224,18 @@ class Export {
           ? `WHERE ${whereConditions.join(" AND ")}`
           : "";
 
-      // Lấy posts với comment count
-      const [posts] = await pool.execute(
+      const posts = await sequelize.query(
         `SELECT 
-          p.post_id,
-          p.event_id,
-          e.title as event_title,
-          p.user_id,
-          u.full_name as author_name,
-          p.content,
-          p.created_at,
-          p.updated_at,
-          COUNT(DISTINCT c.comment_id) as comment_count,
-          COUNT(DISTINCT pr.user_id) as reaction_count
+           p.post_id,
+           p.event_id,
+           e.title as event_title,
+           p.user_id,
+           u.full_name as author_name,
+           p.content,
+           p.created_at,
+           p.updated_at,
+           COUNT(DISTINCT c.comment_id) as comment_count,
+           COUNT(DISTINCT pr.user_id) as reaction_count
          FROM Posts p
          JOIN Events e ON p.event_id = e.event_id
          JOIN Users u ON p.user_id = u.user_id
@@ -234,7 +244,10 @@ class Export {
          ${whereClause}
          GROUP BY p.post_id
          ORDER BY p.created_at DESC`,
-        queryParams
+        {
+          replacements: queryParams,
+          type: QueryTypes.SELECT,
+        }
       );
 
       return posts;
@@ -248,17 +261,21 @@ class Export {
   // Export thống kê tổng hợp
   static async exportSummaryStats() {
     try {
-      const [summary] = await pool.execute(
+      // Dùng DUAL cho các subquery
+      const summary = await sequelize.query(
         `SELECT 
-          (SELECT COUNT(*) FROM Users WHERE status = 'Active') as total_active_users,
-          (SELECT COUNT(*) FROM Events WHERE approval_status = 'approved' AND is_deleted = FALSE) as total_approved_events,
-          (SELECT COUNT(*) FROM Registrations WHERE status = 'completed') as total_completed_registrations,
-          (SELECT COUNT(*) FROM Posts) as total_posts,
-          (SELECT COUNT(*) FROM Comments) as total_comments,
-          (SELECT COUNT(*) FROM Events WHERE start_date >= CURDATE() AND approval_status = 'approved' AND is_deleted = FALSE) as upcoming_events,
-          (SELECT AVG(current_participants) FROM Events WHERE approval_status = 'approved' AND is_deleted = FALSE) as avg_participants_per_event,
-          (SELECT COUNT(DISTINCT user_id) FROM Registrations WHERE status = 'approved') as unique_volunteers
-         FROM DUAL`
+           (SELECT COUNT(*) FROM Users WHERE status = 'Active') as total_active_users,
+           (SELECT COUNT(*) FROM Events WHERE approval_status = 'approved' AND is_deleted = FALSE) as total_approved_events,
+           (SELECT COUNT(*) FROM Registrations WHERE status = 'completed') as total_completed_registrations,
+           (SELECT COUNT(*) FROM Posts) as total_posts,
+           (SELECT COUNT(*) FROM Comments) as total_comments,
+           (SELECT COUNT(*) FROM Events WHERE start_date >= CURDATE() AND approval_status = 'approved' AND is_deleted = FALSE) as upcoming_events,
+           (SELECT AVG(current_participants) FROM Events WHERE approval_status = 'approved' AND is_deleted = FALSE) as avg_participants_per_event,
+           (SELECT COUNT(DISTINCT user_id) FROM Registrations WHERE status = 'approved') as unique_volunteers
+         FROM DUAL`,
+        {
+          type: QueryTypes.SELECT,
+        }
       );
 
       return summary[0] || {};

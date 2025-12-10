@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+// Đã import UserService, nên bên dưới phải dùng UserService
+import UserService from "../services/UserService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_super_secret_key";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
@@ -43,8 +44,8 @@ const authController = {
         });
       }
 
-      // Tìm role_id từ role_name
-      const role_id = await User.getRoleId(role_name);
+      // [SỬA] User.getRoleId -> UserService.getRoleId
+      const role_id = await UserService.getRoleId(role_name);
       if (!role_id) {
         return res.status(400).json({
           success: false,
@@ -52,8 +53,8 @@ const authController = {
         });
       }
 
-      // Kiểm tra email đã tồn tại
-      const emailExists = await User.emailExists(email);
+      // [SỬA] User.emailExists -> UserService.emailExists
+      const emailExists = await UserService.emailExists(email);
       if (emailExists) {
         return res.status(409).json({
           success: false,
@@ -65,8 +66,8 @@ const authController = {
       const saltRounds = 12;
       const password_hash = await bcrypt.hash(password, saltRounds);
 
-      // Tạo user mới
-      const newUserId = await User.create({
+      // [SỬA] User.create -> UserService.create
+      const newUserId = await UserService.create({
         email,
         password_hash,
         full_name,
@@ -74,8 +75,8 @@ const authController = {
         role_id,
       });
 
-      // Lấy thông tin user vừa tạo
-      const newUser = await User.findById(newUserId);
+      // [SỬA] User.findById -> UserService.findById
+      const newUser = await UserService.findById(newUserId);
 
       // Tạo JWT token
       const token = jwt.sign(
@@ -119,8 +120,8 @@ const authController = {
         });
       }
 
-      // Tìm user theo email
-      const user = await User.findByEmail(email);
+      // [ĐÚNG] Chỗ này bạn đã viết đúng UserService
+      const user = await UserService.findByEmail(email);
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -182,7 +183,7 @@ const authController = {
     }
   },
 
-  // Refresh token
+  // Refresh token (Giữ nguyên, không dùng Database)
   async refreshToken(req, res) {
     try {
       const { refresh_token } = req.body;
@@ -194,10 +195,8 @@ const authController = {
         });
       }
 
-      // Xác thực refresh token
       const decoded = jwt.verify(refresh_token, JWT_SECRET);
 
-      // Tạo token mới
       const newToken = jwt.sign(
         {
           user_id: decoded.user_id,
@@ -224,7 +223,7 @@ const authController = {
     }
   },
 
-  // Đăng xuất
+  // Đăng xuất (Giữ nguyên)
   async logout(req, res) {
     res.json({
       success: true,
@@ -237,7 +236,8 @@ const authController = {
     try {
       const user_id = req.user.user_id;
 
-      const user = await User.findById(user_id);
+      // [SỬA] User.findById -> UserService.findById
+      const user = await UserService.findById(user_id);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -259,13 +259,13 @@ const authController = {
       });
     }
   },
+
   // User: Đổi mật khẩu
   async changePassword(req, res) {
     try {
       const user_id = req.user.user_id;
       const { current_password, new_password, confirm_password } = req.body;
 
-      // Validate input
       if (!current_password || !new_password || !confirm_password) {
         return res.status(400).json({
           success: false,
@@ -273,7 +273,6 @@ const authController = {
         });
       }
 
-      // Kiểm tra mật khẩu mới và xác nhận mật khẩu
       if (new_password !== confirm_password) {
         return res.status(400).json({
           success: false,
@@ -281,7 +280,6 @@ const authController = {
         });
       }
 
-      // Kiểm tra độ dài mật khẩu mới
       if (new_password.length < 6) {
         return res.status(400).json({
           success: false,
@@ -289,7 +287,6 @@ const authController = {
         });
       }
 
-      // Kiểm tra mật khẩu mới không giống mật khẩu cũ
       if (current_password === new_password) {
         return res.status(400).json({
           success: false,
@@ -297,8 +294,8 @@ const authController = {
         });
       }
 
-      // Đổi mật khẩu
-      const isChanged = await User.changePassword(
+      // [SỬA] User.changePassword -> UserService.changePassword
+      const isChanged = await UserService.changePassword(
         user_id,
         current_password,
         new_password

@@ -1,12 +1,16 @@
-import User from "../models/User.js";
+import UserService from "../services/UserService.js";
 import Notification from "../models/Notification.js";
 
 const userController = {
-  // User: Xem thông tin cá nhân
+  // =================================================================
+  // USER: THAO TÁC CÁ NHÂN
+  // =================================================================
+
+  // Xem thông tin cá nhân
   async getMe(req, res) {
     try {
       const user_id = req.user.user_id;
-      const user = await User.findById(user_id);
+      const user = await UserService.findById(user_id);
 
       if (!user) {
         return res.status(404).json({
@@ -30,7 +34,7 @@ const userController = {
     }
   },
 
-  // User: Cập nhật thông tin cá nhân
+  // Cập nhật thông tin cá nhân
   async updateMe(req, res) {
     try {
       const user_id = req.user.user_id;
@@ -44,8 +48,7 @@ const userController = {
         });
       }
 
-      // Cập nhật thông tin
-      const isUpdated = await User.update(user_id, {
+      const isUpdated = await UserService.update(user_id, {
         full_name,
         phone,
         avatar_url,
@@ -54,12 +57,12 @@ const userController = {
       if (!isUpdated) {
         return res.status(404).json({
           success: false,
-          message: "User không tồn tại",
+          message: "User không tồn tại hoặc không có thay đổi",
         });
       }
 
       // Lấy thông tin user sau khi cập nhật
-      const updatedUser = await User.findById(user_id);
+      const updatedUser = await UserService.findById(user_id);
 
       res.json({
         success: true,
@@ -77,7 +80,11 @@ const userController = {
     }
   },
 
-  // Admin: Xem danh sách tất cả users (có phân trang và filter)
+  // =================================================================
+  // ADMIN: QUẢN LÝ USER
+  // =================================================================
+
+  // Xem danh sách tất cả users (có phân trang và filter)
   async getAllUsers(req, res) {
     try {
       const {
@@ -88,7 +95,7 @@ const userController = {
         status = "",
       } = req.query;
 
-      const result = await User.findAll({
+      const result = await UserService.findAll({
         page: parseInt(page),
         limit: parseInt(limit),
         search,
@@ -112,114 +119,11 @@ const userController = {
     }
   },
 
-  // Admin: Khóa/Mở khóa tài khoản user
-  async updateUserStatus(req, res) {
-    try {
-      const { user_id } = req.params;
-      const { status } = req.body;
-
-      // Lấy user hiện tại trước khi cập nhật (để biết old_status)
-      const currentUser = await User.findById(user_id);
-      if (!currentUser) {
-        return res.status(404).json({
-          success: false,
-          message: "User không tồn tại",
-        });
-      }
-
-      // Validate status
-      const allowedStatuses = ["Active", "Locked", "Suspended"];
-      if (!allowedStatuses.includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: "Trạng thái không hợp lệ",
-        });
-      }
-
-      // Không cho khóa chính mình
-      if (parseInt(user_id, 10) === req.user.user_id) {
-        return res.status(400).json({
-          success: false,
-          message: "Không thể thay đổi trạng thái của chính mình",
-        });
-      }
-
-      // Cập nhật status
-      const isUpdated = await User.updateStatus(user_id, status);
-
-      if (!isUpdated) {
-        return res.status(404).json({
-          success: false,
-          message: "User không tồn tại",
-        });
-      }
-
-      // Lấy thông tin user sau khi cập nhật
-      const updatedUser = await User.findById(user_id);
-
-      // ====== Tạo notification cho user đó ======
-      try {
-        if (status === "Locked") {
-          // tài khoản bị khóa
-          await Notification.createAndPush({
-            user_id: updatedUser.user_id,
-            type: "account_locked", // type này bạn đã dùng trong notificationController
-            payload: {
-              old_status: currentUser.status,
-              new_status: updatedUser.status,
-              message: "Tài khoản của bạn đã bị khóa bởi admin.",
-            },
-          });
-        } else if (status === "Active") {
-          // tài khoản được mở khóa
-          await Notification.createAndPush({
-            user_id: updatedUser.user_id,
-            type: "account_unlocked",
-            payload: {
-              old_status: currentUser.status,
-              new_status: updatedUser.status,
-              message: "Tài khoản của bạn đã được mở khóa.",
-            },
-          });
-        } else if (status === "Suspended") {
-          // nếu bạn muốn phân biệt Suspended
-          await Notification.createAndPush({
-            user_id: updatedUser.user_id,
-            type: "account_locked",
-            payload: {
-              old_status: currentUser.status,
-              new_status: updatedUser.status,
-              message:
-                "Tài khoản của bạn đã bị tạm ngưng bởi admin (Suspended).",
-            },
-          });
-        }
-      } catch (notifErr) {
-        console.error("Create notification for status change error:", notifErr);
-        // không fail API chỉ vì lỗi notification → log thôi
-      }
-
-      res.json({
-        success: true,
-        message: `Cập nhật trạng thái user thành ${status}`,
-        data: {
-          user: updatedUser,
-        },
-      });
-    } catch (error) {
-      console.error("Update user status error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Lỗi server khi cập nhật trạng thái user",
-      });
-    }
-  },
-
-  // Admin: Xem chi tiết user
+  // Xem chi tiết user theo ID
   async getUserById(req, res) {
     try {
       const { user_id } = req.params;
-      const user = await User.findById(user_id);
+      const user = await UserService.findById(user_id);
 
       if (!user) {
         return res.status(404).json({
@@ -243,7 +147,111 @@ const userController = {
     }
   },
 
-  // Admin: Cập nhật role user (Volunteer / Manager / Admin)
+  // Khóa/Mở khóa tài khoản user
+  async updateUserStatus(req, res) {
+    try {
+      const { user_id } = req.params;
+      const { status, reason } = req.body; // reason: lý do khóa (optional)
+
+      // 1. Kiểm tra User tồn tại & lấy trạng thái cũ
+      const currentUser = await UserService.findById(user_id);
+      if (!currentUser) {
+        return res.status(404).json({
+          success: false,
+          message: "User không tồn tại",
+        });
+      }
+
+      // 2. Validate status
+      const allowedStatuses = ["Active", "Locked", "Suspended"];
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Trạng thái không hợp lệ",
+        });
+      }
+
+      // 3. Không cho khóa chính mình
+      if (parseInt(user_id, 10) === req.user.user_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Không thể thay đổi trạng thái của chính mình",
+        });
+      }
+
+      // 4. Cập nhật status
+      const isUpdated = await UserService.updateStatus(user_id, status);
+
+      if (!isUpdated) {
+        return res.status(400).json({
+          success: false,
+          message: "Cập nhật thất bại hoặc trạng thái không thay đổi",
+        });
+      }
+
+      // 5. Lấy thông tin user sau khi cập nhật
+      const updatedUser = await UserService.findById(user_id);
+
+      // 6. Gửi Notification (Để user biết mình bị khóa/mở khóa)
+      try {
+        if (status === "Locked") {
+          // Gửi thông báo khóa
+          await Notification.createAndPush({
+            user_id: updatedUser.user_id,
+            type: "account_locked",
+            payload: {
+              old_status: currentUser.status,
+              new_status: updatedUser.status,
+              reason: reason || "Vi phạm quy định",
+              message: `Tài khoản của bạn đã bị khóa. Lý do: ${reason || "Vi phạm quy định"}`,
+            },
+          });
+        } else if (status === "Active") {
+          // Gửi thông báo mở khóa
+          await Notification.createAndPush({
+            user_id: updatedUser.user_id,
+            type: "account_unlocked",
+            payload: {
+              old_status: currentUser.status,
+              new_status: updatedUser.status,
+              message: "Tài khoản của bạn đã được mở khóa.",
+            },
+          });
+        } else if (status === "Suspended") {
+          // Gửi thông báo tạm ngưng
+          await Notification.createAndPush({
+            user_id: updatedUser.user_id,
+            type: "account_locked", // Có thể dùng chung type locked
+            payload: {
+              old_status: currentUser.status,
+              new_status: updatedUser.status,
+              reason: reason,
+              message: "Tài khoản của bạn đã bị tạm ngưng hoạt động.",
+            },
+          });
+        }
+      } catch (notifErr) {
+        console.error("Create notification for status change error:", notifErr);
+        // Không return lỗi ở đây để đảm bảo việc khóa DB vẫn thành công
+      }
+
+      res.json({
+        success: true,
+        message: `Cập nhật trạng thái user thành ${status}`,
+        data: {
+          user: updatedUser,
+        },
+      });
+    } catch (error) {
+      console.error("Update user status error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi cập nhật trạng thái user",
+      });
+    }
+  },
+
+  // Cập nhật role user (Volunteer / Manager / Admin)
   async updateUserRole(req, res) {
     try {
       const { user_id } = req.params;
@@ -257,7 +265,7 @@ const userController = {
       }
 
       // Lấy user hiện tại để biết role cũ
-      const currentUser = await User.findById(user_id);
+      const currentUser = await UserService.findById(user_id);
       if (!currentUser) {
         return res.status(404).json({
           success: false,
@@ -273,7 +281,6 @@ const userController = {
         });
       }
 
-      // (Optional) Validate role_name nếu bạn muốn:
       const allowedRoles = ["Volunteer", "Manager", "Admin"];
       if (!allowedRoles.includes(role_name)) {
         return res.status(400).json({
@@ -283,28 +290,28 @@ const userController = {
       }
 
       // Lấy role_id từ role_name
-      const role_id = await User.getRoleId(role_name);
+      const role_id = await UserService.getRoleId(role_name);
       if (!role_id) {
         return res.status(400).json({
           success: false,
-          message: "Role không hợp lệ",
+          message: "Role không hợp lệ trong hệ thống",
         });
       }
 
       // Cập nhật role
-      const isUpdated = await User.updateRole(user_id, role_id);
+      const isUpdated = await UserService.updateRole(user_id, role_id);
 
       if (!isUpdated) {
-        return res.status(404).json({
+        return res.status(400).json({
           success: false,
-          message: "User không tồn tại",
+          message: "Cập nhật thất bại",
         });
       }
 
       // Lấy user sau khi cập nhật
-      const updatedUser = await User.findById(user_id);
+      const updatedUser = await UserService.findById(user_id);
 
-      // ====== Tạo notification cho user đó về việc đổi role ======
+      // Gửi Notification về việc đổi quyền
       try {
         await Notification.createAndPush({
           user_id: updatedUser.user_id,
@@ -317,7 +324,6 @@ const userController = {
         });
       } catch (notifErr) {
         console.error("Create notification for role change error:", notifErr);
-        // chỉ log, không trả lỗi cho client
       }
 
       return res.json({

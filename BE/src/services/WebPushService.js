@@ -1,12 +1,9 @@
 import webpush from "web-push";
-import pool from "../config/db.js";
+import { DataTypes, Model } from "sequelize";
+import sequelize from "../config/db.js";
 
-const VAPID_PUBLIC_KEY =
-  process.env.VAPID_PUBLIC_KEY ||
-  "BIc2Q_6bT3JkK8bZzrQ6eL1J2XqY7nA8mD9pF4sT7wG2hM5vK1xR3eB8yN6tH9jL4qW7zC0pF3vE5sD2";
-const VAPID_PRIVATE_KEY =
-  process.env.VAPID_PRIVATE_KEY ||
-  "KFc2Q_6bT3JkK8bZzrQ6eL1J2XqY7nA8mD9pF4sT7wG2hM5vK1xR3eB8yN6tH9jL4qW7zC0pF3vE5";
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 
 // Cấu hình web-push
 webpush.setVapidDetails(
@@ -15,6 +12,49 @@ webpush.setVapidDetails(
   VAPID_PRIVATE_KEY
 );
 
+// =================================================================
+// 1. ĐỊNH NGHĨA MODEL (PushSubscription)
+// =================================================================
+class PushSubscription extends Model {}
+
+PushSubscription.init(
+  {
+    subscription_id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    endpoint: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      // Endpoint thường rất dài và là duy nhất
+    },
+    keys: {
+      type: DataTypes.JSON, // Sequelize tự động xử lý JSON/Object
+      allowNull: false,
+    },
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+  },
+  {
+    sequelize,
+    modelName: "PushSubscription",
+    tableName: "PushSubscriptions",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  }
+);
+
+// =================================================================
+// 2. SERVICE LOGIC (Đã chuyển sang dùng Model)
+// =================================================================
 class WebPushService {
   // Lưu subscription của user
   static async saveSubscription(user_id, subscription) {
@@ -23,26 +63,26 @@ class WebPushService {
 
       console.log("Saving subscription for user:", user_id);
 
-      // Kiểm tra đã tồn tại chưa
-      const [existing] = await pool.execute(
-        `SELECT subscription_id FROM PushSubscriptions WHERE endpoint = ?`,
-        [endpoint]
-      );
+      // Tìm subscription dựa trên endpoint
+      const existingSub = await PushSubscription.findOne({
+        where: { endpoint: endpoint },
+      });
 
-      if (existing.length > 0) {
-        // Update existing
-        await pool.execute(
-          `UPDATE PushSubscriptions SET keys = ?, is_active = TRUE, updated_at = NOW() WHERE endpoint = ?`,
-          [JSON.stringify(keys), endpoint]
-        );
+      if (existingSub) {
+        // Update existing: Sequelize tự động stringify keys khi lưu xuống DB
+        existingSub.keys = keys;
+        existingSub.is_active = true;
+        existingSub.user_id = user_id; // Cập nhật lại user sở hữu nếu cần
+        await existingSub.save();
+
         console.log("Updated existing subscription");
       } else {
         // Insert new
-        await pool.execute(
-          `INSERT INTO PushSubscriptions (user_id, endpoint, \`keys\`) 
-           VALUES (?, ?, ?)`,
-          [user_id, endpoint, JSON.stringify(keys)]
-        );
+        await PushSubscription.create({
+          user_id,
+          endpoint,
+          keys, // Truyền thẳng Object, không cần JSON.stringify
+        });
         console.log("Created new subscription");
       }
 
@@ -56,13 +96,13 @@ class WebPushService {
   // Gửi thông báo push thực tế
   static async sendPushNotification(user_id, notificationData) {
     try {
-      // Lấy tất cả subscriptions của user
-      const [subscriptions] = await pool.execute(
-        `SELECT endpoint, \`keys\` 
-           FROM PushSubscriptions 
-          WHERE user_id = ? AND is_active = TRUE`,
-        [user_id]
-      );
+      // Lấy tất cả subscriptions active của user
+      const subscriptions = await PushSubscription.findAll({
+        where: {
+          user_id: user_id,
+          is_active: true,
+        },
+      });
 
       if (subscriptions.length === 0) {
         console.log(`No active subscriptions for user ${user_id}`);
@@ -96,31 +136,26 @@ class WebPushService {
       let sentCount = 0;
 
       // Gửi đến tất cả subscriptions
-      for (const subscription of subscriptions) {
+      for (const sub of subscriptions) {
         try {
           await webpush.sendNotification(
             {
-              endpoint: subscription.endpoint,
-              keys: JSON.parse(subscription.keys),
+              endpoint: sub.endpoint,
+              // sub.keys đã là Object do DataTypes.JSON, không cần JSON.parse
+              keys: sub.keys,
             },
             JSON.stringify(message)
           );
           sentCount++;
-          console.log(`Push sent to ${subscription.endpoint}`);
+          console.log(`Push sent to ${sub.endpoint}`);
         } catch (pushError) {
           console.error("Push notification failed:", pushError);
 
-          // Nếu subscription không còn valid, đánh dấu inactive
+          // Nếu subscription không còn valid (410 Gone), đánh dấu inactive
           if (pushError.statusCode === 410) {
-            await pool.execute(
-              `UPDATE PushSubscriptions 
-                 SET is_active = FALSE 
-               WHERE endpoint = ?`,
-              [subscription.endpoint]
-            );
-            console.log(
-              `Marked subscription as inactive: ${subscription.endpoint}`
-            );
+            sub.is_active = false;
+            await sub.save();
+            console.log(`Marked subscription as inactive: ${sub.endpoint}`);
           }
         }
       }
@@ -136,12 +171,11 @@ class WebPushService {
   // Hủy subscription
   static async unsubscribe(endpoint) {
     try {
-      await pool.execute(
-        `UPDATE PushSubscriptions 
-           SET is_active = FALSE 
-         WHERE endpoint = ?`,
-        [endpoint]
+      const result = await PushSubscription.update(
+        { is_active: false },
+        { where: { endpoint: endpoint } }
       );
+
       console.log(`Unsubscribed: ${endpoint}`);
       return true;
     } catch (error) {

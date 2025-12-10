@@ -1,7 +1,7 @@
-// src/controllers/eventController.js
 import Event from "../models/Event.js";
 import Notification from "../models/Notification.js";
-import User from "../models/User.js";
+// [SỬA 1] Import UserService thay vì User Model
+import UserService from "../services/UserService.js";
 import Registration from "../models/Registration.js";
 
 // Hàm helper: Format ngày giữ nguyên giờ nhập vào
@@ -118,7 +118,8 @@ const eventController = {
 
       // 🔔 Gửi thông báo cho tất cả Admin: có sự kiện mới chờ duyệt
       try {
-        const admins = await User.getAdmins();
+        // [SỬA 2] Dùng UserService.getAdmins()
+        const admins = await UserService.getAdmins();
         console.log("Admins from getAdmins():", admins);
 
         if (!admins || admins.length === 0) {
@@ -614,7 +615,8 @@ const eventController = {
           (prevStatus === "approved" || prevStatus === "rejected") &&
           newStatus === "pending"
         ) {
-          const admins = await User.getAdmins();
+          // [SỬA 2] Dùng UserService.getAdmins()
+          const admins = await UserService.getAdmins();
           if (admins && admins.length) {
             for (const admin of admins) {
               await Notification.createAndPush({

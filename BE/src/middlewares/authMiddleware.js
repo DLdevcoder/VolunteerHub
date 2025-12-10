@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+// [SỬA 1] Import UserService thay vì User Model
+import UserService from "../services/UserService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_super_secret_key";
 
@@ -39,7 +40,9 @@ const authMiddleware = {
       }
 
       // Lấy status mới nhất từ database (real-time check)
-      const currentUser = await User.findById(req.user.user_id);
+      // [SỬA 2] Dùng UserService.findById
+      const currentUser = await UserService.findById(req.user.user_id);
+
       if (!currentUser) {
         return res.status(404).json({
           success: false,
@@ -47,11 +50,11 @@ const authMiddleware = {
         });
       }
 
-      if (currentUser.status !== 'Active') {
+      if (currentUser.status !== "Active") {
         let message;
-        if (currentUser.status === 'Locked') {
+        if (currentUser.status === "Locked") {
           message = "Tài khoản của bạn đã bị khóa";
-        } else if (currentUser.status === 'Suspended') {
+        } else if (currentUser.status === "Suspended") {
           message = "Tài khoản của bạn đã bị tạm ngưng";
         } else {
           message = "Tài khoản không hoạt động";
@@ -60,7 +63,7 @@ const authMiddleware = {
         return res.status(403).json({
           success: false,
           message,
-          accountStatus: currentUser.status
+          accountStatus: currentUser.status,
         });
       }
 

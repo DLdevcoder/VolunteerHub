@@ -1,26 +1,35 @@
-import mysql from "mysql2/promise";
+import { Sequelize } from "sequelize";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
+const sequelize = new Sequelize(
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST,
+    dialect: "mysql", // Đây là nơi định nghĩa loại CSDL
+    logging: false, // Tắt log câu lệnh SQL dài dòng (tùy chọn)
+    pool: {
+      max: 10,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
+    },
+    define: {
+      timestamps: false, // Tắt mặc định createdAt/updatedAt nếu bảng tự quản lý
+    },
+  }
+);
 
-// kiểm tra kết nối
 export const checkDbConnection = async () => {
   try {
-    await pool.query("SELECT 1");
-    console.log("Kết nối Database MySQL thành công!");
+    await sequelize.authenticate();
+    console.log("Kết nối Database thành công (qua ORM)!");
   } catch (error) {
     console.error("Không thể kết nối đến Database:", error);
   }
 };
 
-export default pool;
+export default sequelize;
