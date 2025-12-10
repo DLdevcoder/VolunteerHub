@@ -83,6 +83,7 @@ const authController = {
           user_id: newUser.user_id,
           email: newUser.email,
           role_name: newUser.role_name,
+          status: newUser.status,
         },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
@@ -155,6 +156,7 @@ const authController = {
           user_id: user.user_id,
           email: user.email,
           role_name: user.role_name,
+          status: user.status,
         },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }

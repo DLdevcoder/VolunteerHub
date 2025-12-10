@@ -17,6 +17,7 @@ router.get(
 router.post(
   "/events/:event_id",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   postController.createPost
 );
 
@@ -25,6 +26,7 @@ router.post(
 router.delete(
   "/:post_id",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   postController.deletePost
 );
 

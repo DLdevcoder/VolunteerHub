@@ -68,6 +68,7 @@ router.get(
 router.post(
   "/",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   authMiddleware.requireRole(["Manager"]),
   eventController.createEvent
 );
@@ -113,6 +114,7 @@ router.patch(
 router.put(
   "/:event_id",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   authMiddleware.requireRole(["Manager"]),
   eventPermission.checkEventNotStarted,
   eventPermission.checkEventOwnership,
@@ -126,6 +128,7 @@ router.put(
 router.delete(
   "/:event_id",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   authMiddleware.requireManagerOrAdmin,
   eventPermission.checkEventOwnership,
   eventController.deleteEvent

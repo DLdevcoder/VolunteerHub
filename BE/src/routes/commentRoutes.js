@@ -17,6 +17,7 @@ router.get(
 router.post(
   "/posts/:post_id",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   commentController.createComment
 );
 
@@ -25,6 +26,7 @@ router.post(
 router.delete(
   "/:comment_id",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   commentController.deleteComment
 );
 
