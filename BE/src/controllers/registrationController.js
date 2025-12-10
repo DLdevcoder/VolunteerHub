@@ -249,6 +249,66 @@ const registrationController = {
   },
 
   // =========================================================
+  // VOLUNTEER & MANAGER – Danh sách TNV xem được công khai
+  // (chỉ khi là manager sự kiện HOẶC đã được approved/completed)
+  // GET /api/registrations/events/:event_id/public-volunteers
+  // =========================================================
+  async getPublicVolunteersOfEvent(req, res) {
+    try {
+      const { event_id } = req.params;
+      const userId = req.user.user_id;
+
+      const event = await Event.getEventById(event_id);
+      if (!event) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Sự kiện không tồn tại" });
+      }
+
+      // 1. Nếu là manager của event -> luôn được xem
+      let canView = event.manager_id === userId;
+
+      // 2. Nếu không phải manager, chỉ được xem nếu là TNV đã được duyệt / hoàn thành
+      if (!canView) {
+        const myReg = await Registration.findOne(userId, event_id);
+        if (myReg && ["approved", "completed"].includes(myReg.status)) {
+          canView = true;
+        }
+      }
+
+      if (!canView) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Chỉ Quản lý sự kiện hoặc tình nguyện viên đã được duyệt/hoàn thành mới xem được danh sách này.",
+        });
+      }
+
+      // Lấy danh sách đăng ký đầy đủ rồi lọc bớt thông tin nhạy cảm
+      const rawList = await Registration.getByEventId(event_id);
+
+      const publicList = rawList.map((r) => ({
+        registration_id: r.registration_id,
+        full_name: r.full_name,
+        status: r.status,
+        registration_date: r.registration_date,
+      }));
+
+      return res.json({
+        success: true,
+        message: "Lấy danh sách tình nguyện viên thành công",
+        data: publicList,
+      });
+    } catch (error) {
+      console.error("Get public volunteers error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi lấy danh sách tình nguyện viên",
+      });
+    }
+  },
+
+  // =========================================================
   // MANAGER – Lấy danh sách đăng ký của 1 sự kiện
   // =========================================================
   async getEventRegistrations(req, res) {

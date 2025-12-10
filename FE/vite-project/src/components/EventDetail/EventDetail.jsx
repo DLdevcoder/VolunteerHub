@@ -1,18 +1,8 @@
-// src/pages/EventDetail/EventDetail.jsx
 import "./EventDetail.css";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  Card,
-  Typography,
-  Spin,
-  Empty,
-  Tabs,
-  Button,
-  Space,
-  message,
-} from "antd";
+import { Card, Typography, Spin, Empty, Tabs, Button, Space } from "antd";
 
 import {
   eventDetailSelector,
@@ -23,14 +13,17 @@ import { fetchEventDetailThunk } from "../../redux/slices/eventSlice";
 import {
   getMyRegistrationStatusThunk,
   cancelRegistrationThunk,
+  registerForEventThunk,
 } from "../../redux/slices/registrationSlice";
 
 import EventPostsTab from "./EventPostsTab";
 import EventParticipantsTab from "./EventParticipantsTab";
+import EventVolunteersListTab from "./EventVolunteersListTab";
+import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 
 const { Title, Text, Paragraph } = Typography;
 
-// same format helper as EventCard
+// Helper format thời gian (giống EventCard)
 const formatDateRange = (start, end) => {
   if (!start || !end) return "";
   const s = new Date(start);
@@ -48,15 +41,16 @@ const formatDateRange = (start, end) => {
 const EventDetail = () => {
   const { event_id } = useParams();
   const dispatch = useDispatch();
+  const messageApi = useGlobalMessage();
 
   const event = useSelector(eventDetailSelector);
   const detailLoading = useSelector(eventDetailLoadingSelector);
   const authUser = useSelector((state) => state.auth.user);
 
-  const [activeTab, setActiveTab] = useState("posts");
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [registerLoading, setRegisterLoading] = useState(false);
 
-  // ----- registration status for this event -----
+  // ----- registration status cho event này -----
   const defaultRegState = {
     loading: false,
     hasRegistration: false,
@@ -73,7 +67,7 @@ const EventDetail = () => {
   const hasRegistration = registrationState.hasRegistration;
   const canAccessPostsFlag = registrationState.canAccessPosts;
 
-  // ----- role helpers -----
+  // ----- helper role -----
   const isManager = useMemo(() => {
     if (!authUser || !event) return false;
     return authUser.user_id === event.manager_id;
@@ -81,38 +75,70 @@ const EventDetail = () => {
 
   const isVolunteer = authUser?.role_name === "Volunteer";
 
-  // Final "can view posts" rule:
-  //  - Manager: always
-  //  - Volunteer: only when backend says canAccessPosts (approved/completed)
+  // Quy tắc xem post:
+  // - Manager: luôn được xem
+  // - Volunteer: chỉ khi backend cho phép (approved/completed)
   const canViewPosts = isManager || (isVolunteer && canAccessPostsFlag);
 
-  // ----- load event detail + my registration status -----
+  // ----- load event detail + registration status -----
   useEffect(() => {
     if (!event_id) return;
 
     dispatch(fetchEventDetailThunk(event_id));
 
-    // only Volunteer needs per-event registration status
     if (authUser && authUser.role_name === "Volunteer") {
       dispatch(getMyRegistrationStatusThunk(event_id));
     }
-  }, [dispatch, event_id, authUser?.user_id, authUser?.role_name]);
+  }, [dispatch, event_id, authUser?.user_id, authUser?.role_name, authUser]);
 
-  // ----- cancel registration -----
+  // ----- Hủy đăng ký -----
   const handleCancelRegistration = async () => {
     try {
       setCancelLoading(true);
-      await dispatch(cancelRegistrationThunk(event_id)).unwrap();
-      message.success("Hủy đăng ký thành công");
+      const res = await dispatch(cancelRegistrationThunk(event_id)).unwrap();
 
-      // reload registration status + event detail
+      const msgFromRes =
+        res?.message || res?.payload?.message || res?.data?.message;
+      messageApi.success(msgFromRes || "Hủy đăng ký thành công");
+
+      // reload lại trạng thái
       dispatch(getMyRegistrationStatusThunk(event_id));
       dispatch(fetchEventDetailThunk(event_id));
     } catch (err) {
-      const msg = err?.message || "Không thể hủy đăng ký sự kiện";
-      message.error(msg);
+      const msgErr =
+        err?.message ||
+        err?.payload?.message ||
+        err?.data?.message ||
+        "Không thể hủy đăng ký sự kiện";
+      messageApi.error(msgErr);
     } finally {
       setCancelLoading(false);
+    }
+  };
+
+  // ----- Đăng ký tham gia -----
+  const handleRegister = async () => {
+    try {
+      setRegisterLoading(true);
+      const res = await dispatch(registerForEventThunk(event_id)).unwrap();
+
+      const msgFromRes =
+        res?.message || res?.payload?.message || res?.data?.message;
+      messageApi.success(
+        msgFromRes || "Đã gửi yêu cầu đăng ký! Vui lòng chờ duyệt."
+      );
+
+      dispatch(getMyRegistrationStatusThunk(event_id));
+      dispatch(fetchEventDetailThunk(event_id));
+    } catch (err) {
+      const msgErr =
+        err?.message ||
+        err?.payload?.message ||
+        err?.data?.message ||
+        "Không thể đăng ký sự kiện";
+      messageApi.error(msgErr);
+    } finally {
+      setRegisterLoading(false);
     }
   };
 
@@ -127,119 +153,143 @@ const EventDetail = () => {
     return `${current} người tham gia`;
   })();
 
+  // Khi nào hiện nút "Hủy tham gia"
   const canShowCancelButton =
     isVolunteer && ["pending", "approved"].includes(registrationStatus);
+
+  // Khi nào hiện nút "Đăng ký tham gia"
+  // - chưa có đăng ký
+  // - hoặc đã bị từ chối / đã hủy trước đó
+  const canShowRegisterButton =
+    isVolunteer &&
+    (!hasRegistration ||
+      ["rejected", "cancelled"].includes(registrationStatus));
 
   // =========================================================
   //  CONTENT BELOW INFO BLOCK
   // =========================================================
+
+  // Nội dung bên trong tab "Bài viết" đối với Volunteer
+  const renderVolunteerPostsTabContent = () => {
+    if (!hasRegistration) {
+      return (
+        <Empty description="Bạn cần đăng ký tham gia sự kiện để xem bài viết và danh sách tình nguyện viên." />
+      );
+    }
+
+    switch (registrationStatus) {
+      case "pending":
+        return (
+          <Empty description="Đăng ký của bạn đang chờ duyệt. Bạn sẽ xem được bài viết sau khi được chấp thuận." />
+        );
+      case "rejected":
+        return (
+          <Empty description="Đăng ký của bạn đã bị từ chối, nên bạn không thể xem bài viết của sự kiện này." />
+        );
+      case "cancelled":
+        return (
+          <Empty description="Bạn đã hủy đăng ký sự kiện này. Hãy đăng ký lại nếu muốn tham gia và xem bài viết." />
+        );
+      default:
+        break;
+    }
+
+    if (canViewPosts) {
+      return (
+        <EventPostsTab
+          eventId={event_id}
+          event={event}
+          authUser={authUser}
+          canViewPosts
+          canCreatePost
+        />
+      );
+    }
+
+    return (
+      <Empty description="Bạn không có quyền xem các bài viết của sự kiện này." />
+    );
+  };
+
   const renderTabsOrInfo = () => {
-    // 1. Chưa đăng nhập -> chỉ xem info, không xem bài viết
+    // 1. Chưa đăng nhập
     if (!authUser) {
       return (
         <Card bordered={false}>
-          <Empty description="Bạn cần đăng nhập và đăng ký tham gia sự kiện để xem bài viết." />
+          <Empty description="Bạn cần đăng nhập và đăng ký tham gia sự kiện để xem chi tiết nội dung." />
         </Card>
       );
     }
 
-    // 2. Manager: luôn xem được cả 2 tab
+    // 2. Manager: 3 tab
     if (isManager) {
+      const items = [
+        {
+          key: "posts",
+          label: "Bài viết",
+          children: (
+            <EventPostsTab
+              eventId={event_id}
+              event={event}
+              authUser={authUser}
+              canViewPosts
+              canCreatePost
+            />
+          ),
+        },
+        {
+          key: "volunteers",
+          label: "Danh sách tình nguyện viên",
+          children: <EventVolunteersListTab eventId={event_id} />,
+        },
+        {
+          key: "volunteerManagement",
+          label: "Quản lý người tham gia",
+          children: <EventParticipantsTab eventId={event_id} />,
+        },
+      ];
+
       return (
         <Card bordered={false}>
-          <Tabs activeKey={activeTab} onChange={setActiveTab}>
-            <Tabs.TabPane tab="Bài viết" key="posts">
-              <EventPostsTab
-                eventId={event_id}
-                event={event}
-                authUser={authUser}
-                canViewPosts={true}
-                canCreatePost={true}
-              />
-            </Tabs.TabPane>
-
-            <Tabs.TabPane tab="Người tham gia" key="participants">
-              <EventParticipantsTab eventId={event_id} />
-            </Tabs.TabPane>
-          </Tabs>
+          <Tabs defaultActiveKey="posts" items={items} />
         </Card>
       );
     }
 
     // 3. Volunteer (đã đăng nhập)
     if (isVolunteer) {
-      // Chưa hề đăng ký
       if (!hasRegistration) {
         return (
           <Card bordered={false}>
-            <Empty description="Bạn cần đăng ký tham gia sự kiện và được chấp thuận để xem các bài viết." />
+            <Empty description="Bạn cần đăng ký tham gia sự kiện để xem bài viết và danh sách tình nguyện viên." />
           </Card>
         );
       }
 
-      // Đang chờ duyệt
-      if (registrationStatus === "pending") {
-        return (
-          <Card bordered={false}>
-            <Empty description="Đăng ký của bạn đang chờ duyệt. Bạn sẽ xem được bài viết sau khi được chấp thuận." />
-          </Card>
-        );
-      }
+      const items = [
+        {
+          key: "posts",
+          label: "Bài viết",
+          children: renderVolunteerPostsTabContent(),
+        },
+        {
+          key: "volunteers",
+          label: "Danh sách tình nguyện viên",
+          children: <EventVolunteersListTab eventId={event_id} />,
+        },
+      ];
 
-      // Bị từ chối
-      if (registrationStatus === "rejected") {
-        return (
-          <Card bordered={false}>
-            <Empty description="Đăng ký của bạn đã bị từ chối, nên bạn không thể xem bài viết của sự kiện này." />
-          </Card>
-        );
-      }
-
-      // Đã hủy
-      if (registrationStatus === "cancelled") {
-        return (
-          <Card bordered={false}>
-            <Empty description="Bạn đã hủy đăng ký sự kiện này. Hãy đăng ký lại nếu muốn tham gia và xem bài viết." />
-          </Card>
-        );
-      }
-
-      // Được duyệt / đã hoàn thành -> xem được bài viết
-      if (canViewPosts) {
-        return (
-          <Card bordered={false}>
-            <Tabs activeKey={activeTab} onChange={setActiveTab}>
-              <Tabs.TabPane tab="Bài viết" key="posts">
-                <EventPostsTab
-                  eventId={event_id}
-                  event={event}
-                  authUser={authUser}
-                  canViewPosts={true}
-                  canCreatePost={true}
-                />
-              </Tabs.TabPane>
-
-              {/* Volunteer không xem tab người tham gia */}
-              <Tabs.TabPane tab="Người tham gia" key="participants" disabled>
-                <Empty description="Chỉ Quản lý sự kiện mới xem được danh sách người tham gia." />
-              </Tabs.TabPane>
-            </Tabs>
-          </Card>
-        );
-      }
-
-      // fallback an toàn
       return (
         <Card bordered={false}>
-          <Empty description="Bạn không có quyền xem các bài viết của sự kiện này." />
+          <Tabs defaultActiveKey="volunteers" items={items} />
         </Card>
       );
     }
 
-    // Role khác (nếu có) => xử lý giống chưa đăng nhập
+    // 4. Role khác
     return (
       <Card bordered={false}>
-        <Empty description="Bạn không có quyền xem các bài viết của sự kiện này." />
+        <Empty description="Bạn không có quyền xem nội dung chi tiết của sự kiện này." />
       </Card>
     );
   };
@@ -281,24 +331,37 @@ const EventDetail = () => {
               </Paragraph>
             )}
 
-            {/* Nút Hủy tham gia (Volunteer đã đăng ký) */}
-            {canShowCancelButton && (
+            {/* Nút hành động cho Volunteer */}
+            {(canShowCancelButton || canShowRegisterButton) && (
               <Space style={{ marginTop: 8 }}>
-                <Button
-                  danger
-                  size="small"
-                  loading={cancelLoading}
-                  onClick={handleCancelRegistration}
-                >
-                  Hủy tham gia
-                </Button>
+                {canShowCancelButton && (
+                  <Button
+                    danger
+                    size="small"
+                    loading={cancelLoading}
+                    onClick={handleCancelRegistration}
+                  >
+                    Hủy tham gia
+                  </Button>
+                )}
+
+                {canShowRegisterButton && (
+                  <Button
+                    type="primary"
+                    size="small"
+                    loading={registerLoading}
+                    onClick={handleRegister}
+                  >
+                    Đăng ký tham gia
+                  </Button>
+                )}
               </Space>
             )}
           </div>
         )}
       </Card>
 
-      {/* ======= Below: Tabs or info depending on role + status ======= */}
+      {/* ======= Bên dưới: Tabs tuỳ theo role + status ======= */}
       {renderTabsOrInfo()}
     </div>
   );

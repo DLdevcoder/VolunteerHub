@@ -3,7 +3,6 @@ import Post from "../models/Post.js";
 import Comment from "../models/Comment.js";
 import Event from "../models/Event.js";
 import Registration from "../models/Registration.js";
-// [SỬA 1] Import Service
 import UserService from "../services/UserService.js";
 import NotificationService from "../services/notificationService.js";
 
@@ -36,11 +35,25 @@ const reactionController = {
       const { post_id } = req.params;
       const user_id = req.user.user_id;
 
+      // [FIX] Xử lý input linh hoạt hơn
       let { type } = req.body;
-      const validTypes = ["like", "love", "haha", "sad", "angry"];
-      if (!type || !validTypes.includes(type)) type = "like";
 
-      // [SỬA 2] Dùng UserService
+      // Log để debug xem FE gửi gì lên
+      console.log(
+        `[Reaction] User ${user_id} toggle post ${post_id} with type:`,
+        type
+      );
+
+      // 1. Chuyển về chữ thường & cắt khoảng trắng
+      if (type) type = type.toString().toLowerCase().trim();
+
+      // 2. Validate
+      const validTypes = ["like", "love", "haha", "sad", "angry"];
+      if (!type || !validTypes.includes(type)) {
+        console.warn(`[Reaction] Invalid type '${type}', defaulting to 'like'`);
+        type = "like";
+      }
+
       const currentUser = await UserService.findById(user_id);
       if (!currentUser || currentUser.status !== "Active") {
         return res.status(403).json({ message: "Tài khoản bị khóa" });
@@ -70,7 +83,8 @@ const reactionController = {
 
       if (existing) {
         // Bấm lại đúng loại cũ -> Gỡ bỏ (Unlike)
-        if (existing.reaction_type === type) {
+        // Lưu ý: existing.reaction_type trong DB có thể trả về chữ thường/hoa tùy DB, nên lowercased check
+        if (existing.reaction_type.toLowerCase() === type) {
           await Reaction.removePostReaction(user_id, post_id);
           action = "removed";
           currentType = null;
@@ -86,14 +100,14 @@ const reactionController = {
         await Reaction.addPostReaction(user_id, post_id, type);
         action = "added";
 
-        // [BỔ SUNG] Gửi thông báo cho tác giả bài viết (nếu không phải tự like chính mình)
+        // Gửi thông báo
         if (post.user_id !== user_id) {
           await NotificationService.notifyReactionReceived(
-            post.user_id, // Người nhận (Tác giả bài viết)
-            "post", // Loại nội dung
-            post_id, // ID nội dung
-            user_id, // Người thả tim
-            currentUser.full_name // Tên người thả tim
+            post.user_id,
+            "post",
+            post_id,
+            user_id,
+            currentUser.full_name
           );
         }
       }
@@ -116,11 +130,11 @@ const reactionController = {
     }
   },
 
-  // Xem danh sách Reaction Bài viết (Có lọc & Thống kê)
+  // Xem danh sách Reaction Bài viết
   async getPostReactions(req, res) {
     try {
       const { post_id } = req.params;
-      const { type } = req.query; // Lọc theo type
+      const { type } = req.query;
       const user_id = req.user.user_id;
 
       const post = await Post.getById(post_id);
@@ -156,11 +170,15 @@ const reactionController = {
       const { comment_id } = req.params;
       const user_id = req.user.user_id;
 
+      // [FIX] Xử lý input
       let { type } = req.body;
-      const validTypes = ["like", "love", "haha", "sad", "angry"];
-      if (!type || !validTypes.includes(type)) type = "like";
+      if (type) type = type.toString().toLowerCase().trim();
 
-      // [SỬA 2] Dùng UserService
+      const validTypes = ["like", "love", "haha", "sad", "angry"];
+      if (!type || !validTypes.includes(type)) {
+        type = "like";
+      }
+
       const currentUser = await UserService.findById(user_id);
       if (!currentUser || currentUser.status !== "Active")
         return res.status(403).json({ message: "Tài khoản bị khóa" });
@@ -184,7 +202,7 @@ const reactionController = {
       let currentType = type;
 
       if (existing) {
-        if (existing.reaction_type === type) {
+        if (existing.reaction_type.toLowerCase() === type) {
           await Reaction.removeCommentReaction(user_id, comment_id);
           action = "removed";
           currentType = null;
@@ -197,14 +215,13 @@ const reactionController = {
         await Reaction.addCommentReaction(user_id, comment_id, type);
         action = "added";
 
-        // [BỔ SUNG] Gửi thông báo cho tác giả bình luận
         if (comment.user_id !== user_id) {
           await NotificationService.notifyReactionReceived(
-            comment.user_id, // Người nhận (Tác giả comment)
-            "comment", // Loại nội dung
-            comment_id, // ID nội dung
-            user_id, // Người thả tim
-            currentUser.full_name // Tên người thả tim
+            comment.user_id,
+            "comment",
+            comment_id,
+            user_id,
+            currentUser.full_name
           );
         }
       }

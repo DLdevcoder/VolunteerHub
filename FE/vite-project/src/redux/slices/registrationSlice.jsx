@@ -170,6 +170,42 @@ export const rejectRegistrationThunk = createAsyncThunk(
   }
 );
 
+// Lấy danh sách TNV công khai (không bao gồm email/phone)
+export const getEventVolunteersPublicThunk = createAsyncThunk(
+  "registration/getEventVolunteersPublic",
+  async (eventId, { rejectWithValue }) => {
+    try {
+      const res = await registrationApi.getPublicVolunteersByEvent(eventId);
+
+      if (!res?.data?.success && res?.success === false) {
+        // in case your api wrapper returns { success, message, data }
+        const msg =
+          res.message ||
+          "Không lấy được danh sách tình nguyện viên của sự kiện.";
+        return rejectWithValue(msg);
+      }
+
+      // Nếu dùng axios trực tiếp: res.data = { success, message, data }
+      const payload = res.data || res;
+      if (payload.success === false) {
+        return rejectWithValue(
+          payload.message ||
+            "Không lấy được danh sách tình nguyện viên của sự kiện."
+        );
+      }
+
+      // Trả về mảng volunteers (an toàn: fallback [])
+      return payload.data || [];
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Không lấy được danh sách tình nguyện viên của sự kiện.";
+      return rejectWithValue(msg);
+    }
+  }
+);
+
 // Đánh dấu hoàn thành
 export const completeRegistrationThunk = createAsyncThunk(
   "registration/completeRegistration",
@@ -225,6 +261,9 @@ export const completeRegistrationThunk = createAsyncThunk(
        updatingId: null,
        error: null,
      },
+     publicByEvent: {
+      // [eventId]: { items: [], loading: false, error: null }
+    },
    }
 */
 
@@ -239,6 +278,8 @@ const initialState = {
     updatingId: null,
     error: null,
   },
+
+  publicByEvent: {}, // eventId -> { items, loading, error }
 };
 
 const registrationSlice = createSlice({
@@ -463,6 +504,51 @@ const registrationSlice = createSlice({
       .addCase(completeRegistrationThunk.rejected, (state, action) => {
         state.manager.updatingId = null;
         state.manager.error = action.payload?.message || action.error.message;
+      })
+
+      // ================================
+      // PUBLIC VOLUNTEERS LIST (manager + TNV approved/completed)
+      // ================================
+      .addCase(getEventVolunteersPublicThunk.pending, (state, action) => {
+        const eventId = action.meta.arg;
+
+        if (!state.publicByEvent[eventId]) {
+          state.publicByEvent[eventId] = {
+            items: [],
+            loading: false,
+            error: null,
+          };
+        }
+
+        state.publicByEvent[eventId].loading = true;
+        state.publicByEvent[eventId].error = null;
+      })
+      .addCase(getEventVolunteersPublicThunk.fulfilled, (state, action) => {
+        const eventId = action.meta.arg;
+
+        state.publicByEvent[eventId] = {
+          items: action.payload || [],
+          loading: false,
+          error: null,
+        };
+      })
+      .addCase(getEventVolunteersPublicThunk.rejected, (state, action) => {
+        const eventId = action.meta.arg;
+        const msg =
+          action.payload ||
+          action.error?.message ||
+          "Không lấy được danh sách tình nguyện viên của sự kiện.";
+
+        if (!state.publicByEvent[eventId]) {
+          state.publicByEvent[eventId] = {
+            items: [],
+            loading: false,
+            error: null,
+          };
+        }
+
+        state.publicByEvent[eventId].loading = false;
+        state.publicByEvent[eventId].error = msg;
       });
   },
 });
