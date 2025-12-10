@@ -10,6 +10,7 @@ const router = express.Router();
 router.post(
   "/events/:event_id",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   authMiddleware.requireRole(["Volunteer"]),
   registrationController.registerEvent
 );
@@ -19,6 +20,7 @@ router.post(
 router.delete(
   "/events/:event_id",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   authMiddleware.requireRole(["Volunteer"]),
   registrationController.cancelRegistration
 );
@@ -36,6 +38,7 @@ router.get(
 router.patch(
   "/:registration_id/approve",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   authMiddleware.requireRole(["Manager"]),
   registrationController.approveRegistration
 );
@@ -45,6 +48,7 @@ router.patch(
 router.patch(
   "/:registration_id/reject",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   authMiddleware.requireRole(["Manager"]),
   registrationController.rejectRegistration
 );
@@ -54,6 +58,7 @@ router.patch(
 router.patch(
   "/:registration_id/complete",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   authMiddleware.requireRole(["Manager"]),
   registrationController.completeRegistration
 );

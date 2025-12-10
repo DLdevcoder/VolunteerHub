@@ -18,6 +18,7 @@ router.get(
 router.post(
   "/posts/:post_id",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   reactionController.togglePostReaction
 );
 
@@ -35,6 +36,7 @@ router.get(
 router.post(
   "/comments/:comment_id",
   authMiddleware.authenticateToken,
+  authMiddleware.checkAccountActive,
   reactionController.toggleCommentReaction
 );
 
