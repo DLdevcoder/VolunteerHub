@@ -1,7 +1,8 @@
 // src/controllers/registrationController.js
 import Registration from "../models/Registration.js";
 import Event from "../models/Event.js";
-import User from "../models/User.js";
+// [SỬA 1] Import UserService thay vì User Model
+import UserService from "../services/UserService.js";
 import Notification from "../models/Notification.js";
 
 const registrationController = {
@@ -14,7 +15,8 @@ const registrationController = {
       const user_id = req.user.user_id;
 
       // 1. Kiểm tra User
-      const currentUser = await User.findById(user_id);
+      // [SỬA 2] Dùng UserService.findById
+      const currentUser = await UserService.findById(user_id);
 
       if (!currentUser || currentUser.status !== "Active") {
         return res.status(403).json({
@@ -216,10 +218,11 @@ const registrationController = {
 
       // (Tuỳ chọn) Thông báo cho Manager biết TNV hủy đăng ký
       try {
-        const currentUser = await User.findById(user_id);
+        // [SỬA 2] Dùng UserService.findById
+        const currentUser = await UserService.findById(user_id);
         await Notification.createAndPush({
           user_id: event.manager_id,
-          type: "registration_cancelled",
+          type: "registration_cancelled", // Lưu ý: type này có thể chưa có trong ENUM DB, check lại DB nếu lỗi
           payload: {
             event_id,
             event_title: event.title,

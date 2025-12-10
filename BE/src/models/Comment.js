@@ -1,84 +1,153 @@
-import pool from "../config/db.js";
+import { DataTypes, Model, QueryTypes } from "sequelize";
+import sequelize from "../config/db.js";
 
-const Comment = {
+class Comment extends Model {
+  // =================================================================
+  // CÁC HÀM STATIC (LOGIC NGHIỆP VỤ)
+  // =================================================================
+
   // Tạo bình luận mới
-  async create({ post_id, user_id, content }) {
-    const sql = `
-      INSERT INTO Comments (post_id, user_id, content) 
-      VALUES (?, ?, ?)
-    `;
-    const [result] = await pool.execute(sql, [post_id, user_id, content]);
-    return result.insertId;
-  },
+  static async create({ post_id, user_id, content }) {
+    try {
+      // Sử dụng phương thức create của Sequelize
+      const newComment = await super.create({
+        post_id,
+        user_id,
+        content,
+      });
 
-  // Lấy danh sách bình luận của 1 bài viết
-  async getByPostId(post_id, page = 1, limit = 20) {
-    const offset = (page - 1) * limit;
+      // Trả về ID để tương thích với logic cũ (result.insertId)
+      return newComment.comment_id;
+    } catch (error) {
+      throw new Error(`Database error in create comment: ${error.message}`);
+    }
+  }
 
-    // Đếm tổng
-    const [countResult] = await pool.execute(
-      "SELECT COUNT(*) as total FROM Comments WHERE post_id = ?",
-      [post_id]
-    );
-    const total = countResult[0].total;
+  // Lấy danh sách bình luận của 1 bài viết (Phân trang + Join User/Role)
+  static async getByPostId(post_id, page = 1, limit = 20) {
+    try {
+      const numPage = Number(page) || 1;
+      const numLimit = Number(limit) || 20;
+      const offset = (numPage - 1) * numLimit;
 
-    // Lấy dữ liệu
-    const sql = `
-      SELECT 
-        c.comment_id, c.content, c.created_at,
-        u.user_id, u.full_name, u.avatar_url,
-        r.name as role_name
-      FROM Comments c
-      JOIN Users u ON c.user_id = u.user_id
-      JOIN Roles r ON u.role_id = r.role_id
-      WHERE c.post_id = ?
-      ORDER BY c.created_at ASC
-      LIMIT ? OFFSET ?
-    `;
+      // 1. Đếm tổng số comments
+      const countResult = await sequelize.query(
+        "SELECT COUNT(*) as total FROM Comments WHERE post_id = ?",
+        {
+          replacements: [post_id],
+          type: QueryTypes.SELECT,
+        }
+      );
+      const total = countResult[0]?.total || 0;
 
-    const [comments] = await pool.query(sql, [
-      post_id,
-      Number(limit),
-      Number(offset),
-    ]);
+      // 2. Lấy dữ liệu chi tiết
+      // Dùng Raw Query để Join và lấy đúng các trường phẳng (role_name)
+      const comments = await sequelize.query(
+        `SELECT 
+          c.comment_id, c.content, c.created_at,
+          u.user_id, u.full_name, u.avatar_url,
+          r.name as role_name
+         FROM Comments c
+         JOIN Users u ON c.user_id = u.user_id
+         JOIN Roles r ON u.role_id = r.role_id
+         WHERE c.post_id = ?
+         ORDER BY c.created_at ASC
+         LIMIT ? OFFSET ?`,
+        {
+          replacements: [post_id, numLimit, offset],
+          type: QueryTypes.SELECT,
+        }
+      );
 
-    return {
-      comments,
-      pagination: {
-        total,
-        page: Number(page),
-        limit: Number(limit),
-        totalPages: Math.ceil(total / limit),
-      },
-    };
-  },
+      return {
+        comments,
+        pagination: {
+          total,
+          page: numPage,
+          limit: numLimit,
+          totalPages: Math.ceil(total / numLimit),
+        },
+      };
+    } catch (error) {
+      throw new Error(`Database error in getByPostId: ${error.message}`);
+    }
+  }
 
-  // Lấy chi tiết comment (Kèm thông tin Sự kiện cha để check quyền)
-  async getById(comment_id) {
-    const sql = `
-      SELECT 
-        c.*, 
-        u.full_name, u.avatar_url,  -- <--- THÊM DÒNG NÀY QUAN TRỌNG
-        p.event_id,
-        e.manager_id as event_manager_id,
-        e.is_deleted as event_is_deleted,
-        e.approval_status as event_status
-      FROM Comments c
-      JOIN Users u ON c.user_id = u.user_id
-      JOIN Posts p ON c.post_id = p.post_id
-      JOIN Events e ON p.event_id = e.event_id
-      WHERE c.comment_id = ?
-    `;
-    const [rows] = await pool.execute(sql, [comment_id]);
-    return rows[0];
-  },
+  // Lấy chi tiết comment (Kèm thông tin User và Sự kiện cha để check quyền)
+  static async getById(comment_id) {
+    try {
+      const rows = await sequelize.query(
+        `SELECT 
+           c.*, 
+           u.full_name, u.avatar_url,
+           p.event_id,
+           e.manager_id as event_manager_id,
+           e.is_deleted as event_is_deleted,
+           e.approval_status as event_status
+         FROM Comments c
+         JOIN Users u ON c.user_id = u.user_id
+         JOIN Posts p ON c.post_id = p.post_id
+         JOIN Events e ON p.event_id = e.event_id
+         WHERE c.comment_id = ?`,
+        {
+          replacements: [comment_id],
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      return rows[0] || null;
+    } catch (error) {
+      throw new Error(`Database error in getById comment: ${error.message}`);
+    }
+  }
 
   // Xóa bình luận
-  async delete(comment_id) {
-    const sql = "DELETE FROM Comments WHERE comment_id = ?";
-    const [result] = await pool.execute(sql, [comment_id]);
-    return result.affectedRows > 0;
+  static async delete(comment_id) {
+    try {
+      // Sử dụng phương thức destroy của Sequelize
+      const deletedCount = await super.destroy({
+        where: { comment_id: comment_id },
+      });
+
+      return deletedCount > 0;
+    } catch (error) {
+      throw new Error(`Database error in delete comment: ${error.message}`);
+    }
+  }
+}
+
+// =================================================================
+// CẤU HÌNH SCHEMA
+// =================================================================
+Comment.init(
+  {
+    comment_id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    post_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    content: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    // created_at, updated_at tự động bởi timestamps: true
   },
-};
+  {
+    sequelize,
+    modelName: "Comment",
+    tableName: "Comments",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  }
+);
 
 export default Comment;

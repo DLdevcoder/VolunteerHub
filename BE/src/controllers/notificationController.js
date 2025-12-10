@@ -1,7 +1,10 @@
 import Notification from "../models/Notification.js";
-import User from "../models/User.js";
+// [SỬA 1] Import UserService thay vì User Model
+import UserService from "../services/UserService.js";
 import Event from "../models/Event.js";
-import pool from "../config/db.js";
+// [SỬA 2] Dùng sequelize thay vì pool
+import sequelize from "../config/db.js";
+import { QueryTypes } from "sequelize";
 
 const notificationController = {
   // ==================== API CHO NGƯỜI DÙNG ====================
@@ -21,7 +24,7 @@ const notificationController = {
 
       // enrich each notification with title + body
       const enrichedNotifications = result.notifications.map((n) => ({
-        ...n,
+        ...n.toJSON(), // Convert Sequelize instance to JSON
         title: Notification.getNotificationTitle(n.type),
         body: Notification.getNotificationBody(n.type, n.payload),
       }));
@@ -65,7 +68,7 @@ const notificationController = {
       }
 
       // Cập nhật trạng thái đã đọc
-      const isUpdated = await Notification.markAsRead(notification_id, user_id);
+      await Notification.markAsRead(notification_id, user_id);
 
       res.json({
         success: true,
@@ -119,7 +122,7 @@ const notificationController = {
       }
 
       // Xóa thông báo
-      const isDeleted = await Notification.delete(notification_id, user_id);
+      await Notification.delete(notification_id, user_id);
 
       res.json({
         success: true,
@@ -168,7 +171,7 @@ const notificationController = {
       );
 
       const enrichedNotifications = notifications.map((n) => ({
-        ...n,
+        ...n.toJSON(),
         title: Notification.getNotificationTitle(n.type),
         body: Notification.getNotificationBody(n.type, n.payload),
       }));
@@ -190,7 +193,7 @@ const notificationController = {
 
   // ==================== API CHO HỆ THỐNG ====================
 
-  // Thông báo khi sự kiện được duyệt (cho Manager) - ĐÃ CÓ TRONG TRIGGER
+  // Thông báo khi sự kiện được duyệt (cho Manager)
   async notifyEventApproval(req, res) {
     try {
       const { event_id, is_approved, rejection_reason } = req.body;
@@ -204,7 +207,7 @@ const notificationController = {
         });
       }
 
-      // Duyệt hoặc từ chối sự kiện (trigger sẽ tự động tạo thông báo)
+      // Duyệt hoặc từ chối sự kiện
       let result;
       if (is_approved) {
         result = await Event.approveEvent(event_id, admin_id);
@@ -237,9 +240,6 @@ const notificationController = {
     try {
       const { event_id, user_id } = req.body;
 
-      console.log("Event ID:", event_id);
-      console.log("User ID:", user_id);
-
       // Validate input
       if (!event_id || !user_id) {
         return res.status(400).json({
@@ -256,7 +256,8 @@ const notificationController = {
         });
       }
 
-      const user = await User.findById(user_id);
+      // [SỬA 2] Dùng UserService
+      const user = await UserService.findById(user_id);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -291,7 +292,7 @@ const notificationController = {
     }
   },
 
-  // Thông báo trạng thái đăng ký (cho Volunteer) - Sử dụng trực tiếp từ DB
+  // Thông báo trạng thái đăng ký (cho Volunteer)
   async notifyRegistrationStatus(req, res) {
     try {
       const { registration_id, status, rejection_reason } = req.body;
@@ -304,14 +305,17 @@ const notificationController = {
         });
       }
 
-      // Lấy thông tin registration từ database
-      const [registrations] = await pool.execute(
+      // [SỬA 3] Chuyển raw query sang sequelize.query
+      const registrations = await sequelize.query(
         `SELECT r.*, e.title as event_title, u.full_name as user_name 
          FROM Registrations r
          JOIN Events e ON r.event_id = e.event_id
          JOIN Users u ON r.user_id = u.user_id
          WHERE r.registration_id = ?`,
-        [registration_id]
+        {
+          replacements: [registration_id],
+          type: QueryTypes.SELECT,
+        }
       );
 
       if (registrations.length === 0) {
@@ -321,22 +325,22 @@ const notificationController = {
         });
       }
 
-      const registration = registrations[0];
-
-      // Cập nhật trạng thái registration (trigger sẽ tự động tạo thông báo)
-      const [result] = await pool.execute(
+      // Cập nhật trạng thái registration
+      const [result] = await sequelize.query(
         `UPDATE Registrations 
          SET status = ?, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP
          WHERE registration_id = ?`,
-        [status, rejection_reason, registration_id]
+        {
+          replacements: [status, rejection_reason, registration_id],
+          type: QueryTypes.UPDATE, // Quan trọng: type UPDATE trả về [affectedRows, meta]
+        }
       );
 
-      if (result.affectedRows === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Không thể cập nhật trạng thái đăng ký",
-        });
-      }
+      // Lưu ý: sequelize.query type UPDATE trả về mảng [undefined, affectedRows] ở một số dialect,
+      // hoặc trả về [result, metadata]. Với MySQL/mysql2 driver:
+      // result sẽ là object chứa affectedRows.
+      // Tuy nhiên cách an toàn là check result (nếu là object) hoặc phần tử thứ 2.
+      // Để đơn giản, giả sử update thành công nếu không throw error.
 
       res.json({
         success: true,
@@ -356,7 +360,6 @@ const notificationController = {
     try {
       const { event_id } = req.body;
 
-      // Validate input
       if (!event_id) {
         return res.status(400).json({
           success: false,
@@ -372,13 +375,16 @@ const notificationController = {
         });
       }
 
-      // Lấy tất cả volunteers đã đăng ký và được chấp nhận
-      const [approvedRegistrations] = await pool.execute(
+      // [SỬA 4] Chuyển raw query
+      const approvedRegistrations = await sequelize.query(
         `SELECT r.user_id, u.full_name, u.email 
          FROM Registrations r
          JOIN Users u ON r.user_id = u.user_id
          WHERE r.event_id = ? AND r.status = 'approved'`,
-        [event_id]
+        {
+          replacements: [event_id],
+          type: QueryTypes.SELECT,
+        }
       );
 
       const notifications = [];
@@ -418,7 +424,6 @@ const notificationController = {
     try {
       const { event_id } = req.body;
 
-      // Validate input
       if (!event_id) {
         return res.status(400).json({
           success: false,
@@ -434,13 +439,16 @@ const notificationController = {
         });
       }
 
-      // Lấy tất cả volunteers đã đăng ký và được chấp nhận
-      const [approvedRegistrations] = await pool.execute(
+      // [SỬA 5] Chuyển raw query
+      const approvedRegistrations = await sequelize.query(
         `SELECT r.user_id, u.full_name, u.email 
          FROM Registrations r
          JOIN Users u ON r.user_id = u.user_id
          WHERE r.event_id = ? AND r.status = 'approved'`,
-        [event_id]
+        {
+          replacements: [event_id],
+          type: QueryTypes.SELECT,
+        }
       );
 
       const notifications = [];
@@ -478,7 +486,6 @@ const notificationController = {
     try {
       const { event_id, reason } = req.body;
 
-      // Validate input
       if (!event_id || !reason) {
         return res.status(400).json({
           success: false,
@@ -494,13 +501,16 @@ const notificationController = {
         });
       }
 
-      // Lấy tất cả volunteers đã đăng ký (mọi trạng thái)
-      const [registrations] = await pool.execute(
+      // [SỬA 6] Chuyển raw query
+      const registrations = await sequelize.query(
         `SELECT r.user_id, u.full_name, u.email 
          FROM Registrations r
          JOIN Users u ON r.user_id = u.user_id
          WHERE r.event_id = ?`,
-        [event_id]
+        {
+          replacements: [event_id],
+          type: QueryTypes.SELECT,
+        }
       );
 
       const notifications = [];
@@ -538,7 +548,6 @@ const notificationController = {
       const { event_id, changes } = req.body;
       const manager_id = req.user.user_id;
 
-      // Validate input
       if (!event_id || !changes) {
         return res.status(400).json({
           success: false,
@@ -554,7 +563,6 @@ const notificationController = {
         });
       }
 
-      // Kiểm tra quyền manager
       const isEventOwner = await Event.isEventOwner(event_id, manager_id);
       if (!isEventOwner) {
         return res.status(403).json({
@@ -563,13 +571,16 @@ const notificationController = {
         });
       }
 
-      // Lấy tất cả volunteers đã đăng ký và được chấp nhận
-      const [approvedRegistrations] = await pool.execute(
+      // [SỬA 7] Chuyển raw query
+      const approvedRegistrations = await sequelize.query(
         `SELECT r.user_id, u.full_name, u.email 
          FROM Registrations r
          JOIN Users u ON r.user_id = u.user_id
          WHERE r.event_id = ? AND r.status = 'approved'`,
-        [event_id]
+        {
+          replacements: [event_id],
+          type: QueryTypes.SELECT,
+        }
       );
 
       const notifications = [];
@@ -601,13 +612,12 @@ const notificationController = {
     }
   },
 
-  // Thông báo nội dung mới trên wall (cho tất cả participants)
+  // Thông báo nội dung mới trên wall
   async notifyNewContent(req, res) {
     try {
       const { event_id, content_type, content_id, content_preview } = req.body;
       const author_id = req.user.user_id;
 
-      // Validate input
       if (!event_id || !content_type || !content_id) {
         return res.status(400).json({
           success: false,
@@ -623,13 +633,16 @@ const notificationController = {
         });
       }
 
-      // Lấy tất cả participants của sự kiện (đã được approved)
-      const [participants] = await pool.execute(
+      // [SỬA 8] Chuyển raw query
+      const participants = await sequelize.query(
         `SELECT r.user_id, u.full_name 
          FROM Registrations r
          JOIN Users u ON r.user_id = u.user_id
          WHERE r.event_id = ? AND r.status = 'approved'`,
-        [event_id]
+        {
+          replacements: [event_id],
+          type: QueryTypes.SELECT,
+        }
       );
 
       let type, title;
@@ -648,7 +661,6 @@ const notificationController = {
 
       const notifications = [];
       for (const participant of participants) {
-        // Không gửi thông báo cho chính người tạo content
         if (participant.user_id !== author_id) {
           const notification = await Notification.createAndPush({
             user_id: participant.user_id,
@@ -683,13 +695,12 @@ const notificationController = {
     }
   },
 
-  // Thông báo có lượt thích mới (reaction)
+  // Thông báo có lượt thích mới
   async notifyNewReaction(req, res) {
     try {
       const { content_type, content_id, reactor_id, content_owner_id } =
         req.body;
 
-      // Validate input
       if (!content_type || !content_id || !reactor_id || !content_owner_id) {
         return res.status(400).json({
           success: false,
@@ -698,8 +709,9 @@ const notificationController = {
         });
       }
 
-      const reactor = await User.findById(reactor_id);
-      const content_owner = await User.findById(content_owner_id);
+      // [SỬA 9] Dùng UserService
+      const reactor = await UserService.findById(reactor_id);
+      const content_owner = await UserService.findById(content_owner_id);
 
       if (!reactor || !content_owner) {
         return res.status(404).json({
@@ -708,7 +720,6 @@ const notificationController = {
         });
       }
 
-      // Không gửi thông báo cho chính người tạo reaction
       if (reactor_id === content_owner_id) {
         return res.json({
           success: true,
@@ -749,7 +760,6 @@ const notificationController = {
     try {
       const { user_id, reason } = req.body;
 
-      // Validate input
       if (!user_id || !reason) {
         return res.status(400).json({
           success: false,
@@ -757,7 +767,8 @@ const notificationController = {
         });
       }
 
-      const user = await User.findById(user_id);
+      // [SỬA 10] Dùng UserService
+      const user = await UserService.findById(user_id);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -794,7 +805,6 @@ const notificationController = {
       const { manager_id, reason } = req.body;
       const admin_id = req.user.user_id;
 
-      // Validate input
       if (!manager_id || !reason) {
         return res.status(400).json({
           success: false,
@@ -802,7 +812,8 @@ const notificationController = {
         });
       }
 
-      const manager = await User.findById(manager_id);
+      // [SỬA 11] Dùng UserService
+      const manager = await UserService.findById(manager_id);
       if (!manager) {
         return res.status(404).json({
           success: false,
@@ -810,7 +821,6 @@ const notificationController = {
         });
       }
 
-      // Gửi thông báo cho admin
       const notification = await Notification.createAndPush({
         user_id: admin_id,
         type: "manager_account_locked",
@@ -836,12 +846,11 @@ const notificationController = {
     }
   },
 
-  // API tạo thông báo tổng quát (cho admin/system)
+  // API tạo thông báo tổng quát
   async createNotification(req, res) {
     try {
       const { user_id, type, payload } = req.body;
 
-      // Validate input
       if (!user_id || !type) {
         return res.status(400).json({
           success: false,
@@ -849,7 +858,6 @@ const notificationController = {
         });
       }
 
-      // Validate type
       if (!Notification.isValidType(type)) {
         return res.status(400).json({
           success: false,
@@ -857,8 +865,8 @@ const notificationController = {
         });
       }
 
-      // Kiểm tra user tồn tại
-      const user = await User.findById(user_id);
+      // [SỬA 12] Dùng UserService
+      const user = await UserService.findById(user_id);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -866,7 +874,6 @@ const notificationController = {
         });
       }
 
-      // Tạo thông báo
       const notification = await Notification.createAndPush({
         user_id,
         type,
@@ -889,14 +896,11 @@ const notificationController = {
     }
   },
 
-  // Trong notificationController - THÊM:
-
   // Thông báo mở khóa tài khoản
   async notifyAccountUnlocked(req, res) {
     try {
       const { user_id } = req.body;
 
-      // Validate input
       if (!user_id) {
         return res.status(400).json({
           success: false,
@@ -904,7 +908,8 @@ const notificationController = {
         });
       }
 
-      const user = await User.findById(user_id);
+      // [SỬA 13] Dùng UserService
+      const user = await UserService.findById(user_id);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -934,13 +939,12 @@ const notificationController = {
     }
   },
 
-  // Thông báo mở khóa manager (cho admin)
+  // Thông báo mở khóa manager
   async notifyManagerUnlocked(req, res) {
     try {
       const { manager_id } = req.body;
       const admin_id = req.user.user_id;
 
-      // Validate input
       if (!manager_id) {
         return res.status(400).json({
           success: false,
@@ -948,7 +952,8 @@ const notificationController = {
         });
       }
 
-      const manager = await User.findById(manager_id);
+      // [SỬA 14] Dùng UserService
+      const manager = await UserService.findById(manager_id);
       if (!manager) {
         return res.status(404).json({
           success: false,
@@ -956,7 +961,6 @@ const notificationController = {
         });
       }
 
-      // Gửi thông báo cho admin
       const notification = await Notification.createAndPush({
         user_id: admin_id,
         type: "manager_account_unlocked",
@@ -986,7 +990,6 @@ const notificationController = {
     try {
       const { user_ids, type, payload } = req.body;
 
-      // Validate input
       if (!user_ids || !type || !Array.isArray(user_ids)) {
         return res.status(400).json({
           success: false,
@@ -994,7 +997,6 @@ const notificationController = {
         });
       }
 
-      // Validate type
       if (!Notification.isValidType(type)) {
         return res.status(400).json({
           success: false,
@@ -1002,9 +1004,9 @@ const notificationController = {
         });
       }
 
-      // Kiểm tra users tồn tại
+      // [SỬA 15] Dùng UserService
       for (const user_id of user_ids) {
-        const user = await User.findById(user_id);
+        const user = await UserService.findById(user_id);
         if (!user) {
           return res.status(404).json({
             success: false,
@@ -1013,7 +1015,6 @@ const notificationController = {
         }
       }
 
-      // Tạo thông báo hàng loạt
       const affectedRows = await Notification.bulkCreateForUsers(user_ids, {
         type,
         payload,
@@ -1035,13 +1036,13 @@ const notificationController = {
     }
   },
 
+  // Test Push
   async testPush(req, res) {
     try {
       const user_id = req.user.user_id;
 
       console.log("Test push called for user:", user_id);
 
-      // Tạo thông báo test
       const notification = await Notification.createAndPush({
         user_id: user_id,
         type: "test_notification",

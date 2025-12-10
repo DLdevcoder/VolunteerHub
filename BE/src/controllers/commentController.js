@@ -2,7 +2,9 @@ import Comment from "../models/Comment.js";
 import Post from "../models/Post.js";
 import Registration from "../models/Registration.js";
 import Event from "../models/Event.js";
-import User from "../models/User.js";
+// [SỬA 1] Import Service
+import UserService from "../services/UserService.js";
+import NotificationService from "../services/notificationService.js";
 
 const commentController = {
   // Xem bình luận
@@ -81,7 +83,8 @@ const commentController = {
           .json({ message: "Bình luận quá dài (max 1000)" });
 
       // Check User Active
-      const currentUser = await User.findById(user_id);
+      // [SỬA 2] Dùng UserService
+      const currentUser = await UserService.findById(user_id);
       if (!currentUser || currentUser.status !== "Active")
         return res.status(403).json({ message: "Tài khoản bị khóa" });
 
@@ -116,6 +119,20 @@ const commentController = {
       // Tạo Comment
       const commentId = await Comment.create({ post_id, user_id, content });
       const newComment = await Comment.getById(commentId);
+
+      // [BỔ SUNG] Gửi thông báo cho mọi người trong sự kiện (trừ người viết comment)
+      try {
+        await NotificationService.notifyNewComment(
+          post.event_id,
+          commentId,
+          post_id,
+          user_id, // author_id (người viết comment) để loại trừ khỏi danh sách nhận noti
+          content // nội dung preview
+        );
+      } catch (notifyErr) {
+        console.error("Notify new comment error:", notifyErr);
+      }
+
       res.status(201).json({
         success: true,
         message: "Bình luận thành công",
@@ -134,7 +151,8 @@ const commentController = {
       const user_id = req.user.user_id;
 
       // Check User có bị khoá không
-      const currentUser = await User.findById(user_id);
+      // [SỬA 2] Dùng UserService
+      const currentUser = await UserService.findById(user_id);
       if (!currentUser || currentUser.status !== "Active") {
         return res.status(403).json({
           success: false,

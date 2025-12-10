@@ -2,7 +2,8 @@
 import Post from "../models/Post.js";
 import Registration from "../models/Registration.js";
 import Event from "../models/Event.js";
-import User from "../models/User.js";
+// [SỬA 1] Import UserService
+import UserService from "../services/UserService.js";
 
 const postController = {
   // Xem danh sách bài đăng
@@ -97,7 +98,8 @@ const postController = {
       }
 
       // (Đảm bảo user không bị khóa sau khi login)
-      const currentUser = await User.findById(user_id);
+      // [SỬA 2] Dùng UserService.findById
+      const currentUser = await UserService.findById(user_id);
       if (!currentUser || currentUser.status !== "Active") {
         return res.status(403).json({
           success: false,
