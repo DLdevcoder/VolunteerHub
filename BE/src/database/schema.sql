@@ -275,31 +275,35 @@ GROUP BY u.user_id;
 -- Thêm type mới vào bảng Notifications
 ALTER TABLE Notifications 
 MODIFY COLUMN type ENUM(
-    -- Sự kiện & duyệt sự kiện
-  'event_pending_approval',   -- Manager tạo event -> gửi Admin
-  'event_approved',           -- Admin duyệt event -> gửi Manager
-  'event_rejected',           -- Admin từ chối event -> gửi Manager
-  'event_updated_urgent',     -- Event đã/đang chạy, đổi info quan trọng -> gửi TNV
-  'event_starting_soon',      -- Nhắc sắp bắt đầu
-  'event_cancelled',          -- Event bị hủy -> gửi TNV
+  -- Event related
+  'event_approved',
+  'event_rejected',
+  'event_reminder',
+  'event_updated_urgent',
+  'event_starting_soon',
+  'event_cancelled',
+  'event_pending_approval',
 
-  -- Đăng ký tham gia
-  'new_registration',         -- Volunteer đăng ký mới -> gửi Manager
-  'registration_approved',    -- Manager duyệt -> gửi Volunteer
-  'registration_rejected',    -- Manager từ chối -> gửi Volunteer
-  'registration_completed',   -- Manager đánh dấu hoàn thành -> gửi Volunteer
+  -- Registration related
+  'registration_approved',
+  'registration_rejected',
+  'registration_completed',
+  'new_registration',
 
-  -- Nhắc nhở chung
-  'event_reminder',           -- Nhắc tham gia (có thể dùng thêm cron)
+  -- Content related
+  'new_post',
+  'new_comment',
+  'reaction_received',
 
-  -- Kênh trao đổi / social
-  'new_post',                 -- Bài đăng mới trong event
-  'new_comment',              -- Bình luận mới
-  'reaction_received',        -- Ai đó thả reaction vào post/comment của mình
+  -- Account related
+  'account_locked',
+  'manager_account_locked',
+  'account_unlocked',
+  'manager_account_unlocked',
 
-  -- Tài khoản & quyền
-  'account_locked',           -- User bị khóa
-  'manager_account_locked'    -- Manager bị khóa
+  -- NEW
+  'role_changed',
+  'test_notification'
 ) NOT NULL;
 
 CREATE TABLE `PushSubscriptions` (

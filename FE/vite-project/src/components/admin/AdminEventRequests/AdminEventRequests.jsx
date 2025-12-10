@@ -1,17 +1,6 @@
-// src/components/admin/AdminEventRequests/AdminEventRequests.jsx
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  Card,
-  Table,
-  Tag,
-  Button,
-  Space,
-  Select,
-  Input,
-  message,
-  Modal,
-} from "antd";
+import { Card, Table, Tag, Button, Space, Select, Input, Modal } from "antd";
 
 import {
   fetchAdminEvents,
@@ -27,10 +16,13 @@ import {
   adminActionErrorSelector,
 } from "../../../redux/selectors/eventSelectors";
 
+import useGlobalMessage from "../../../utils/hooks/useGlobalMessage";
+
 const { Option } = Select;
 
 const AdminEventRequests = () => {
   const dispatch = useDispatch();
+  const messageApi = useGlobalMessage();
 
   const events = useSelector(adminEventsSelector);
   const pagination = useSelector(adminEventsPaginationSelector);
@@ -65,12 +57,16 @@ const AdminEventRequests = () => {
   }, [dispatch, approvalFilter, search]);
 
   useEffect(() => {
-    if (listError) message.error(listError);
-  }, [listError]);
+    if (listError) {
+      messageApi.error(listError);
+    }
+  }, [listError, messageApi]);
 
   useEffect(() => {
-    if (actionError) message.error(actionError);
-  }, [actionError]);
+    if (actionError) {
+      messageApi.error(actionError);
+    }
+  }, [actionError, messageApi]);
 
   const handleTableChange = (pag) => {
     setPageSize(pag.pageSize);
@@ -80,11 +76,20 @@ const AdminEventRequests = () => {
   const handleApprove = async (eventId) => {
     try {
       setRowLoadingId(eventId);
-      await dispatch(approveEventThunk(eventId)).unwrap();
-      message.success("Duyệt sự kiện thành công");
+      const res = await dispatch(approveEventThunk(eventId)).unwrap();
+
+      const msgFromRes =
+        res?.message || res?.payload?.message || res?.data?.message;
+      messageApi.success(msgFromRes || "Duyệt sự kiện thành công");
+
       loadData(pagination.page || 1, pageSize);
     } catch (err) {
-      message.error(err || "Không thể duyệt sự kiện");
+      const errMsg =
+        err?.message ||
+        err?.payload?.message ||
+        err?.data?.message ||
+        "Không thể duyệt sự kiện";
+      messageApi.error(errMsg);
     } finally {
       setRowLoadingId(null);
     }
@@ -99,7 +104,7 @@ const AdminEventRequests = () => {
   const handleRejectConfirm = async () => {
     const reason = rejectReason.trim();
     if (!reason || reason.length < 5) {
-      message.warning("Lý do cần ít nhất 5 ký tự");
+      messageApi.warning("Lý do cần ít nhất 5 ký tự");
       return;
     }
     if (!rejectingEvent) return;
@@ -108,8 +113,13 @@ const AdminEventRequests = () => {
 
     try {
       setRowLoadingId(eventId);
-      await dispatch(rejectEventThunk({ eventId, reason })).unwrap();
-      message.success("Từ chối sự kiện thành công");
+      const res = await dispatch(
+        rejectEventThunk({ eventId, reason })
+      ).unwrap();
+
+      const msgFromRes =
+        res?.message || res?.payload?.message || res?.data?.message;
+      messageApi.success(msgFromRes || "Từ chối sự kiện thành công");
 
       setRejectModalOpen(false);
       setRejectingEvent(null);
@@ -117,7 +127,12 @@ const AdminEventRequests = () => {
 
       loadData(pagination.page || 1, pageSize);
     } catch (err) {
-      message.error(err || "Không thể từ chối sự kiện");
+      const errMsg =
+        err?.message ||
+        err?.payload?.message ||
+        err?.data?.message ||
+        "Không thể từ chối sự kiện";
+      messageApi.error(errMsg);
     } finally {
       setRowLoadingId(null);
     }

@@ -13,7 +13,7 @@ const { Text } = Typography;
 const EventVolunteersListTab = ({ eventId }) => {
   const dispatch = useDispatch();
 
-  const items = useSelector(publicEventVolunteersSelector(eventId));
+  let items = useSelector(publicEventVolunteersSelector(eventId));
   const loading = useSelector(publicEventVolunteersLoadingSelector(eventId));
   const error = useSelector(publicEventVolunteersErrorSelector(eventId));
 
@@ -21,6 +21,10 @@ const EventVolunteersListTab = ({ eventId }) => {
     if (!eventId) return;
     dispatch(getEventVolunteersPublicThunk(eventId));
   }, [dispatch, eventId]);
+
+  items = (items || []).filter(
+    (item) => item.status === "approved" || item.status === "completed"
+  );
 
   if (loading && !items.length) {
     return (
