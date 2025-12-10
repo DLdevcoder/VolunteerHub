@@ -1,4 +1,4 @@
-import User from "../models/User.js";
+import UserService from "../services/UserService.js";
 import Notification from "../models/Notification.js";
 
 const userController = {
@@ -6,7 +6,8 @@ const userController = {
   async getMe(req, res) {
     try {
       const user_id = req.user.user_id;
-      const user = await User.findById(user_id);
+      // [SỬA] User -> UserService
+      const user = await UserService.findById(user_id);
 
       if (!user) {
         return res.status(404).json({
@@ -44,8 +45,8 @@ const userController = {
         });
       }
 
-      // Cập nhật thông tin
-      const isUpdated = await User.update(user_id, {
+      // [SỬA] User -> UserService
+      const isUpdated = await UserService.update(user_id, {
         full_name,
         phone,
         avatar_url,
@@ -58,8 +59,8 @@ const userController = {
         });
       }
 
-      // Lấy thông tin user sau khi cập nhật
-      const updatedUser = await User.findById(user_id);
+      // [SỬA] User -> UserService
+      const updatedUser = await UserService.findById(user_id);
 
       res.json({
         success: true,
@@ -88,7 +89,8 @@ const userController = {
         status = "",
       } = req.query;
 
-      const result = await User.findAll({
+      // [SỬA] User -> UserService
+      const result = await UserService.findAll({
         page: parseInt(page),
         limit: parseInt(limit),
         search,
@@ -118,8 +120,8 @@ const userController = {
       const { user_id } = req.params;
       const { status } = req.body;
 
-      // Lấy user hiện tại trước khi cập nhật (để biết old_status)
-      const currentUser = await User.findById(user_id);
+      // [SỬA] User -> UserService
+      const currentUser = await UserService.findById(user_id);
       if (!currentUser) {
         return res.status(404).json({
           success: false,
@@ -144,8 +146,8 @@ const userController = {
         });
       }
 
-      // Cập nhật status
-      const isUpdated = await User.updateStatus(user_id, status);
+      // [SỬA] User -> UserService
+      const isUpdated = await UserService.updateStatus(user_id, status);
 
       if (!isUpdated) {
         return res.status(404).json({
@@ -154,16 +156,15 @@ const userController = {
         });
       }
 
-      // Lấy thông tin user sau khi cập nhật
-      const updatedUser = await User.findById(user_id);
+      // [SỬA] User -> UserService
+      const updatedUser = await UserService.findById(user_id);
 
       // ====== Tạo notification cho user đó ======
       try {
         if (status === "Locked") {
-          // tài khoản bị khóa
           await Notification.createAndPush({
             user_id: updatedUser.user_id,
-            type: "account_locked", // type này bạn đã dùng trong notificationController
+            type: "account_locked",
             payload: {
               old_status: currentUser.status,
               new_status: updatedUser.status,
@@ -171,10 +172,9 @@ const userController = {
             },
           });
         } else if (status === "Active") {
-          // tài khoản được mở khóa
           await Notification.createAndPush({
             user_id: updatedUser.user_id,
-            type: "account_unlocked",
+            type: "account_unlocked", // Đảm bảo ENUM DB có type này hoặc map về type hợp lệ
             payload: {
               old_status: currentUser.status,
               new_status: updatedUser.status,
@@ -182,7 +182,6 @@ const userController = {
             },
           });
         } else if (status === "Suspended") {
-          // nếu bạn muốn phân biệt Suspended
           await Notification.createAndPush({
             user_id: updatedUser.user_id,
             type: "account_locked",
@@ -196,7 +195,6 @@ const userController = {
         }
       } catch (notifErr) {
         console.error("Create notification for status change error:", notifErr);
-        // không fail API chỉ vì lỗi notification → log thôi
       }
 
       res.json({
@@ -219,7 +217,8 @@ const userController = {
   async getUserById(req, res) {
     try {
       const { user_id } = req.params;
-      const user = await User.findById(user_id);
+      // [SỬA] User -> UserService
+      const user = await UserService.findById(user_id);
 
       if (!user) {
         return res.status(404).json({
@@ -256,8 +255,8 @@ const userController = {
         });
       }
 
-      // Lấy user hiện tại để biết role cũ
-      const currentUser = await User.findById(user_id);
+      // [SỬA] User -> UserService
+      const currentUser = await UserService.findById(user_id);
       if (!currentUser) {
         return res.status(404).json({
           success: false,
@@ -273,7 +272,6 @@ const userController = {
         });
       }
 
-      // (Optional) Validate role_name nếu bạn muốn:
       const allowedRoles = ["Volunteer", "Manager", "Admin"];
       if (!allowedRoles.includes(role_name)) {
         return res.status(400).json({
@@ -282,8 +280,8 @@ const userController = {
         });
       }
 
-      // Lấy role_id từ role_name
-      const role_id = await User.getRoleId(role_name);
+      // [SỬA] User -> UserService
+      const role_id = await UserService.getRoleId(role_name);
       if (!role_id) {
         return res.status(400).json({
           success: false,
@@ -291,8 +289,8 @@ const userController = {
         });
       }
 
-      // Cập nhật role
-      const isUpdated = await User.updateRole(user_id, role_id);
+      // [SỬA] User -> UserService
+      const isUpdated = await UserService.updateRole(user_id, role_id);
 
       if (!isUpdated) {
         return res.status(404).json({
@@ -301,14 +299,14 @@ const userController = {
         });
       }
 
-      // Lấy user sau khi cập nhật
-      const updatedUser = await User.findById(user_id);
+      // [SỬA] User -> UserService
+      const updatedUser = await UserService.findById(user_id);
 
-      // ====== Tạo notification cho user đó về việc đổi role ======
+      // ====== Tạo notification ======
       try {
         await Notification.createAndPush({
           user_id: updatedUser.user_id,
-          type: "role_changed",
+          type: "role_changed", // Đảm bảo ENUM DB có type này
           payload: {
             old_role: currentUser.role_name,
             new_role: updatedUser.role_name,
@@ -317,7 +315,6 @@ const userController = {
         });
       } catch (notifErr) {
         console.error("Create notification for role change error:", notifErr);
-        // chỉ log, không trả lỗi cho client
       }
 
       return res.json({

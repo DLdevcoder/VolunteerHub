@@ -1,7 +1,8 @@
 // src/controllers/registrationController.js
 import Registration from "../models/Registration.js";
 import Event from "../models/Event.js";
-import User from "../models/User.js";
+// [SỬA 1] Import UserService thay vì User Model
+import UserService from "../services/UserService.js";
 import Notification from "../models/Notification.js";
 
 const registrationController = {
@@ -14,7 +15,8 @@ const registrationController = {
       const user_id = req.user.user_id;
 
       // 1. Kiểm tra User
-      const currentUser = await User.findById(user_id);
+      // [SỬA 2] Dùng UserService.findById
+      const currentUser = await UserService.findById(user_id);
 
       if (!currentUser || currentUser.status !== "Active") {
         return res.status(403).json({
@@ -216,10 +218,11 @@ const registrationController = {
 
       // (Tuỳ chọn) Thông báo cho Manager biết TNV hủy đăng ký
       try {
-        const currentUser = await User.findById(user_id);
+        // [SỬA 2] Dùng UserService.findById
+        const currentUser = await UserService.findById(user_id);
         await Notification.createAndPush({
           user_id: event.manager_id,
-          type: "registration_cancelled",
+          type: "registration_cancelled", // Lưu ý: type này có thể chưa có trong ENUM DB, check lại DB nếu lỗi
           payload: {
             event_id,
             event_title: event.title,
@@ -477,7 +480,7 @@ const registrationController = {
   // =========================================================
   // MANAGER – Đánh dấu hoàn thành
   // =========================================================
-async completeRegistration(req, res) {
+  async completeRegistration(req, res) {
     try {
       const { registration_id } = req.params;
       const manager_id = req.user.user_id;
@@ -534,8 +537,10 @@ async completeRegistration(req, res) {
 
       // 🔥 Tùy chọn: Thêm buffer time (ví dụ: cho phép trong 7 ngày sau khi kết thúc)
       const maxDaysAfterEvent = 7; // Cho phép đánh dấu trong 7 ngày sau khi sự kiện kết thúc
-      const maxCompletionDate = new Date(eventEnd.getTime() + (maxDaysAfterEvent * 24 * 60 * 60 * 1000));
-      
+      const maxCompletionDate = new Date(
+        eventEnd.getTime() + maxDaysAfterEvent * 24 * 60 * 60 * 1000
+      );
+
       if (now > maxCompletionDate) {
         return res.status(400).json({
           success: false,
@@ -570,8 +575,8 @@ async completeRegistration(req, res) {
         message: "Xác nhận hoàn thành công việc cho tình nguyện viên",
         data: {
           completed_at: now.toISOString(),
-          event_ended: reg.end_date
-        }
+          event_ended: reg.end_date,
+        },
       });
     } catch (error) {
       console.error("Complete reg error:", error);

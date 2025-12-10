@@ -1,5 +1,5 @@
 import Notification from "../models/Notification.js";
-import User from "../models/User.js";
+import UserService from "../services/UserService.js";
 import Event from "../models/Event.js";
 import pool from "../config/db.js";
 
