@@ -42,10 +42,10 @@ const registerSchema = Joi.object({
     }),
   
   role_name: Joi.string()
-    .valid('Volunteer', 'Admin', 'Organizer')
+    .valid('Volunteer', 'Admin', 'Manager')
     .default('Volunteer')
     .messages({
-      'any.only': 'Vai trò phải là một trong: Volunteer, Admin, Organizer'
+      'any.only': 'Vai trò phải là một trong: Volunteer, Admin, Manager'
     })
 })
 .custom((value, helpers) => {

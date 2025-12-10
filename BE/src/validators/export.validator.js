@@ -12,10 +12,10 @@ const exportValidator = {
     
     // Users filters
     role: Joi.string()
-      .valid('Volunteer', 'Organization', 'Admin')
+      .valid('Volunteer', 'Manager', 'Admin')
       .optional()
       .messages({
-        'any.only': 'Vai trò không hợp lệ. Chọn: Volunteer, Organization, Admin'
+        'any.only': 'Vai trò không hợp lệ. Chọn: Volunteer, Manager, Admin'
       }),
     
     status: Joi.string()
