@@ -72,4 +72,11 @@ router.get(
   registrationController.getMyRegistrationStatus
 );
 
+// registrations.routes.js
+router.get(
+  "/events/:event_id/public-volunteers",
+  authMiddleware.authenticateToken,
+  registrationController.getPublicVolunteersOfEvent
+);
+
 export default router;

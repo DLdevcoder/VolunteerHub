@@ -380,16 +380,6 @@ class Notification {
       test_notification: "Đây là thông báo test từ hệ thống.",
     };
 
-    // 1️⃣ Nếu controller đã set payload.message (đa số case) -> dùng luôn
-    if (
-      payloadObj &&
-      typeof payloadObj.message === "string" &&
-      payloadObj.message.trim().length > 0
-    ) {
-      return payloadObj.message.trim();
-    }
-
-    // 2️⃣ Nếu không có message, build thông minh từ event_title, reason,...
     const eventTitle = payloadObj?.event_title;
     const reason = payloadObj?.reason || payloadObj?.rejection_reason;
     const userName =
@@ -397,6 +387,7 @@ class Notification {
       payloadObj?.manager_name ||
       payloadObj?.reactor_name;
 
+    // 1️⃣ Ưu tiên các case cần hiển thị reason / thông tin chi tiết
     switch (type) {
       // ===== EVENT =====
       case "event_approved":
@@ -407,25 +398,25 @@ class Notification {
 
       case "event_rejected":
         if (eventTitle && reason) {
-          return `Sự kiện "${eventTitle}" đã bị từ chối. \n Lý do: ${reason}`;
+          return `Sự kiện "${eventTitle}" đã bị từ chối.\nLý do: ${reason}`;
         }
         if (eventTitle) {
           return `Sự kiện "${eventTitle}" đã bị từ chối.`;
         }
         if (reason) {
-          return `Sự kiện của bạn đã bị từ chối. \n Lý do: ${reason}`;
+          return `Sự kiện của bạn đã bị từ chối.\nLý do: ${reason}`;
         }
         break;
 
       case "event_cancelled":
         if (eventTitle && reason) {
-          return `Sự kiện "${eventTitle}" đã bị hủy. \n Lý do: ${reason}`;
+          return `Sự kiện "${eventTitle}" đã bị hủy.\nLý do: ${reason}`;
         }
         if (eventTitle) {
           return `Sự kiện "${eventTitle}" đã bị hủy.`;
         }
         if (reason) {
-          return `Một sự kiện đã bị hủy. \n Lý do: ${reason}`;
+          return `Một sự kiện đã bị hủy.\nLý do: ${reason}`;
         }
         break;
 
@@ -462,13 +453,13 @@ class Notification {
 
       case "registration_rejected":
         if (eventTitle && reason) {
-          return `Đăng ký của bạn cho sự kiện "${eventTitle}" đã bị từ chối. \n Lý do: ${reason}`;
+          return `Đăng ký của bạn cho sự kiện "${eventTitle}" đã bị từ chối.\nLý do: ${reason}`;
         }
         if (eventTitle) {
           return `Đăng ký của bạn cho sự kiện "${eventTitle}" đã bị từ chối.`;
         }
         if (reason) {
-          return `Đăng ký của bạn đã bị từ chối. \n Lý do: ${reason}`;
+          return `Đăng ký của bạn đã bị từ chối.\nLý do: ${reason}`;
         }
         break;
 
@@ -490,13 +481,13 @@ class Notification {
       // ===== ACCOUNT =====
       case "account_locked":
         if (reason) {
-          return `Tài khoản của bạn đã bị khóa. \n Lý do: ${reason}`;
+          return `Tài khoản của bạn đã bị khóa.\nLý do: ${reason}`;
         }
         break;
 
       case "manager_account_locked":
         if (userName && reason) {
-          return `Manager ${userName} đã bị khóa tài khoản. \n Lý do: ${reason}`;
+          return `Manager ${userName} đã bị khóa tài khoản.\nLý do: ${reason}`;
         }
         if (userName) {
           return `Manager ${userName} đã bị khóa tài khoản.`;
@@ -519,7 +510,16 @@ class Notification {
         break;
     }
 
-    // 3️⃣ Cuối cùng: fallback về default cũ
+    // 2️⃣ Nếu controller có set payload.message -> dùng như fallback thông minh
+    if (
+      payloadObj &&
+      typeof payloadObj.message === "string" &&
+      payloadObj.message.trim().length > 0
+    ) {
+      return payloadObj.message.trim();
+    }
+
+    // 3️⃣ Cuối cùng: fallback về text mặc định
     return defaultBodies[type] || "Bạn có thông báo mới";
   }
 

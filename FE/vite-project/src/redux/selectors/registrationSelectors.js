@@ -36,3 +36,15 @@ export const registrationVolunteerSelector = (state) =>
 
 export const registrationRegisteringIdSelector = (state) =>
   state.registration.volunteer.registeringId;
+
+// Danh sách TNV công khai cho 1 event
+export const publicEventVolunteersSelector = (eventId) => (state) =>
+  state.registration.publicByEvent?.[eventId]?.items || [];
+
+// Loading state
+export const publicEventVolunteersLoadingSelector = (eventId) => (state) =>
+  state.registration.publicByEvent?.[eventId]?.loading || false;
+
+// Error message (nếu muốn hiển thị)
+export const publicEventVolunteersErrorSelector = (eventId) => (state) =>
+  state.registration.publicByEvent?.[eventId]?.error || null;

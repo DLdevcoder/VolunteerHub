@@ -27,6 +27,7 @@ import {
 
 import EventPostsTab from "./EventPostsTab";
 import EventParticipantsTab from "./EventParticipantsTab";
+import EventVolunteersListTab from "./EventVolunteersListTab"; // 👈 new tab component
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -53,7 +54,6 @@ const EventDetail = () => {
   const detailLoading = useSelector(eventDetailLoadingSelector);
   const authUser = useSelector((state) => state.auth.user);
 
-  const [activeTab, setActiveTab] = useState("posts");
   const [cancelLoading, setCancelLoading] = useState(false);
 
   // ----- registration status for this event -----
@@ -133,113 +133,128 @@ const EventDetail = () => {
   // =========================================================
   //  CONTENT BELOW INFO BLOCK
   // =========================================================
+
+  // What goes **inside** the "Bài viết" tab for a volunteer
+  const renderVolunteerPostsTabContent = () => {
+    if (!hasRegistration) {
+      return (
+        <Empty description="Bạn cần đăng ký tham gia sự kiện để xem bài viết và danh sách tình nguyện viên." />
+      );
+    }
+
+    switch (registrationStatus) {
+      case "pending":
+        return (
+          <Empty description="Đăng ký của bạn đang chờ duyệt. Bạn sẽ xem được bài viết sau khi được chấp thuận." />
+        );
+      case "rejected":
+        return (
+          <Empty description="Đăng ký của bạn đã bị từ chối, nên bạn không thể xem bài viết của sự kiện này." />
+        );
+      case "cancelled":
+        return (
+          <Empty description="Bạn đã hủy đăng ký sự kiện này. Hãy đăng ký lại nếu muốn tham gia và xem bài viết." />
+        );
+      default:
+        break;
+    }
+
+    if (canViewPosts) {
+      return (
+        <EventPostsTab
+          eventId={event_id}
+          event={event}
+          authUser={authUser}
+          canViewPosts
+          canCreatePost
+        />
+      );
+    }
+
+    return (
+      <Empty description="Bạn không có quyền xem các bài viết của sự kiện này." />
+    );
+  };
+
   const renderTabsOrInfo = () => {
-    // 1. Chưa đăng nhập -> chỉ xem info, không xem bài viết
+    // 1. Chưa đăng nhập -> chỉ xem info, không có tab
     if (!authUser) {
       return (
         <Card bordered={false}>
-          <Empty description="Bạn cần đăng nhập và đăng ký tham gia sự kiện để xem bài viết." />
+          <Empty description="Bạn cần đăng nhập và đăng ký tham gia sự kiện để xem chi tiết nội dung." />
         </Card>
       );
     }
 
-    // 2. Manager: luôn xem được cả 2 tab
+    // 2. Manager: luôn xem được cả 3 tab
     if (isManager) {
+      const items = [
+        {
+          key: "posts",
+          label: "Bài viết",
+          children: (
+            <EventPostsTab
+              eventId={event_id}
+              event={event}
+              authUser={authUser}
+              canViewPosts
+              canCreatePost
+            />
+          ),
+        },
+        {
+          key: "volunteers",
+          label: "Danh sách tình nguyện viên",
+          children: <EventVolunteersListTab eventId={event_id} />,
+        },
+        {
+          key: "volunteerManagement",
+          label: "Quản lý người tham gia",
+          children: <EventParticipantsTab eventId={event_id} />,
+        },
+      ];
+
       return (
         <Card bordered={false}>
-          <Tabs activeKey={activeTab} onChange={setActiveTab}>
-            <Tabs.TabPane tab="Bài viết" key="posts">
-              <EventPostsTab
-                eventId={event_id}
-                event={event}
-                authUser={authUser}
-                canViewPosts={true}
-                canCreatePost={true}
-              />
-            </Tabs.TabPane>
-
-            <Tabs.TabPane tab="Người tham gia" key="participants">
-              <EventParticipantsTab eventId={event_id} />
-            </Tabs.TabPane>
-          </Tabs>
+          <Tabs defaultActiveKey="posts" items={items} />
         </Card>
       );
     }
 
     // 3. Volunteer (đã đăng nhập)
     if (isVolunteer) {
-      // Chưa hề đăng ký
       if (!hasRegistration) {
         return (
           <Card bordered={false}>
-            <Empty description="Bạn cần đăng ký tham gia sự kiện và được chấp thuận để xem các bài viết." />
+            <Empty description="Bạn cần đăng ký tham gia sự kiện để xem bài viết và danh sách tình nguyện viên." />
           </Card>
         );
       }
 
-      // Đang chờ duyệt
-      if (registrationStatus === "pending") {
-        return (
-          <Card bordered={false}>
-            <Empty description="Đăng ký của bạn đang chờ duyệt. Bạn sẽ xem được bài viết sau khi được chấp thuận." />
-          </Card>
-        );
-      }
+      const items = [
+        {
+          key: "posts",
+          label: "Bài viết",
+          children: renderVolunteerPostsTabContent(),
+        },
+        {
+          key: "volunteers",
+          label: "Danh sách tình nguyện viên",
+          children: <EventVolunteersListTab eventId={event_id} />,
+        },
+      ];
 
-      // Bị từ chối
-      if (registrationStatus === "rejected") {
-        return (
-          <Card bordered={false}>
-            <Empty description="Đăng ký của bạn đã bị từ chối, nên bạn không thể xem bài viết của sự kiện này." />
-          </Card>
-        );
-      }
-
-      // Đã hủy
-      if (registrationStatus === "cancelled") {
-        return (
-          <Card bordered={false}>
-            <Empty description="Bạn đã hủy đăng ký sự kiện này. Hãy đăng ký lại nếu muốn tham gia và xem bài viết." />
-          </Card>
-        );
-      }
-
-      // Được duyệt / đã hoàn thành -> xem được bài viết
-      if (canViewPosts) {
-        return (
-          <Card bordered={false}>
-            <Tabs activeKey={activeTab} onChange={setActiveTab}>
-              <Tabs.TabPane tab="Bài viết" key="posts">
-                <EventPostsTab
-                  eventId={event_id}
-                  event={event}
-                  authUser={authUser}
-                  canViewPosts={true}
-                  canCreatePost={true}
-                />
-              </Tabs.TabPane>
-
-              {/* Volunteer không xem tab người tham gia */}
-              <Tabs.TabPane tab="Người tham gia" key="participants" disabled>
-                <Empty description="Chỉ Quản lý sự kiện mới xem được danh sách người tham gia." />
-              </Tabs.TabPane>
-            </Tabs>
-          </Card>
-        );
-      }
-
-      // fallback an toàn
       return (
         <Card bordered={false}>
-          <Empty description="Bạn không có quyền xem các bài viết của sự kiện này." />
+          <Tabs defaultActiveKey="volunteers" items={items} />
         </Card>
       );
     }
 
-    // Role khác (nếu có) => xử lý giống chưa đăng nhập
+    // 4. Role khác (nếu có) => không có quyền
     return (
       <Card bordered={false}>
-        <Empty description="Bạn không có quyền xem các bài viết của sự kiện này." />
+        <Empty description="Bạn không có quyền xem nội dung chi tiết của sự kiện này." />
       </Card>
     );
   };

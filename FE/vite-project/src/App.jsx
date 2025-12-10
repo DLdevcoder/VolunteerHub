@@ -23,25 +23,26 @@ import AdminUsers from "./components/admin/AdminUsers/AdminUsers";
 import AdminExport from "./components/admin/AdminExport/AdminExport";
 import AdminCreateUser from "./components/admin/AdminCreateUser/AdminCreateUser";
 
-// (nhớ cũng đã có EventDetailPage được mount ở /events/:event_id)
-
 const App = () => {
   return (
     <Routes>
+      {/* Auth pages (outside layout) */}
       <Route path="/login" element={<LoginForm />} />
       <Route path="/register" element={<RegisterForm />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/profile" element={<Profile />} />
 
+      {/* Main app layout */}
       <Route path="/" element={<AppLayout />}>
-        {/* chi tiết event */}
-        <Route path="events/:event_id" element={<EventDetailPage />} />
-        <Route element={<Navigate to="/events" />} />
-        <Route path="events" element={<EventsPage />} />
+        {/* 👇 Default when logged in: /dashboard */}
+        <Route index element={<Navigate to="/dashboard" replace />} />
 
+        {/* Main pages */}
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="events" element={<EventsPage />} />
+        <Route path="events/:event_id" element={<EventDetailPage />} />
         <Route path="history" element={<HistoryPage />} />
-        <Route index path="dashboard" element={<DashboardPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="profile" element={<Profile />} />
 
         {/* Manager routes */}
         <Route path="manager">
@@ -58,6 +59,9 @@ const App = () => {
           <Route path="users/create" element={<AdminCreateUser />} />
         </Route>
       </Route>
+
+      {/* Fallback: anything unknown -> dashboard */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 };
