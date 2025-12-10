@@ -10,6 +10,8 @@ import {
   Spin,
   Empty,
   Select,
+  Modal,
+  Input,
 } from "antd";
 
 import {
@@ -21,6 +23,7 @@ import {
 import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 
 const { Text } = Typography;
+const { TextArea } = Input;
 
 const statusColorMap = {
   pending: "gold",
@@ -35,6 +38,12 @@ const EventParticipantsTab = ({ eventId }) => {
   const messageApi = useGlobalMessage();
 
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // modal reject state
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
 
   const eventState =
     useSelector((state) => state.registration.manager.byEvent[eventId]) || {};
@@ -63,7 +72,6 @@ const EventParticipantsTab = ({ eventId }) => {
           eventId,
         })
       ).unwrap();
-
       messageApi.success("Đã duyệt đăng ký");
     } catch (err) {
       console.error("[approveRegistration] error from thunk:", err);
@@ -75,20 +83,34 @@ const EventParticipantsTab = ({ eventId }) => {
     }
   };
 
-  const handleReject = async (record) => {
-    const reason = prompt("Nhập lý do từ chối (tối thiểu 5 ký tự):");
-    if (!reason || reason.trim().length < 5) return;
+  const openRejectModal = (record) => {
+    setRejectTarget(record);
+    setRejectReason("");
+    setRejectModalVisible(true);
+  };
+
+  const handleConfirmReject = async () => {
+    const reason = rejectReason.trim();
+    if (!reason || reason.length < 5) {
+      messageApi.warning("Lý do từ chối cần ít nhất 5 ký tự");
+      return;
+    }
+    if (!rejectTarget) return;
 
     try {
+      setRejectSubmitting(true);
       await dispatch(
         rejectRegistrationThunk({
-          registrationId: record.registration_id,
+          registrationId: rejectTarget.registration_id,
           eventId,
           reason,
         })
       ).unwrap();
 
       messageApi.success("Đã từ chối đăng ký");
+      setRejectModalVisible(false);
+      setRejectTarget(null);
+      setRejectReason("");
     } catch (err) {
       console.error("[rejectRegistration] error from thunk:", err);
       const msg =
@@ -96,7 +118,15 @@ const EventParticipantsTab = ({ eventId }) => {
         err?.payload?.message ||
         "Không thể từ chối đăng ký. Vui lòng thử lại.";
       messageApi.error(msg);
+    } finally {
+      setRejectSubmitting(false);
     }
+  };
+
+  const handleCancelRejectModal = () => {
+    setRejectModalVisible(false);
+    setRejectTarget(null);
+    setRejectReason("");
   };
 
   const handleComplete = async (record) => {
@@ -184,7 +214,7 @@ const EventParticipantsTab = ({ eventId }) => {
                 <Button
                   danger
                   size="small"
-                  onClick={() => handleReject(record)}
+                  onClick={() => openRejectModal(record)}
                   loading={updatingId === record.registration_id}
                 >
                   Từ chối
@@ -228,6 +258,7 @@ const EventParticipantsTab = ({ eventId }) => {
 
   return (
     <>
+      {/* filter bar */}
       <div
         style={{
           display: "flex",
@@ -253,17 +284,59 @@ const EventParticipantsTab = ({ eventId }) => {
         </Space>
       </div>
 
-      {filteredItems.length ? (
-        <Table
-          rowKey="registration_id"
-          columns={columns}
-          dataSource={filteredItems}
-          pagination={false}
-          size="middle"
+      <Table
+        rowKey="registration_id"
+        columns={columns}
+        dataSource={filteredItems}
+        pagination={false}
+        size="middle"
+      />
+
+      {/* Modal nhập lý do từ chối */}
+      <Modal
+        open={rejectModalVisible}
+        title={
+          <span>
+            Từ chối đăng ký:{" "}
+            <strong>{rejectTarget?.full_name || "Tình nguyện viên"}</strong>
+          </span>
+        }
+        onCancel={handleCancelRejectModal}
+        footer={[
+          <Button key="cancel" onClick={handleCancelRejectModal}>
+            Hủy
+          </Button>,
+          <Button
+            key="reject"
+            type="primary"
+            danger
+            loading={rejectSubmitting}
+            onClick={handleConfirmReject}
+          >
+            Xác nhận từ chối
+          </Button>,
+        ]}
+        destroyOnClose
+      >
+        <div style={{ marginBottom: 8 }}>Nhập lý do từ chối:</div>
+        <TextArea
+          rows={4}
+          placeholder="Ví dụ: Không phù hợp tiêu chí tuyển chọn, cần TNV có kinh nghiệm..."
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          maxLength={500}
         />
-      ) : (
-        <Empty description="Không có tình nguyện viên với trạng thái này" />
-      )}
+        <div
+          style={{
+            marginTop: 8,
+            textAlign: "right",
+          }}
+        >
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {rejectReason.length}/500
+          </Text>
+        </div>
+      </Modal>
     </>
   );
 };

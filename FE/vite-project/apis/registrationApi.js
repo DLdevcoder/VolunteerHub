@@ -68,6 +68,11 @@ const registrationApi = {
       .get(`/registrations/events/${eventId}/my-status`)
       .then((res) => res.data);
   },
+
+  // Lấy danh sách TNV công khai (không bao gồm email/phone)
+  getPublicVolunteersByEvent(eventId) {
+    return api.get(`/registrations/events/${eventId}/public-volunteers`);
+  },
 };
 
 export default registrationApi;
