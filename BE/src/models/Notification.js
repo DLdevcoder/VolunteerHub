@@ -413,14 +413,31 @@ class Notification extends Model {
       test_notification: "Đây là thông báo test từ hệ thống.",
     };
 
+    // ✅ ƯU TIÊN payload.message, nhưng nếu có reason thì nối thêm
     if (
       payloadObj &&
       typeof payloadObj.message === "string" &&
       payloadObj.message.trim().length > 0
     ) {
-      return payloadObj.message.trim();
+      const baseMsg = payloadObj.message.trim();
+      const reason = payloadObj.reason || payloadObj.rejection_reason;
+
+      const typesWithReason = new Set([
+        "event_rejected",
+        "event_cancelled",
+        "registration_rejected",
+        "account_locked",
+        "manager_account_locked",
+      ]);
+
+      if (reason && typesWithReason.has(type)) {
+        return `${baseMsg}\nLý do: ${reason}`;
+      }
+
+      return baseMsg;
     }
 
+    // 🔽 Nếu không có payload.message thì dùng logic cũ
     const eventTitle = payloadObj?.event_title;
     const reason = payloadObj?.reason || payloadObj?.rejection_reason;
     const userName =
@@ -432,57 +449,82 @@ class Notification extends Model {
       case "event_approved":
         if (eventTitle) return `Sự kiện "${eventTitle}" đã được phê duyệt.`;
         break;
+
       case "event_rejected":
         if (eventTitle)
-          return `Sự kiện "${eventTitle}" đã bị từ chối.${reason ? ` \n Lý do: ${reason}` : ""}`;
+          return `Sự kiện "${eventTitle}" đã bị từ chối.${
+            reason ? ` \n Lý do: ${reason}` : ""
+          }`;
         break;
+
       case "event_cancelled":
         if (eventTitle)
-          return `Sự kiện "${eventTitle}" đã bị hủy.${reason ? ` \n Lý do: ${reason}` : ""}`;
+          return `Sự kiện "${eventTitle}" đã bị hủy.${
+            reason ? ` \n Lý do: ${reason}` : ""
+          }`;
         break;
+
       case "event_reminder":
         if (eventTitle) return `Nhắc nhở: Sự kiện "${eventTitle}" sắp diễn ra.`;
         break;
+
       case "event_starting_soon":
         if (eventTitle)
           return `Sự kiện "${eventTitle}" sẽ bắt đầu trong thời gian ngắn.`;
         break;
+
       case "event_updated_urgent":
         if (eventTitle)
           return `Sự kiện "${eventTitle}" có cập nhật quan trọng. Vui lòng kiểm tra chi tiết.`;
         break;
+
       case "event_pending_approval":
         if (eventTitle)
           return `Sự kiện "${eventTitle}" vừa được tạo và đang chờ duyệt.`;
         break;
+
       case "registration_approved":
         if (eventTitle)
           return `Đăng ký của bạn cho sự kiện "${eventTitle}" đã được chấp nhận.`;
         break;
+
       case "registration_rejected":
         if (eventTitle)
-          return `Đăng ký của bạn cho sự kiện "${eventTitle}" đã bị từ chối.${reason ? ` \n Lý do: ${reason}` : ""}`;
+          return `Đăng ký của bạn cho sự kiện "${eventTitle}" đã bị từ chối.${
+            reason ? ` \n Lý do: ${reason}` : ""
+          }`;
         break;
+
       case "registration_completed":
         if (eventTitle)
           return `Bạn đã được xác nhận hoàn thành sự kiện "${eventTitle}". Cảm ơn bạn đã tham gia!`;
         break;
+
       case "new_registration":
         if (eventTitle)
-          return `Có đăng ký mới${userName ? ` từ ${userName}` : ""} cho sự kiện "${eventTitle}".`;
+          return `Có đăng ký mới${
+            userName ? ` từ ${userName}` : ""
+          } cho sự kiện "${eventTitle}".`;
         break;
+
       case "account_locked":
         if (reason) return `Tài khoản của bạn đã bị khóa. \n Lý do: ${reason}`;
         break;
+
       case "manager_account_locked":
         if (userName)
-          return `Manager ${userName} đã bị khóa tài khoản.${reason ? ` \n Lý do: ${reason}` : ""}`;
+          return `Manager ${userName} đã bị khóa tài khoản.${
+            reason ? ` \n Lý do: ${reason}` : ""
+          }`;
         break;
+
       case "account_unlocked":
         return "Tài khoản của bạn đã được mở khóa.";
+
       case "manager_account_unlocked":
         if (userName) return `Manager ${userName} đã được mở khóa tài khoản.`;
         break;
+
       case "role_changed":
         return "Quyền tài khoản của bạn đã được thay đổi.";
     }

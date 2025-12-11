@@ -150,7 +150,12 @@ const AppHeader = () => {
                 >
                   <div className="notif-content">
                     <div className="notif-title">{notifTitle}</div>
-                    <div className="notif-message">{notifMessage}</div>
+                    <div
+                      className="notif-message"
+                      style={{ whiteSpace: "pre-line" }}
+                    >
+                      {notifMessage}
+                    </div>
                   </div>
                 </List.Item>
               );

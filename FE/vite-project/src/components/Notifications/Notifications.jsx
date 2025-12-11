@@ -188,7 +188,11 @@ const Notifications = () => {
                     }
                     description={
                       <>
-                        {mainText && <div>{mainText}</div>}
+                        {mainText && (
+                          <div style={{ whiteSpace: "pre-line" }}>
+                            {mainText}
+                          </div>
+                        )}
                         <div style={{ marginTop: 4 }}>
                           <Text type="secondary" style={{ fontSize: 12 }}>
                             {renderTime(item.created_at)}
