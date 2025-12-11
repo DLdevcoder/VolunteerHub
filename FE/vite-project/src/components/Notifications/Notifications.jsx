@@ -24,6 +24,8 @@ import {
   markNotificationReadThunk,
   markAllNotificationsReadThunk,
   deleteNotificationThunk,
+  fetchUnreadCountThunk,
+  fetchRecentNotificationsThunk,
 } from "../../redux/slices/notificationSlice";
 
 const { Title, Text } = Typography;
@@ -46,8 +48,17 @@ const Notifications = () => {
   const [page, setPage] = useState(currentPageFromStore);
   const [pageSize, setPageSize] = useState(pageSizeFromStore);
 
+  // helper: sync AppHeader after any change in notifications
+  const syncHeaderNotifications = () => {
+    dispatch(fetchUnreadCountThunk());
+    dispatch(fetchRecentNotificationsThunk(5));
+  };
+
   useEffect(() => {
-    dispatch(fetchNotificationsThunk({ page, limit: pageSize }));
+    dispatch(fetchNotificationsThunk({ page, limit: pageSize })).then(() => {
+      // đồng bộ header mỗi lần reload list
+      syncHeaderNotifications();
+    });
   }, [dispatch, page, pageSize]);
 
   const handlePageChange = (p, size) => {
@@ -57,16 +68,28 @@ const Notifications = () => {
 
   const handleMarkRead = (item) => {
     if (!item.is_read) {
-      dispatch(markNotificationReadThunk(item.notification_id));
+      dispatch(markNotificationReadThunk(item.notification_id)).then(() => {
+        syncHeaderNotifications();
+      });
     }
   };
 
   const handleMarkAllRead = () => {
-    dispatch(markAllNotificationsReadThunk());
+    dispatch(markAllNotificationsReadThunk()).then(() => {
+      syncHeaderNotifications();
+    });
   };
 
   const handleDelete = (item) => {
-    dispatch(deleteNotificationThunk(item.notification_id));
+    dispatch(deleteNotificationThunk(item.notification_id)).then(() => {
+      syncHeaderNotifications();
+    });
+  };
+
+  const handleRefresh = () => {
+    dispatch(fetchNotificationsThunk({ page, limit: pageSize })).then(() => {
+      syncHeaderNotifications();
+    });
   };
 
   const renderTime = (iso) => {
@@ -78,11 +101,9 @@ const Notifications = () => {
     }
   };
 
-  // helper: get body text from item.body or payload
   const getBodyText = (item) => {
     if (item.body) return item.body;
 
-    // fallback: try payload.message
     const rawPayload = item.payload;
     if (!rawPayload) return "";
 
@@ -91,7 +112,6 @@ const Notifications = () => {
         const obj = JSON.parse(rawPayload);
         if (obj?.message) return obj.message;
       } catch {
-        // not JSON, just return string
         return rawPayload;
       }
     } else if (typeof rawPayload === "object") {
@@ -114,13 +134,7 @@ const Notifications = () => {
         </Title>
 
         <Space>
-          <Button
-            onClick={() =>
-              dispatch(fetchNotificationsThunk({ page, limit: pageSize }))
-            }
-          >
-            Refresh
-          </Button>
+          <Button onClick={handleRefresh}>Refresh</Button>
           <Button onClick={handleMarkAllRead} type="primary">
             Đánh dấu tất cả đã đọc
           </Button>
@@ -174,7 +188,11 @@ const Notifications = () => {
                     }
                     description={
                       <>
-                        {mainText && <div>{mainText}</div>}
+                        {mainText && (
+                          <div style={{ whiteSpace: "pre-line" }}>
+                            {mainText}
+                          </div>
+                        )}
                         <div style={{ marginTop: 4 }}>
                           <Text type="secondary" style={{ fontSize: 12 }}>
                             {renderTime(item.created_at)}

@@ -1,4 +1,6 @@
 // src/App.jsx
+import { useEffect } from "react";
+import { useSelector } from "react-redux";
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "./components/AppLayout/AppLayout";
 
@@ -23,7 +25,25 @@ import AdminUsers from "./components/admin/AdminUsers/AdminUsers";
 import AdminExport from "./components/admin/AdminExport/AdminExport";
 import AdminCreateUser from "./components/admin/AdminCreateUser/AdminCreateUser";
 
+import { authTokenSelector } from "./redux/selectors/authSelectors"; // 👈 adjust path if needed
+import { initPushNotifications } from "./utils/pushNotifications";
+
 const App = () => {
+  const token = useSelector(authTokenSelector);
+
+  useEffect(() => {
+    if (!token) return; // chưa login
+
+    const inited = localStorage.getItem("vh_push_inited");
+    if (inited) return; // đã init rồi (sau refresh)
+
+    (async () => {
+      await initPushNotifications();
+      // đánh dấu đã init để tránh gọi lại không cần thiết
+      localStorage.setItem("vh_push_inited", "1");
+    })();
+  }, [token]);
+
   return (
     <Routes>
       {/* Auth pages (outside layout) */}
@@ -33,7 +53,6 @@ const App = () => {
 
       {/* Main app layout */}
       <Route path="/" element={<AppLayout />}>
-        {/* 👇 Default when logged in: /dashboard */}
         <Route index element={<Navigate to="/dashboard" replace />} />
 
         {/* Main pages */}
@@ -60,7 +79,7 @@ const App = () => {
         </Route>
       </Route>
 
-      {/* Fallback: anything unknown -> dashboard */}
+      {/* Fallback */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
