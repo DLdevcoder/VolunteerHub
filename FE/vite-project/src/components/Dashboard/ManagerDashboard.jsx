@@ -32,10 +32,11 @@ import {
   StarFilled,
   StarOutlined,
   RiseOutlined,
-  BellOutlined, // <-- thêm đây
+  BellOutlined,
 } from "@ant-design/icons";
 
-import { Link } from "react-router-dom";
+// 1. Thêm useNavigate vào import
+import { Link, useNavigate } from "react-router-dom";
 import dashboardApi from "../../../apis/dashboardApi";
 import "./Dashboard.css";
 
@@ -44,6 +45,9 @@ const { Text } = Typography;
 const ManagerDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // 2. Khởi tạo navigate
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -178,17 +182,14 @@ const ManagerDashboard = () => {
                   </div>
 
                   <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-                    <Link to={`/events/${ev.event_id}/edit`}>
-                      <Button size="small" icon={<EditOutlined />}>
-                        CHỈNH SỬA
-                      </Button>
-                    </Link>
-
-                    <Link to={`/events/${ev.event_id}`}>
-                      <Button size="small" icon={<EyeOutlined />}>
-                        XEM TRƯỚC
-                      </Button>
-                    </Link>
+                    {/* 3. Thay thế Link bằng Button onClick navigate */}
+                    <Button
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={() => navigate(`/manager/events/${ev.event_id}/edit`)}
+                    >
+                      CHỈNH SỬA
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -209,7 +210,7 @@ const ManagerDashboard = () => {
         <Col xs={24} md={9}>
           <div className="dashboard-section">
             <div className="section-header header-blue">
-              <MessageFilled /> Hoạt động mới (Đã duyệt)
+              <MessageFilled /> Hoạt động mới
             </div>
 
             <div className="section-body custom-scroll">
@@ -402,14 +403,6 @@ const ManagerDashboard = () => {
                         <CommentOutlined /> +{ev.new_comments_24h} cmt
                       </div>
                     </div>
-                  </div>
-
-                  <div style={{ marginTop: 10, textAlign: "center" }}>
-                    <Link to={`/events/${ev.event_id}/analytics`}>
-                      <Button size="small" icon={<BarChartOutlined />} block>
-                        XEM PHÂN TÍCH
-                      </Button>
-                    </Link>
                   </div>
                 </div>
               ))}
