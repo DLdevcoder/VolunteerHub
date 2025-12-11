@@ -1,5 +1,6 @@
+// src/components/AppHeader/AppHeader.jsx
 import "./AppHeader.css";
-import { Input, Avatar, Badge, Dropdown, List, Spin } from "antd";
+import { Avatar, Badge, Dropdown, List, Spin } from "antd";
 import { BellOutlined } from "@ant-design/icons";
 import { SlLogout } from "react-icons/sl";
 import { useNavigate } from "react-router-dom";
@@ -31,11 +32,63 @@ const AppHeader = () => {
   const recent = useSelector(recentNotificationsSelector);
   const loadingRecent = useSelector(loadingRecentNotificationsSelector);
 
-  useEffect(() => {
+  // ---- helper: sync badge + recent list ----
+  const syncHeaderNotifications = () => {
     if (!token) return;
     dispatch(fetchUnreadCountThunk());
     dispatch(fetchRecentNotificationsThunk(5));
-  }, [token, dispatch]);
+  };
+
+  // 1️⃣ Fetch once when we have token (on first render / after login)
+  useEffect(() => {
+    if (!token) return;
+    console.log("[Header] Initial fetch notifications");
+    syncHeaderNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  // 2️⃣ Listen to Service Worker messages (instant real-time if push works)
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    const handleSwMessage = (event) => {
+      const data = event.data;
+      console.log("[Header] SW message received:", data);
+
+      if (!data || data.type !== "NEW_NOTIFICATION") return;
+
+      // Khi có push notification mới -> reload count + recent list
+      console.log("[Header] Detected NEW_NOTIFICATION from SW, syncing…");
+      syncHeaderNotifications();
+    };
+
+    navigator.serviceWorker.addEventListener("message", handleSwMessage);
+
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", handleSwMessage);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  // 3️⃣ Polling fallback: every 5s, while logged in, refresh from server
+  useEffect(() => {
+    if (!token) return;
+
+    console.log("[Header] Start polling notifications every 5s");
+    // Run once immediately
+    syncHeaderNotifications();
+
+    const id = setInterval(() => {
+      console.log("[Header] Poll tick -> fetching notifications");
+      syncHeaderNotifications();
+    }, 5000); // 5 seconds so you can see it quickly
+
+    return () => {
+      console.log("[Header] Stop polling notifications");
+      clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const handleAvatarDropdownClicked = ({ key }) => {
     if (key === "1") {
@@ -49,7 +102,10 @@ const AppHeader = () => {
 
   const handleNotificationClick = (item) => {
     if (!item.is_read) {
-      dispatch(markNotificationReadThunk(item.notification_id));
+      dispatch(markNotificationReadThunk(item.notification_id)).then(() => {
+        // sau khi mark read -> sync header lại (badge & list)
+        syncHeaderNotifications();
+      });
     }
     // sau này có thể điều hướng dựa trên item.url nếu BE trả về
   };
@@ -71,7 +127,6 @@ const AppHeader = () => {
             dataSource={recent}
             locale={{ emptyText: "Không có thông báo" }}
             renderItem={(item) => {
-              // Dùng title/body từ BE
               let notifTitle = item.title || "Thông báo mới";
               let notifMessage = item.body || "";
 
@@ -123,14 +178,6 @@ const AppHeader = () => {
   return (
     <div className="appHeader-container">
       <div className="appHeader-logo">VolunteerHub</div>
-
-      {/* <div className="appHeader-search-input">
-        <Input.Search
-          className="search-input"
-          placeholder="Search for events or organizations"
-          enterButton
-        />
-      </div> */}
 
       <div className="appHeader-noti-and-ava-wrapper">
         <div className="appHeader-notification-icon">

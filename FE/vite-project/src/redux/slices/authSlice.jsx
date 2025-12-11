@@ -157,10 +157,11 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       state.error = null;
-      state.successMessage = null; // 👈 reset luôn
+      state.successMessage = null;
 
       localStorage.removeItem("vh_token");
       localStorage.removeItem("vh_user");
+      localStorage.removeItem("vh_push_inited");
     },
     clearMessages(state) {
       state.error = null;

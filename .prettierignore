@@ -1,0 +1,2 @@
+# Ignore service worker, Prettier 3 has a bug with this file
+# FE/vite-project/public/sw.js
