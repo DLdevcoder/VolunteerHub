@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Table, Tag, Select, Button, Card, Space } from "antd";
 import { useNavigate } from "react-router-dom";
+import { DownloadOutlined } from "@ant-design/icons";
 
 import {
   fetchUsersThunk,
@@ -10,6 +11,7 @@ import {
   updateUserRoleThunk,
 } from "../../../redux/slices/userSlice";
 import useGlobalMessage from "../../../utils/hooks/useGlobalMessage";
+import exportApi from "../../../../apis/exportApi";
 
 const { Option } = Select;
 
@@ -25,6 +27,9 @@ const AdminUsers = () => {
   const [statusFilter, setStatusFilter] = useState();
   const [pageSize, setPageSize] = useState(10);
   const [rowLoadingId, setRowLoadingId] = useState(null);
+
+  // State loading cho export
+  const [exportingUsers, setExportingUsers] = useState(false);
 
   const loadData = (page = 1, limit = pageSize) => {
     dispatch(
@@ -47,6 +52,43 @@ const AdminUsers = () => {
     loadData(pag.current, pag.pageSize);
   };
 
+  // Logic export Users
+  const handleExportUsers = async () => {
+    try {
+      setExportingUsers(true);
+      messageApi.loading({
+        content: "Đang xuất danh sách người dùng...",
+        key: "exportUserMsg",
+      });
+      
+      const response = await exportApi.exportUsers("csv");
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      const fileName = `users_report_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      messageApi.success({
+        content: "Tải danh sách người dùng thành công!",
+        key: "exportUserMsg",
+      });
+    } catch (error) {
+      console.error(error);
+      messageApi.error({
+        content: "Lỗi xuất dữ liệu người dùng.",
+        key: "exportUserMsg",
+      });
+    } finally {
+      setExportingUsers(false);
+    }
+  };
+
   // Toggle Active <-> Locked (UI gọi “Blocked” nhưng DB dùng “Locked”)
   const toggleStatus = async (user) => {
     const newStatus = user.status === "Active" ? "Locked" : "Active";
@@ -66,20 +108,6 @@ const AdminUsers = () => {
       setRowLoadingId(null);
     }
   };
-
-  // const makeAdmin = async (user) => {
-  //   try {
-  //     setRowLoadingId(user.user_id);
-  //     await dispatch(
-  //       updateUserRoleThunk({ userId: user.user_id, role_name: "Admin" })
-  //     ).unwrap();
-  //     messageApi.success("Đã nâng quyền user thành Admin");
-  //   } catch (err) {
-  //     messageApi.error(err || "Không thể cập nhật role");
-  //   } finally {
-  //     setRowLoadingId(null);
-  //   }
-  // };
 
   const makeManager = async (user) => {
     try {
@@ -178,18 +206,6 @@ const AdminUsers = () => {
                 Make Manager
               </Button>
             )}
-
-            {/* {record.role_name !== "Admin" && (
-              <Button
-                size="small"
-                type="primary"
-                disabled={isSelf}
-                loading={rowLoadingId === record.user_id}
-                onClick={() => makeAdmin(record)}
-              >
-                Make Admin
-              </Button>
-            )} */}
           </Space>
         );
       },
@@ -212,6 +228,17 @@ const AdminUsers = () => {
         bodyStyle={{ display: "flex", flexDirection: "column" }}
         extra={
           <Space>
+            {/* Nút Export CSV */}
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleExportUsers}
+              loading={exportingUsers}
+            >
+              Export CSV
+            </Button>
+            
+            <div style={{ width: 1, height: 20, background: '#f0f0f0', margin: '0 8px' }} />
+
             <Button
               type="primary"
               onClick={() => navigate("/admin/users/create")}

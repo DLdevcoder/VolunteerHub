@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, Table, Tag, Button, Space, Select, Input, Modal } from "antd";
+import { DownloadOutlined } from "@ant-design/icons"; // Import icon Download
 
 import {
   fetchAdminEvents,
@@ -17,6 +18,7 @@ import {
 } from "../../../redux/selectors/eventSelectors";
 
 import useGlobalMessage from "../../../utils/hooks/useGlobalMessage";
+import exportApi from "../../../../apis/exportApi";
 
 const { Option } = Select;
 
@@ -34,6 +36,9 @@ const AdminEventRequests = () => {
   const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [rowLoadingId, setRowLoadingId] = useState(null);
+
+  // Export state
+  const [exportingEvents, setExportingEvents] = useState(false);
 
   // Modal reject
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -71,6 +76,42 @@ const AdminEventRequests = () => {
   const handleTableChange = (pag) => {
     setPageSize(pag.pageSize);
     loadData(pag.current, pag.pageSize);
+  };
+
+  // Logic export sự kiện (Đã chuyển từ Dashboard sang)
+  const handleExportEvents = async () => {
+    try {
+      setExportingEvents(true);
+      messageApi.loading({
+        content: "Đang tạo file báo cáo sự kiện...",
+        key: "exportMsg",
+      });
+      
+      const response = await exportApi.exportEvents("csv");
+      
+      // Tạo blob và link download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      const fileName = `events_report_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      messageApi.success({
+        content: "Tải danh sách sự kiện thành công!",
+        key: "exportMsg",
+      });
+    } catch (error) {
+      console.error(error);
+      messageApi.error({ content: "Lỗi xuất dữ liệu.", key: "exportMsg" });
+    } finally {
+      setExportingEvents(false);
+    }
   };
 
   const handleApprove = async (eventId) => {
@@ -212,6 +253,17 @@ const AdminEventRequests = () => {
       title="Event requests"
       extra={
         <Space>
+          {/* Nút Export đặt ở đây */}
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={handleExportEvents}
+            loading={exportingEvents}
+          >
+            Export CSV
+          </Button>
+          
+          <div style={{ width: 1, height: 20, background: '#f0f0f0', margin: '0 8px' }} /> {/* Đường kẻ ngăn cách nhẹ */}
+
           <span>Trạng thái:</span>
           <Select
             style={{ width: 160 }}
