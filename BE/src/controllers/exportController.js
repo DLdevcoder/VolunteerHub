@@ -20,7 +20,7 @@ const exportController = {
 
       if (format === "csv") {
         const fields = ExportUtils.getFieldsForType("users");
-        const csv = ExportUtils.convertToCSV(users, fields);
+        const csv = ExportUtils.convertToCSV(users, fields, "users"); // Thêm dataType
 
         ExportUtils.setExportHeaders(res, filename, "csv");
         return res.send(csv);
@@ -63,7 +63,7 @@ const exportController = {
 
       if (format === "csv") {
         const fields = ExportUtils.getFieldsForType("events");
-        const csv = ExportUtils.convertToCSV(events, fields);
+        const csv = ExportUtils.convertToCSV(events, fields, "events"); // Thêm dataType
 
         ExportUtils.setExportHeaders(res, filename, "csv");
         return res.send(csv);

@@ -1,12 +1,58 @@
 import { Parser } from "json2csv";
 
 class ExportUtils {
-  // Convert JSON to CSV
-  static convertToCSV(data, fields) {
+  // Format datetime helper
+  static formatDateTime(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return `\u200B${day}/${month}/${year} ${hours}:${minutes}`;
+  }
+
+  // Format data trước khi convert
+  static formatDataForExport(data, dataType) {
+    const dateFields = {
+      users: ['created_at', 'updated_at'],
+      events: ['start_date', 'end_date', 'approval_date', 'created_at'],
+      registrations: ['registration_date', 'completion_date'],
+      posts: ['created_at']
+    };
+
+    const fieldsToFormat = dateFields[dataType] || [];
+
+    return data.map(item => {
+      const formatted = { ...item };
+      fieldsToFormat.forEach(field => {
+        if (formatted[field]) {
+          formatted[field] = this.formatDateTime(formatted[field]);
+        }
+      });
+      return formatted;
+    });
+  }
+
+  // Convert JSON to CSV với UTF-8 BOM support và format dates
+  static convertToCSV(data, fields, dataType) {
     try {
-      const json2csvParser = new Parser({ fields });
-      const csv = json2csvParser.parse(data);
-      return csv;
+      // Format dates trước khi convert
+      const formattedData = this.formatDataForExport(data, dataType);
+
+      const json2csvParser = new Parser({
+        fields,
+        quote: '"',           // Luôn bọc trong ngoặc kép
+        escapedQuote: '""',
+        excelStrings: false,
+        withBOM: false
+      });
+      const csv = json2csvParser.parse(formattedData);
+      // Thêm BOM cho UTF-8
+      return '\ufeff' + csv;
     } catch (error) {
       throw new Error(`CSV conversion error: ${error.message}`);
     }
@@ -79,7 +125,9 @@ class ExportUtils {
 
   // Set response headers cho file download
   static setExportHeaders(res, filename, format) {
-    const contentType = format === "csv" ? "text/csv" : "application/json";
+    const contentType = format === "csv"
+      ? "text/csv; charset=utf-8"
+      : "application/json; charset=utf-8";
     const contentDisposition = `attachment; filename="${filename}"`;
 
     res.setHeader("Content-Type", contentType);
