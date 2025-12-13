@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
 import {
   Row,
   Col,
   Spin,
   Empty,
   Button,
-  message,
   Modal,
   Tag,
   Tooltip,
+  Input,
+  // Bỏ import message từ antd ở đây
 } from "antd";
 import {
   UserOutlined,
@@ -20,8 +22,6 @@ import {
   CheckOutlined,
   CloseOutlined,
   ArrowUpOutlined,
-  DownloadOutlined,
-  FileExcelOutlined,
   FireFilled,
   EnvironmentOutlined,
   LineChartOutlined,
@@ -29,17 +29,29 @@ import {
 import { Link } from "react-router-dom";
 
 import dashboardApi from "../../../apis/dashboardApi";
-import eventApi from "../../../apis/eventApi";
-import exportApi from "../../../apis/exportApi";
+
+// SỬA ĐƯỜNG DẪN IMPORT (chỉ dùng ../../)
+import {
+  approveEventThunk,
+  rejectEventThunk,
+} from "../../redux/slices/eventSlice";
+
+import useGlobalMessage from "../../utils/hooks/useGlobalMessage"; // Import hook thông báo
 
 import "./Dashboard.css";
 
 const AdminDashboard = () => {
+  const dispatch = useDispatch();
+  const messageApi = useGlobalMessage(); // Khởi tạo messageApi
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const [exportingEvents, setExportingEvents] = useState(false);
-  const [exportingUsers, setExportingUsers] = useState(false);
+  // Modal reject state
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectingEvent, setRejectingEvent] = useState(null);
+  const [rejectLoading, setRejectLoading] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -58,92 +70,57 @@ const AdminDashboard = () => {
 
   const handleApprove = async (id) => {
     try {
-      await eventApi.approveEvent(id);
-      message.success("Đã duyệt sự kiện!");
+      await dispatch(approveEventThunk(id)).unwrap();
+      messageApi.success("Đã duyệt sự kiện!"); // Dùng messageApi
       fetchData();
     } catch (error) {
-      message.error("Lỗi khi duyệt");
+      const errMsg = error?.message || "Lỗi khi duyệt sự kiện";
+      messageApi.error(errMsg); // Dùng messageApi
     }
   };
 
-  const handleReject = (id) => {
-    Modal.confirm({
-      title: "Từ chối sự kiện này?",
-      content: "Sự kiện sẽ bị hủy bỏ. Hành động này không thể hoàn tác.",
-      okText: "Từ chối",
-      okType: "danger",
-      cancelText: "Hủy",
-      onOk: async () => {
-        try {
-          await eventApi.deleteEvent(id);
-          message.success("Đã từ chối sự kiện!");
-          fetchData();
-        } catch (error) {
-          message.error("Lỗi khi từ chối");
-        }
-      },
-    });
+  const openRejectModal = (ev) => {
+    setRejectingEvent(ev);
+    setRejectReason("");
+    setRejectModalOpen(true);
   };
 
-  const handleExportEvents = async () => {
+  const handleRejectConfirm = async () => {
+    const reason = rejectReason.trim();
+    
+    // Logic hiển thị cảnh báo giống ảnh bạn gửi
+    if (!reason || reason.length < 5) {
+      messageApi.warning("Lý do cần ít nhất 5 ký tự"); // Dùng messageApi sẽ hiện thông báo chuẩn
+      return;
+    }
+    
+    if (!rejectingEvent) return;
+
+    const eventId = rejectingEvent.event_id;
+
     try {
-      setExportingEvents(true);
-      message.loading({
-        content: "Đang tạo file báo cáo sự kiện...",
-        key: "exportMsg",
-      });
-      const response = await exportApi.exportEvents("csv");
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      const fileName = `events_report_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.setAttribute("download", fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      message.success({
-        content: "Tải danh sách sự kiện thành công!",
-        key: "exportMsg",
-      });
+      setRejectLoading(true);
+      await dispatch(rejectEventThunk({ eventId, reason })).unwrap();
+
+      messageApi.success("Đã từ chối sự kiện!"); // Dùng messageApi
+      
+      setRejectModalOpen(false);
+      setRejectingEvent(null);
+      setRejectReason("");
+      
+      fetchData();
     } catch (error) {
-      console.error(error);
-      message.error({ content: "Lỗi xuất dữ liệu.", key: "exportMsg" });
+      const errMsg = error?.message || "Lỗi khi từ chối sự kiện";
+      messageApi.error(errMsg); // Dùng messageApi
     } finally {
-      setExportingEvents(false);
+      setRejectLoading(false);
     }
   };
 
-  const handleExportUsers = async () => {
-    try {
-      setExportingUsers(true);
-      message.loading({
-        content: "Đang xuất danh sách người dùng...",
-        key: "exportUserMsg",
-      });
-      const response = await exportApi.exportUsers("csv");
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      const fileName = `users_report_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.setAttribute("download", fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      message.success({
-        content: "Tải danh sách người dùng thành công!",
-        key: "exportUserMsg",
-      });
-    } catch (error) {
-      console.error(error);
-      message.error({
-        content: "Lỗi xuất dữ liệu người dùng.",
-        key: "exportUserMsg",
-      });
-    } finally {
-      setExportingUsers(false);
-    }
+  const handleRejectCancel = () => {
+    setRejectModalOpen(false);
+    setRejectingEvent(null);
+    setRejectReason("");
   };
 
   if (loading)
@@ -220,9 +197,12 @@ const AdminDashboard = () => {
                   <div
                     style={{ display: "flex", justifyContent: "space-between" }}
                   >
-                    <span style={{ fontWeight: "bold" }}>
-                      #{index + 1}. "{ev.title}"
-                    </span>
+                    <Link 
+                      to={`/events/${ev.event_id}`}
+                      style={{ fontWeight: "bold", color: "#1890ff", fontSize: "15px" }}
+                    >
+                      {index + 1}. {ev.title}""
+                    </Link>
                     <Tag color="orange">Chờ {ev.days_waiting} ngày</Tag>
                   </div>
 
@@ -258,13 +238,10 @@ const AdminDashboard = () => {
                       danger
                       size="small"
                       icon={<CloseOutlined />}
-                      onClick={() => handleReject(ev.event_id)}
+                      onClick={() => openRejectModal(ev)}
                     >
                       TỪ CHỐI
                     </Button>
-                    <Link to={`/events/${ev.event_id}`}>
-                      <Button size="small">Xem chi tiết</Button>
-                    </Link>
                   </div>
                 </div>
               ))}
@@ -285,82 +262,83 @@ const AdminDashboard = () => {
 
             <div className="section-body custom-scroll">
               {data?.trending_events?.map((ev, index) => (
-                <div
+                <Link
+                  to={`/events/${ev.event_id}`}
                   key={ev.event_id}
-                  className={`dashboard-item trending-item ${
-                    index === 0 ? "rank-1" : ""
-                  }`}
+                  style={{ display: 'block', textDecoration: 'none' }}
                 >
                   <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginBottom: 5,
-                    }}
+                    className={`dashboard-item trending-item ${
+                      index === 0 ? "rank-1" : ""
+                    }`}
                   >
-                    <Tag
-                      color={
-                        index === 0 ? "red" : index === 1 ? "volcano" : "gold"
-                      }
-                    >
-                      {index === 0
-                        ? "TOP 1"
-                        : index === 1
-                          ? "TOP 2"
-                          : `TOP ${index + 1}`}
-                    </Tag>
-
-                    <Tooltip title="Điểm tương tác">
-                      <Tag color="gold">
-                        <StarFilled /> {ev.engagement_score}đ
-                      </Tag>
-                    </Tooltip>
-                  </div>
-
-                  <Link
-                    to={`/events/${ev.event_id}`}
-                    className="text-bold"
-                    style={{ fontSize: 15, color: "#cf1322" }}
-                  >
-                    "{ev.title}"
-                  </Link>
-
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: "#666",
-                      marginTop: 4,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <UserOutlined /> {ev.manager_name} | <TeamOutlined />{" "}
-                    <b>
-                      {ev.current_participants}/{ev.target_participants}
-                    </b>
-                  </div>
-
-                  <div className="growth-box">
                     <div
                       style={{
-                        fontSize: 11,
-                        fontWeight: "bold",
-                        color: "#555",
-                        marginBottom: 4,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 5,
                       }}
                     >
-                      <LineChartOutlined /> TĂNG TRƯỞNG 24H:
+                      <Tag
+                        color={
+                          index === 0 ? "red" : index === 1 ? "volcano" : "gold"
+                        }
+                      >
+                        {index === 0
+                          ? "TOP 1"
+                          : index === 1
+                            ? "TOP 2"
+                            : `TOP ${index + 1}`}
+                      </Tag>
+
+                      <Tooltip title="Điểm tương tác">
+                        <Tag color="gold">
+                          <StarFilled /> {ev.engagement_score}đ
+                        </Tag>
+                      </Tooltip>
                     </div>
 
-                    <Row gutter={4} className="text-xs">
-                      <Col span={12} style={{ color: "#389e0d" }}>
-                        <ArrowUpOutlined /> +{ev.new_participants_24h} người
-                      </Col>
-                      <Col span={12} style={{ color: "#096dd9" }}>
-                        <ArrowUpOutlined /> +{ev.new_posts_24h} bài
-                      </Col>
-                    </Row>
+                    <div className="text-bold" style={{ fontSize: 15, color: "#cf1322" }}>
+                      "{ev.title}"
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "#666",
+                        marginTop: 4,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <UserOutlined /> {ev.manager_name} | <TeamOutlined />{" "}
+                      <b>
+                        {ev.current_participants}/{ev.target_participants}
+                      </b>
+                    </div>
+
+                    <div className="growth-box">
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "bold",
+                          color: "#555",
+                          marginBottom: 4,
+                        }}
+                      >
+                        <LineChartOutlined /> TĂNG TRƯỞNG 24H:
+                      </div>
+
+                      <Row gutter={4} className="text-xs">
+                        <Col span={12} style={{ color: "#389e0d" }}>
+                          <ArrowUpOutlined /> +{ev.new_participants_24h} người
+                        </Col>
+                        <Col span={12} style={{ color: "#096dd9" }}>
+                          <ArrowUpOutlined /> +{ev.new_posts_24h} bài
+                        </Col>
+                      </Row>
+                    </div>
                   </div>
-                </div>
+                </Link>
               ))}
 
               {!data?.trending_events?.length && (
@@ -371,40 +349,32 @@ const AdminDashboard = () => {
         </Col>
       </Row>
 
-      {/* EXPORT AREA */}
-      <div
-        className="dashboard-section"
-        style={{ height: "auto", padding: 20 }}
+      {/* Modal từ chối sự kiện */}
+      <Modal
+        title={
+          rejectingEvent
+            ? `Từ chối sự kiện: "${rejectingEvent.title}"`
+            : "Từ chối sự kiện"
+        }
+        open={rejectModalOpen}
+        onOk={handleRejectConfirm}
+        onCancel={handleRejectCancel}
+        okText="Xác nhận từ chối"
+        cancelText="Hủy"
+        confirmLoading={rejectLoading}
+        okButtonProps={{ danger: false }}
       >
-        <h4 style={{ fontSize: 16, fontWeight: "bold", marginBottom: 15 }}>
-          <DownloadOutlined /> XUẤT DỮ LIỆU HỆ THỐNG
-        </h4>
-
-        <div style={{ display: "flex", gap: 15 }}>
-          <Button
-            type="primary"
-            icon={<DownloadOutlined />}
-            size="large"
-            onClick={handleExportEvents}
-            loading={exportingEvents}
-          >
-            {exportingEvents
-              ? "Đang tạo file..."
-              : "Xuất danh sách Sự kiện (CSV)"}
-          </Button>
-
-          <Button
-            icon={<FileExcelOutlined />}
-            size="large"
-            onClick={handleExportUsers}
-            loading={exportingUsers}
-          >
-            {exportingUsers
-              ? "Đang tạo file..."
-              : "Xuất danh sách Người dùng (CSV)"}
-          </Button>
-        </div>
-      </div>
+        <p>Nhập lý do từ chối:</p>
+        <Input.TextArea
+          rows={4}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          maxLength={500}
+          showCount
+          placeholder="Ví dụ: Nội dung sự kiện chưa rõ ràng, cần bổ sung thông tin chi tiết..."
+          style={{ marginTop: 4, marginBottom: 24 }}
+        />
+      </Modal>
     </div>
   );
 };
