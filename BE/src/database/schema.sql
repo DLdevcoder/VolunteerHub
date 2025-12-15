@@ -288,6 +288,7 @@ MODIFY COLUMN type ENUM(
   'registration_approved',
   'registration_rejected',
   'registration_completed',
+  'registration_cancelled',
   'new_registration',
 
   -- Content related

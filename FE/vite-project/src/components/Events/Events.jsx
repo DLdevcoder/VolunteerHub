@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Row,
@@ -29,10 +29,7 @@ import {
   registerForEventThunk,
   cancelRegistrationThunk,
 } from "../../redux/slices/registrationSlice";
-import {
-  volunteerRegisteringIdSelector,
-  volunteerRegistrationErrorSelector,
-} from "../../redux/selectors/registrationSelectors";
+import { volunteerRegisteringIdSelector } from "../../redux/selectors/registrationSelectors";
 
 import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 
@@ -59,47 +56,47 @@ const Events = () => {
   const isLoggedIn = !!token;
 
   const registeringId = useSelector(volunteerRegisteringIdSelector);
-  const registrationError = useSelector(volunteerRegistrationErrorSelector);
 
   const [page, setPage] = useState(1);
   const [categoryId, setCategoryId] = useState(null);
-  const [dateRange, setDateRange] = useState(null); // [start, end]
+  const [dateRange, setDateRange] = useState(null);
 
-  // load categories once
+  // 1) Load categories once
   useEffect(() => {
     dispatch(fetchEventCategories());
   }, [dispatch]);
 
-  // load events whenever page or filters change
-  useEffect(() => {
-    const params = {
-      page,
-      limit: DEFAULT_LIMIT,
-    };
+  // 2) Build params (stable) so we can reuse in many places
+  const params = useMemo(() => {
+    const p = { page, limit: DEFAULT_LIMIT };
 
-    if (categoryId) {
-      params.category_id = categoryId;
-    }
+    if (categoryId) p.category_id = categoryId;
 
     if (dateRange && dateRange.length === 2) {
       const [start, end] = dateRange;
       if (start && end) {
-        // gửi ISO string, BE dùng new Date() để parse
-        params.start_date_from = start.startOf("day").toISOString();
-        params.start_date_to = end.endOf("day").toISOString();
+        p.start_date_from = start.startOf("day").toISOString();
+        p.start_date_to = end.endOf("day").toISOString();
       }
     }
 
+    return p;
+  }, [page, categoryId, dateRange]);
+
+  // 3) Load events whenever params change
+  useEffect(() => {
     dispatch(fetchActiveEvents(params));
-  }, [dispatch, page, categoryId, dateRange]);
+  }, [dispatch, params]);
 
+  // 4) Show list error ONLY ONCE per distinct message (avoid replay on navigation)
+  const lastListErrorRef = useRef(null);
   useEffect(() => {
-    if (error) messageApi.error(error);
+    if (!error) return;
+    if (lastListErrorRef.current === error) return; // prevent duplicates
+    lastListErrorRef.current = error;
+
+    messageApi.error(error);
   }, [error, messageApi]);
-
-  useEffect(() => {
-    if (registrationError) messageApi.error(registrationError);
-  }, [registrationError, messageApi]);
 
   const handleRegister = async (eventId) => {
     if (!isLoggedIn) {
@@ -111,10 +108,13 @@ const Events = () => {
       const result = await dispatch(registerForEventThunk(eventId)).unwrap();
       messageApi.success(result?.message || "Đăng ký sự kiện thành công");
 
-      // refresh current page with current filters
-      setPage((prev) => prev); // effect above sẽ tự chạy lại
+      // refresh list immediately (not relying on setPage(prev => prev))
+      dispatch(fetchActiveEvents(params));
     } catch (err) {
-      const msg = err?.message || "Không thể đăng ký sự kiện";
+      const msg =
+        typeof err === "string"
+          ? err
+          : err?.message || "Không thể đăng ký sự kiện";
       messageApi.error(msg);
     }
   };
@@ -123,9 +123,14 @@ const Events = () => {
     try {
       const result = await dispatch(cancelRegistrationThunk(eventId)).unwrap();
       messageApi.success(result?.message || "Hủy đăng ký thành công");
-      setPage((prev) => prev);
+
+      // refresh list immediately
+      dispatch(fetchActiveEvents(params));
     } catch (err) {
-      const msg = err?.message || "Không thể hủy đăng ký sự kiện";
+      const msg =
+        typeof err === "string"
+          ? err
+          : err?.message || "Không thể hủy đăng ký sự kiện";
       messageApi.error(msg);
     }
   };
@@ -146,7 +151,6 @@ const Events = () => {
         Events
       </Title>
 
-      {/* Filters */}
       <Space
         style={{
           marginBottom: 16,
@@ -183,11 +187,7 @@ const Events = () => {
 
       {loading ? (
         <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            paddingTop: 40,
-          }}
+          style={{ display: "flex", justifyContent: "center", paddingTop: 40 }}
         >
           <Spin size="large" />
         </div>

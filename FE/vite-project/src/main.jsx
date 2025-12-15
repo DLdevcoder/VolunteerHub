@@ -9,13 +9,13 @@ import App from "./App.jsx";
 import GlobalMessageProvider from "./components/GlobalMessageProvider.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <BrowserRouter>
-        <GlobalMessageProvider>
-          <App />
-        </GlobalMessageProvider>
-      </BrowserRouter>
-    </Provider>
-  </React.StrictMode>
+  // <React.StrictMode>
+  <Provider store={store}>
+    <BrowserRouter>
+      <GlobalMessageProvider>
+        <App />
+      </GlobalMessageProvider>
+    </BrowserRouter>
+  </Provider>
+  // </React.StrictMode>
 );

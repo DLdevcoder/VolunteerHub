@@ -336,6 +336,7 @@ class Notification extends Model {
       "registration_approved",
       "registration_rejected",
       "registration_completed",
+      "registration_cancelled", // ✅ ADD
       "new_registration",
       "new_post",
       "new_comment",
@@ -362,6 +363,7 @@ class Notification extends Model {
       registration_approved: "Đăng ký được chấp nhận",
       registration_rejected: "Đăng ký bị từ chối",
       registration_completed: "Hoàn thành sự kiện",
+      registration_cancelled: "Có người hủy đăng ký", // ✅ ADD
       new_registration: "Có đăng ký mới",
       new_post: "Bài viết mới",
       new_comment: "Bình luận mới",
@@ -401,6 +403,7 @@ class Notification extends Model {
         "Đăng ký tham gia sự kiện của bạn đã được chấp nhận",
       registration_rejected: "Đăng ký tham gia sự kiện của bạn đã bị từ chối",
       registration_completed: "Bạn đã hoàn thành sự kiện thành công",
+      registration_cancelled: "Có tình nguyện viên vừa hủy đăng ký", // ✅ ADD
       new_registration: "Có người mới đăng ký tham gia sự kiện",
       new_post: "Có bài viết mới trong sự kiện",
       new_comment: "Có bình luận mới trong bài viết",
@@ -593,6 +596,7 @@ Notification.init(
         "registration_approved",
         "registration_rejected",
         "registration_completed",
+        "registration_cancelled", // ✅ ADD HERE
         "new_registration",
         "new_post",
         "new_comment",
