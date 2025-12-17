@@ -498,8 +498,7 @@ const eventController = {
       if (!currentEvent) {
         return res.status(500).json({
           success: false,
-          message:
-            "Lỗi hệ thống: Không tìm thấy thông tin sự kiện từ Middleware",
+          message: "Lỗi hệ thống: Không tìm thấy thông tin sự kiện từ Middleware",
         });
       }
 
@@ -510,6 +509,29 @@ const eventController = {
       const isRunning = eventStart <= now;
       const hasParticipants = currentEvent.current_participants > 0;
       const isRestrictedMode = isRunning || hasParticipants;
+      let message;
+
+      // ---------- Trường hợp đang chạy / đã có người tham gia ----------
+      if (isRestrictedMode) {
+        // CHỈ cho phép sửa description và location
+        const allowedFields = ['description', 'location'];
+        const forbiddenFields = ['title', 'target_participants', 'start_date', 'end_date', 'category_id'];
+
+        // Kiểm tra nếu có field không được phép
+        const attemptingForbidden = forbiddenFields.filter(field =>
+          req.body[field] !== undefined && req.body[field] !== null
+        );
+
+        if (attemptingForbidden.length > 0) {
+          const reason = isRunning ? "sự kiện đang diễn ra" : "đã có người đăng ký";
+          return res.status(400).json({
+            success: false,
+            message: `Không thể thay đổi ${attemptingForbidden.join(', ')} vì ${reason}. Chỉ được sửa mô tả và địa điểm.`,
+          });
+        }
+
+        message = "Cập nhật thông tin thành công (Trạng thái sự kiện được giữ nguyên).";
+      }
 
       const dataToUpdate = {
         title,
@@ -526,50 +548,29 @@ const eventController = {
         if (dataToUpdate[k] === undefined) delete dataToUpdate[k];
       });
 
-      let message = "Cập nhật sự kiện thành công";
-
-      // ---------- Trường hợp đang chạy / đã có người tham gia ----------
-      if (isRestrictedMode) {
-        if (start_date || end_date) {
-          const reason = isRunning
-            ? "sự kiện đang diễn ra"
-            : "đã có người đăng ký";
-          return res.status(400).json({
-            success: false,
-            message: `Không thể thay đổi thời gian vì ${reason}. Chỉ được sửa thông tin mô tả/địa điểm.`,
-          });
-        }
-
-        // Vẫn cho phép đổi title/description/location/target_participants/category_id
-        message =
-          "Cập nhật thông tin nóng thành công (Trạng thái sự kiện được giữ nguyên).";
-      } else {
-        // ---------- Sự kiện chưa chạy, cho phép đổi thời gian ----------
-        if (
-          start_date &&
-          end_date &&
-          new Date(start_date) > new Date(end_date)
-        ) {
+      // Sự kiện chưa chạy & chưa có người đang ký -> sửa tất
+      if (!isRestrictedMode) {
+        if (start_date && end_date && new Date(start_date) > new Date(end_date)) {
           return res.status(400).json({
             success: false,
             message: "Ngày bắt đầu phải trước ngày kết thúc",
           });
         }
+
         if (start_date && !end_date) {
           if (new Date(start_date) > new Date(currentEvent.end_date)) {
             return res.status(400).json({
               success: false,
-              message:
-                "Ngày bắt đầu mới không được lớn hơn ngày kết thúc hiện tại",
+              message: "Ngày bắt đầu mới không được lớn hơn ngày kết thúc hiện tại",
             });
           }
         }
+
         if (end_date && !start_date) {
           if (new Date(currentEvent.start_date) > new Date(end_date)) {
             return res.status(400).json({
               success: false,
-              message:
-                "Ngày kết thúc mới không được nhỏ hơn ngày bắt đầu hiện tại",
+              message: "Ngày kết thúc mới không được nhỏ hơn ngày bắt đầu hiện tại",
             });
           }
         }
@@ -579,8 +580,7 @@ const eventController = {
           dataToUpdate.approval_status = "pending";
           dataToUpdate.approved_by = null;
           dataToUpdate.approval_date = null;
-          message =
-            "Cập nhật thành công. Sự kiện đã được chuyển về trạng thái chờ duyệt lại.";
+          message = "Cập nhật thành công. Sự kiện đã được chuyển về trạng thái chờ duyệt lại.";
         }
       }
 
@@ -593,6 +593,14 @@ const eventController = {
       }
 
       console.log("[updateEvent] DATA TO UPDATE =", dataToUpdate);
+
+      // Kiểm tra xem có thực sự có gì để cập nhật không
+      if (Object.keys(dataToUpdate).length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Không có thông tin nào để cập nhật",
+        });
+      }
 
       const updated = await Event.updateEvent(event_id, dataToUpdate);
 
@@ -615,7 +623,6 @@ const eventController = {
           (prevStatus === "approved" || prevStatus === "rejected") &&
           newStatus === "pending"
         ) {
-          // [SỬA 2] Dùng UserService.getAdmins()
           const admins = await UserService.getAdmins();
           if (admins && admins.length) {
             for (const admin of admins) {
@@ -641,22 +648,16 @@ const eventController = {
         );
       }
 
-      // 🔔 2) Nếu sự kiện đang chạy / đã có người tham gia & đổi thông tin quan trọng -> báo TNV
+      // 🔔 2) Nếu sự kiện đang chạy / đã có người tham gia & đổi thông tin -> báo TNV
       try {
-        const wasRestricted =
-          isRestrictedMode || currentEvent.current_participants > 0;
+        const wasRestricted = isRestrictedMode;
         if (wasRestricted) {
-          const importantFields = [
-            "title",
-            "description",
-            "location",
-            "target_participants",
-            "category_id",
-          ];
+          // CHỈ kiểm tra description và location (vì chỉ được phép sửa 2 trường này)
+          const allowedFieldsToCheck = ['description', 'location'];
           const changedFields = {};
           let hasImportantChange = false;
 
-          for (const field of importantFields) {
+          for (const field of allowedFieldsToCheck) {
             if (currentEvent[field] !== updatedEvent[field]) {
               changedFields[field] = {
                 old: currentEvent[field],
