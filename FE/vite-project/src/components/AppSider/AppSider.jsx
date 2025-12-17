@@ -105,11 +105,11 @@ const AppSider = () => {
         icon: <UserOutlined />,
         label: "Users",
       },
-      {
-        key: "admin-export",
-        icon: <FileExcelOutlined />,
-        label: "Export",
-      },
+      // {
+      //   key: "admin-export",
+      //   icon: <FileExcelOutlined />,
+      //   label: "Export",
+      // },
     ],
   };
 

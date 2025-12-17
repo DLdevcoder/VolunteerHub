@@ -111,12 +111,30 @@ const EventCard = ({ event, onRegister, registeringId, userRole }) => {
     }
   };
 
+  const getCategoryTagColor = (name) => {
+    switch (name) {
+      case "Môi trường":
+        return "green";
+      case "Giáo dục":
+        return "blue";
+      case "Xã hội":
+        return "orange";
+
+      default:
+        return "gray";
+    }
+  };
+
   return (
     <Card hoverable className="card-container" onClick={handleCardClick}>
       <div className="card-header-container">
         <div className="header-title">{title}</div>
         <div className="header-tag">
-          {category_name && <Tag color="blue">{category_name}</Tag>}
+          {category_name && (
+            <Tag color={getCategoryTagColor(category_name)}>
+              {category_name}
+            </Tag>
+          )}
         </div>
       </div>
 

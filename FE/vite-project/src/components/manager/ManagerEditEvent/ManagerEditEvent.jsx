@@ -1,5 +1,5 @@
 // src/components/manager/ManagerEditEvent/ManagerEditEvent.jsx
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -13,6 +13,7 @@ import {
   Space,
   Popconfirm,
   Spin,
+  Alert,
 } from "antd";
 import dayjs from "dayjs";
 
@@ -39,7 +40,7 @@ const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 
 const ManagerEditEvent = () => {
-  const { event_id } = useParams(); // path: /manager/events/:event_id/edit
+  const { event_id } = useParams(); // /manager/events/:event_id/edit
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [form] = Form.useForm();
@@ -54,14 +55,14 @@ const ManagerEditEvent = () => {
   const updating = useSelector(eventUpdateLoadingSelector);
   const deleting = useSelector(eventDeleteLoadingSelector);
 
-  // load event detail + categories on mount
+  // load event detail + categories
   useEffect(() => {
     if (!event_id) return;
     dispatch(fetchEventDetailThunk(event_id));
     dispatch(fetchEventCategories());
   }, [dispatch, event_id]);
 
-  // when event detail loaded -> fill form
+  // fill form once event loaded
   useEffect(() => {
     if (!event) return;
 
@@ -88,19 +89,54 @@ const ManagerEditEvent = () => {
     });
   }, [event, form]);
 
+  // ======= IMPORTANT: detect restricted mode like BE =======
+  const restrictedMode = useMemo(() => {
+    if (!event) return false;
+    const now = dayjs();
+    const start = event.start_date ? dayjs(event.start_date) : null;
+
+    const isRunning = start ? start.isSame(now) || start.isBefore(now) : false;
+    const hasParticipants = Number(event.current_participants || 0) > 0;
+
+    return isRunning || hasParticipants;
+  }, [event]);
+
+  const restrictedReason = useMemo(() => {
+    if (!event) return "";
+    const now = dayjs();
+    const start = event.start_date ? dayjs(event.start_date) : null;
+
+    const isRunning = start ? start.isSame(now) || start.isBefore(now) : false;
+    const hasParticipants = Number(event.current_participants || 0) > 0;
+
+    if (isRunning) return "sự kiện đang diễn ra/đã bắt đầu";
+    if (hasParticipants) return "đã có người đăng ký";
+    return "";
+  }, [event]);
+
   const handleSubmit = async (values) => {
     if (!event_id) return;
-    const [start, end] = values.dateRange || [];
 
-    const payload = {
-      title: values.title?.trim(),
-      description: values.description?.trim() || "",
-      target_participants: values.target_participants,
-      location: values.location?.trim(),
-      category_id: values.category_id,
-      start_date: start ? start.toISOString() : null,
-      end_date: end ? end.toISOString() : null,
-    };
+    // ======= KEY FIX: only send allowed fields when restricted =======
+    let payload;
+
+    if (restrictedMode) {
+      payload = {
+        description: values.description?.trim() || "",
+        location: values.location?.trim(),
+      };
+    } else {
+      const [start, end] = values.dateRange || [];
+      payload = {
+        title: values.title?.trim(),
+        description: values.description?.trim() || "",
+        target_participants: values.target_participants,
+        location: values.location?.trim(),
+        category_id: values.category_id,
+        start_date: start ? start.toISOString() : null,
+        end_date: end ? end.toISOString() : null,
+      };
+    }
 
     try {
       await dispatch(
@@ -110,7 +146,6 @@ const ManagerEditEvent = () => {
         })
       ).unwrap();
 
-      // refetch first page (optional but safe)
       await dispatch(fetchManagerEvents({ page: 1, limit: 10 }));
 
       messageApi.success("Cập nhật sự kiện thành công");
@@ -164,6 +199,16 @@ const ManagerEditEvent = () => {
         </Popconfirm>
       }
     >
+      {restrictedMode && (
+        <Alert
+          style={{ marginBottom: 16 }}
+          type="warning"
+          showIcon
+          message="Sự kiện đang ở chế độ giới hạn chỉnh sửa"
+          description={`Vì ${restrictedReason}, bạn chỉ được sửa Mô tả và Địa điểm. Các trường khác sẽ bị khóa để tránh lỗi khi lưu.`}
+        />
+      )}
+
       <Form
         form={form}
         layout="vertical"
@@ -178,7 +223,7 @@ const ManagerEditEvent = () => {
           label="Tên sự kiện"
           rules={[{ required: true, message: "Vui lòng nhập tên sự kiện" }]}
         >
-          <Input />
+          <Input disabled={restrictedMode} />
         </Form.Item>
 
         <Form.Item name="description" label="Mô tả">
@@ -191,6 +236,7 @@ const ManagerEditEvent = () => {
           rules={[{ required: true, message: "Vui lòng chọn thời gian" }]}
         >
           <RangePicker
+            disabled={restrictedMode}
             showTime
             style={{ width: "100%" }}
             format="DD/MM/YYYY HH:mm"
@@ -215,7 +261,11 @@ const ManagerEditEvent = () => {
             },
           ]}
         >
-          <InputNumber min={1} style={{ width: "100%" }} />
+          <InputNumber
+            disabled={restrictedMode}
+            min={1}
+            style={{ width: "100%" }}
+          />
         </Form.Item>
 
         <Form.Item
@@ -223,8 +273,12 @@ const ManagerEditEvent = () => {
           label="Danh mục"
           rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
         >
-          <Select loading={categoriesLoading} placeholder="Chọn danh mục">
-            {categories.map((cat) => (
+          <Select
+            disabled={restrictedMode}
+            loading={categoriesLoading}
+            placeholder="Chọn danh mục"
+          >
+            {(categories || []).map((cat) => (
               <Select.Option key={cat.category_id} value={cat.category_id}>
                 {cat.name}
               </Select.Option>
