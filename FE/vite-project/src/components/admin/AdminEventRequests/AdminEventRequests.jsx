@@ -1,7 +1,8 @@
+// src/components/admin/AdminEventRequests/AdminEventRequests.jsx
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, Table, Tag, Button, Space, Select, Input, Modal } from "antd";
-import { DownloadOutlined } from "@ant-design/icons"; // Import icon Download
+import { DownloadOutlined } from "@ant-design/icons";
 
 import {
   fetchAdminEvents,
@@ -62,15 +63,11 @@ const AdminEventRequests = () => {
   }, [dispatch, approvalFilter, search]);
 
   useEffect(() => {
-    if (listError) {
-      messageApi.error(listError);
-    }
+    if (listError) messageApi.error(listError);
   }, [listError, messageApi]);
 
   useEffect(() => {
-    if (actionError) {
-      messageApi.error(actionError);
-    }
+    if (actionError) messageApi.error(actionError);
   }, [actionError, messageApi]);
 
   const handleTableChange = (pag) => {
@@ -78,7 +75,6 @@ const AdminEventRequests = () => {
     loadData(pag.current, pag.pageSize);
   };
 
-  // Logic export sự kiện (Đã chuyển từ Dashboard sang)
   const handleExportEvents = async () => {
     try {
       setExportingEvents(true);
@@ -86,22 +82,24 @@ const AdminEventRequests = () => {
         content: "Đang tạo file báo cáo sự kiện...",
         key: "exportMsg",
       });
-      
+
       const response = await exportApi.exportEvents("csv");
-      
-      // Tạo blob và link download
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      const fileName = `events_report_${new Date().toISOString().slice(0, 10)}.csv`;
+
+      const fileName = `events_report_${new Date()
+        .toISOString()
+        .slice(0, 10)}.csv`;
       link.setAttribute("download", fileName);
+
       document.body.appendChild(link);
       link.click();
-      
-      // Cleanup
+
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       messageApi.success({
         content: "Tải danh sách sự kiện thành công!",
         key: "exportMsg",
@@ -249,84 +247,101 @@ const AdminEventRequests = () => {
   const pag = pagination || {};
 
   return (
-    <Card
-      title="Event requests"
-      extra={
-        <Space>
-          {/* Nút Export đặt ở đây */}
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={handleExportEvents}
-            loading={exportingEvents}
-          >
-            Export CSV
-          </Button>
-          
-          <div style={{ width: 1, height: 20, background: '#f0f0f0', margin: '0 8px' }} /> {/* Đường kẻ ngăn cách nhẹ */}
-
-          <span>Trạng thái:</span>
-          <Select
-            style={{ width: 160 }}
-            value={approvalFilter}
-            onChange={setApprovalFilter}
-          >
-            <Option value="">All</Option>
-            <Option value="pending">Pending</Option>
-            <Option value="approved">Approved</Option>
-            <Option value="rejected">Rejected</Option>
-          </Select>
-
-          <Input.Search
-            allowClear
-            placeholder="Tìm kiếm theo tên"
-            style={{ width: 220 }}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onSearch={() => loadData(1, pageSize)}
-          />
-        </Space>
-      }
+    <div
+      style={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
     >
-      <Table
-        rowKey="event_id"
-        loading={loading}
-        columns={columns}
-        dataSource={events}
-        pagination={{
-          current: pag.page || 1,
-          pageSize,
-          total: pag.total || 0,
-        }}
-        onChange={handleTableChange}
-      />
+      <Card
+        title="Event requests"
+        style={{ flex: 1, display: "flex", flexDirection: "column" }}
+        bodyStyle={{ display: "flex", flexDirection: "column" }}
+        extra={
+          <Space>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleExportEvents}
+              loading={exportingEvents}
+            >
+              Export CSV
+            </Button>
 
-      <Modal
-        title={
-          rejectingEvent
-            ? `Từ chối sự kiện: ${rejectingEvent.title}`
-            : "Từ chối sự kiện"
-        }
-        open={rejectModalOpen}
-        onOk={handleRejectConfirm}
-        onCancel={handleRejectCancel}
-        okText="Xác nhận từ chối"
-        cancelText="Hủy"
-        confirmLoading={
-          rejectingEvent && rowLoadingId === rejectingEvent.event_id
+            <div
+              style={{
+                width: 1,
+                height: 20,
+                background: "#f0f0f0",
+                margin: "0 8px",
+              }}
+            />
+
+            <span>Trạng thái:</span>
+            <Select
+              style={{ width: 160 }}
+              value={approvalFilter}
+              onChange={setApprovalFilter}
+            >
+              <Option value="">All</Option>
+              <Option value="pending">Pending</Option>
+              <Option value="approved">Approved</Option>
+              <Option value="rejected">Rejected</Option>
+            </Select>
+
+            <Input.Search
+              allowClear
+              placeholder="Tìm kiếm theo tên"
+              style={{ width: 220 }}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onSearch={() => loadData(1, pageSize)}
+            />
+          </Space>
         }
       >
-        <p>Nhập lý do từ chối:</p>
-        <Input.TextArea
-          rows={4}
-          value={rejectReason}
-          onChange={(e) => setRejectReason(e.target.value)}
-          maxLength={500}
-          showCount
-          placeholder="Ví dụ: Nội dung sự kiện chưa rõ ràng, cần bổ sung..."
-          style={{ marginTop: 4, marginBottom: 24 }}
+        <Table
+          style={{ flex: 1 }}
+          rowKey="event_id"
+          loading={loading}
+          columns={columns}
+          dataSource={events}
+          pagination={{
+            current: pag.page || 1,
+            pageSize,
+            total: pag.total || 0,
+          }}
+          onChange={handleTableChange}
         />
-      </Modal>
-    </Card>
+
+        <Modal
+          title={
+            rejectingEvent
+              ? `Từ chối sự kiện: ${rejectingEvent.title}`
+              : "Từ chối sự kiện"
+          }
+          open={rejectModalOpen}
+          onOk={handleRejectConfirm}
+          onCancel={handleRejectCancel}
+          okText="Xác nhận từ chối"
+          cancelText="Hủy"
+          confirmLoading={
+            rejectingEvent && rowLoadingId === rejectingEvent.event_id
+          }
+        >
+          <p>Nhập lý do từ chối:</p>
+          <Input.TextArea
+            rows={4}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            maxLength={500}
+            showCount
+            placeholder="Ví dụ: Nội dung sự kiện chưa rõ ràng, cần bổ sung..."
+            style={{ marginTop: 4, marginBottom: 24 }}
+          />
+        </Modal>
+      </Card>
+    </div>
   );
 };
 
