@@ -13,6 +13,12 @@ import {
   Modal,
   Input,
 } from "antd";
+import { 
+  CheckOutlined, 
+  CloseOutlined, 
+  CheckCircleOutlined, 
+  FilterOutlined 
+} from "@ant-design/icons";
 
 import {
   getEventRegistrationsThunk,
@@ -26,11 +32,19 @@ const { Text } = Typography;
 const { TextArea } = Input;
 
 const statusColorMap = {
-  pending: "gold",
-  approved: "green",
-  rejected: "red",
+  pending: "orange",
+  approved: "success",
+  rejected: "error",
   cancelled: "default",
-  completed: "blue",
+  completed: "processing",
+};
+
+const statusLabelMap = {
+  pending: "Chờ duyệt",
+  approved: "Đã duyệt",
+  rejected: "Từ chối",
+  cancelled: "Đã hủy",
+  completed: "Hoàn thành",
 };
 
 const EventParticipantsTab = ({ eventId }) => {
@@ -45,11 +59,8 @@ const EventParticipantsTab = ({ eventId }) => {
   const [rejectReason, setRejectReason] = useState("");
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
 
-  const eventState =
-    useSelector((state) => state.registration.manager.byEvent[eventId]) || {};
-  const updatingId = useSelector(
-    (state) => state.registration.manager.updatingId
-  );
+  const eventState = useSelector((state) => state.registration.manager.byEvent[eventId]) || {};
+  const updatingId = useSelector((state) => state.registration.manager.updatingId);
 
   const { items = [], loading = false, error } = eventState;
 
@@ -64,22 +75,13 @@ const EventParticipantsTab = ({ eventId }) => {
     }
   }, [error, messageApi]);
 
+  // --- Handlers ---
   const handleApprove = async (record) => {
     try {
-      await dispatch(
-        approveRegistrationThunk({
-          registrationId: record.registration_id,
-          eventId,
-        })
-      ).unwrap();
+      await dispatch(approveRegistrationThunk({ registrationId: record.registration_id, eventId })).unwrap();
       messageApi.success("Đã duyệt đăng ký");
     } catch (err) {
-      console.error("[approveRegistration] error from thunk:", err);
-      const msg =
-        err?.message ||
-        err?.payload?.message ||
-        "Không thể duyệt đăng ký. Vui lòng thử lại.";
-      messageApi.error(msg);
+      messageApi.error(err?.message || "Lỗi khi duyệt");
     }
   };
 
@@ -99,25 +101,13 @@ const EventParticipantsTab = ({ eventId }) => {
 
     try {
       setRejectSubmitting(true);
-      await dispatch(
-        rejectRegistrationThunk({
-          registrationId: rejectTarget.registration_id,
-          eventId,
-          reason,
-        })
-      ).unwrap();
-
+      await dispatch(rejectRegistrationThunk({ registrationId: rejectTarget.registration_id, eventId, reason })).unwrap();
       messageApi.success("Đã từ chối đăng ký");
       setRejectModalVisible(false);
       setRejectTarget(null);
       setRejectReason("");
     } catch (err) {
-      console.error("[rejectRegistration] error from thunk:", err);
-      const msg =
-        err?.message ||
-        err?.payload?.message ||
-        "Không thể từ chối đăng ký. Vui lòng thử lại.";
-      messageApi.error(msg);
+      messageApi.error(err?.message || "Lỗi khi từ chối");
     } finally {
       setRejectSubmitting(false);
     }
@@ -131,24 +121,14 @@ const EventParticipantsTab = ({ eventId }) => {
 
   const handleComplete = async (record) => {
     try {
-      await dispatch(
-        completeRegistrationThunk({
-          registrationId: record.registration_id,
-          eventId,
-        })
-      ).unwrap();
-
-      messageApi.success("Đã xác nhận hoàn thành cho tình nguyện viên");
+      await dispatch(completeRegistrationThunk({ registrationId: record.registration_id, eventId })).unwrap();
+      messageApi.success("Đã xác nhận hoàn thành");
     } catch (err) {
-      console.error("[completeRegistration] error from thunk:", err);
-      const msg =
-        err?.message ||
-        err?.payload?.message ||
-        "Không thể đánh dấu hoàn thành. Vui lòng thử lại sau.";
-      messageApi.error(msg);
+      messageApi.error(err?.message || "Lỗi khi xác nhận");
     }
   };
 
+  // --- Columns ---
   const columns = [
     {
       title: "Tình nguyện viên",
@@ -156,15 +136,9 @@ const EventParticipantsTab = ({ eventId }) => {
       key: "full_name",
       render: (text, record) => (
         <div>
-          <Text strong>{text}</Text>
-          <div style={{ fontSize: 12 }}>
-            <Text type="secondary">{record.email}</Text>
-          </div>
-          {record.phone && (
-            <div style={{ fontSize: 12 }}>
-              <Text type="secondary">ĐT: {record.phone}</Text>
-            </div>
-          )}
+          <div style={{ fontWeight: 600, color: "#333", fontSize: 15 }}>{text}</div>
+          <div style={{ fontSize: 13, color: "#666" }}>{record.email}</div>
+          {record.phone && <div style={{ fontSize: 13, color: "#888" }}>{record.phone}</div>}
         </div>
       ),
     },
@@ -172,67 +146,78 @@ const EventParticipantsTab = ({ eventId }) => {
       title: "Ngày đăng ký",
       dataIndex: "registration_date",
       key: "registration_date",
-      render: (val) =>
-        val ? new Date(val).toLocaleString("vi-VN") : "(không rõ)",
+      width: 160,
+      render: (val) => val ? new Date(val).toLocaleDateString("vi-VN") : "-",
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
+      width: 140,
       render: (status) => (
-        <Tag color={statusColorMap[status] || "default"}>{status}</Tag>
+        <Tag color={statusColorMap[status] || "default"} style={{ fontWeight: 600 }}>
+          {statusLabelMap[status] || status.toUpperCase()}
+        </Tag>
       ),
     },
     {
-      title: "Lý do từ chối",
+      title: "Ghi chú / Lý do",
       dataIndex: "rejection_reason",
       key: "rejection_reason",
       ellipsis: true,
+      render: (text) => text || <span style={{ color: "#ccc" }}>--</span>
     },
     {
       title: "Hành động",
       key: "actions",
+      width: 200,
       render: (_, record) => {
         const status = record.status;
-
-        const isPending = status === "pending";
-        const isApproved = status === "approved";
-        const isCompleted = status === "completed";
-
         return (
           <Space>
-            {isPending && (
+            {status === "pending" && (
               <>
                 <Button
                   type="primary"
                   size="small"
+                  icon={<CheckOutlined />}
                   onClick={() => handleApprove(record)}
                   loading={updatingId === record.registration_id}
+                  className="btn-action-approve" // Thêm class này
                 >
                   Duyệt
                 </Button>
                 <Button
+                  type="primary" // Dùng primary danger cho nổi bật
                   danger
                   size="small"
+                  icon={<CloseOutlined />}
                   onClick={() => openRejectModal(record)}
                   loading={updatingId === record.registration_id}
+                  className="btn-action-reject" // Thêm class này
                 >
                   Từ chối
                 </Button>
               </>
             )}
 
-            {isApproved && (
+            {status === "approved" && (
               <Button
                 size="small"
+                icon={<CheckCircleOutlined />}
                 onClick={() => handleComplete(record)}
                 loading={updatingId === record.registration_id}
+                className="btn-action-complete" // Thêm class này
               >
                 Hoàn thành
               </Button>
             )}
 
-            {isCompleted && <Text type="secondary">Đã hoàn thành</Text>}
+            {status === "completed" && (
+              <Tag color="blue" icon={<CheckCircleOutlined />}>
+                Đã hoàn thành
+              </Tag>
+            )}
           </Space>
         );
       },
@@ -240,104 +225,71 @@ const EventParticipantsTab = ({ eventId }) => {
   ];
 
   if (loading && !items.length) {
-    return (
-      <div style={{ textAlign: "center", padding: 24 }}>
-        <Spin />
-      </div>
-    );
+    return <div style={{ textAlign: "center", padding: 40 }}><Spin size="large" /></div>;
   }
 
-  if (!loading && !items.length) {
-    return <Empty description="Chưa có đăng ký nào cho sự kiện này" />;
-  }
-
-  const filteredItems =
-    statusFilter === "all"
-      ? items
-      : items.filter((r) => r.status === statusFilter);
+  const filteredItems = statusFilter === "all" ? items : items.filter((r) => r.status === statusFilter);
 
   return (
-    <>
-      {/* filter bar */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          marginBottom: 16,
-        }}
-      >
+    <div className="participants-tab-container">
+      {/* Filter Bar */}
+      <div className="participants-filter-bar">
         <Space>
-          <Text>Lọc theo trạng thái:</Text>
+          <FilterOutlined style={{ color: "#888" }} />
+          <Text strong style={{ color: "#555" }}>Trạng thái:</Text>
           <Select
             value={statusFilter}
             onChange={setStatusFilter}
-            style={{ minWidth: 180 }}
+            style={{ width: 180 }}
             options={[
               { value: "all", label: "Tất cả" },
-              { value: "pending", label: "Đang chờ duyệt" },
+              { value: "pending", label: "Chờ duyệt" },
               { value: "approved", label: "Đã duyệt" },
               { value: "rejected", label: "Bị từ chối" },
-              { value: "cancelled", label: "Đã hủy" },
               { value: "completed", label: "Đã hoàn thành" },
+              { value: "cancelled", label: "Đã hủy" },
             ]}
           />
         </Space>
+        
+        <div style={{ marginLeft: "auto", color: "#888" }}>
+          Tổng số: <strong>{filteredItems.length}</strong>
+        </div>
       </div>
 
       <Table
+        className="participants-table"
         rowKey="registration_id"
         columns={columns}
         dataSource={filteredItems}
-        pagination={false}
-        size="middle"
+        pagination={{ pageSize: 5 }}
+        locale={{ emptyText: <Empty description="Không có dữ liệu" /> }}
       />
 
-      {/* Modal nhập lý do từ chối */}
+      {/* Modal Reject */}
       <Modal
         open={rejectModalVisible}
-        title={
-          <span>
-            Từ chối đăng ký:{" "}
-            <strong>{rejectTarget?.full_name || "Tình nguyện viên"}</strong>
-          </span>
-        }
+        title="Từ chối đăng ký"
         onCancel={handleCancelRejectModal}
         footer={[
-          <Button key="cancel" onClick={handleCancelRejectModal}>
-            Hủy
-          </Button>,
-          <Button
-            key="reject"
-            type="primary"
-            danger
-            loading={rejectSubmitting}
-            onClick={handleConfirmReject}
-          >
+          <Button key="cancel" onClick={handleCancelRejectModal}>Hủy</Button>,
+          <Button key="reject" type="primary" danger loading={rejectSubmitting} onClick={handleConfirmReject}>
             Xác nhận từ chối
           </Button>,
         ]}
         destroyOnClose
       >
-        <div style={{ marginBottom: 8 }}>Nhập lý do từ chối:</div>
+        <p>Lý do từ chối <strong>{rejectTarget?.full_name}</strong>:</p>
         <TextArea
           rows={4}
-          placeholder="Ví dụ: Không phù hợp tiêu chí tuyển chọn, cần TNV có kinh nghiệm..."
+          placeholder="Nhập lý do..."
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
           maxLength={500}
+          showCount
         />
-        <div
-          style={{
-            marginTop: 8,
-            textAlign: "right",
-          }}
-        >
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {rejectReason.length}/500
-          </Text>
-        </div>
       </Modal>
-    </>
+    </div>
   );
 };
 

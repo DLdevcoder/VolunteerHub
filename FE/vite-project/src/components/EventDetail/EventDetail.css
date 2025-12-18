@@ -1,31 +1,209 @@
-/* src/pages/EventDetailPage.css */
+/* =========================================
+   VARIABLES & GLOBAL
+   ========================================= */
+:root {
+  --primary-blue: #3674B5;
+  --secondary-blue: #578FCA;
+  --light-blue: #A1E3F9;
+  --pale-mint: #D1F8EF;
+  --text-primary: #333;
+  --text-secondary: #666;
+  --bg-main: #f4f6f8;
+}
+
 .event-detail-page {
   padding: 24px;
+  background-color: var(--bg-main);
+  min-height: calc(100vh - 64px);
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.event-detail-summary {
+/* =========================================
+   INFO CARD (TOP)
+   ========================================= */
+.info-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.loading-box {
+  text-align: center;
+  padding: 40px;
+}
+
+/* Header */
+.event-header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
-.event-detail-composer {
-  flex: 1;
+.event-title {
+  margin: 0 !important;
+  color: var(--primary-blue) !important;
+  font-weight: 700;
 }
 
-.event-detail-composer-actions {
+.status-badge {
   margin-top: 8px;
+  padding: 4px 12px;
+  font-weight: 600;
+  border-radius: 20px;
+}
+
+/* Meta Info Grid */
+.meta-info-row {
+  margin-bottom: 24px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  height: 100%;
+  transition: all 0.3s;
+}
+
+.meta-item:hover {
+  background-color: var(--pale-mint);
+}
+
+.meta-icon {
+  font-size: 24px;
+  color: var(--secondary-blue);
+  background: #fff;
+  padding: 8px;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.meta-label {
+  font-size: 12px;
+  color: #888;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.meta-value {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.meta-value.highlight {
+  color: var(--primary-blue);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* Description Box */
+.description-box {
+  background-color: #fff;
+  border: 1px solid #eee;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.desc-label {
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.desc-content {
+  color: #444;
+  line-height: 1.6;
+  margin-bottom: 0 !important;
+}
+
+/* Actions */
+.action-area {
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #eee;
 }
 
-.event-detail-post-item {
-  background: #fff;
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-bottom: 8px;
+.action-btn {
+  border-radius: 6px;
+  padding-left: 24px;
+  padding-right: 24px;
+  font-weight: 600;
 }
 
-.event-detail-post-content {
-  margin-top: 4px;
-  white-space: pre-wrap;
+.register-btn {
+  background-color: var(--primary-blue);
+  border-color: var(--primary-blue);
+}
+
+.register-btn:hover {
+  background-color: var(--secondary-blue);
+  border-color: var(--secondary-blue);
+}
+
+/* =========================================
+   CONTENT TABS (BOTTOM)
+   ========================================= */
+.content-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  min-height: 300px;
+}
+
+/* Antd Tabs Customization */
+.ant-tabs-nav::before {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ant-tabs-tab {
+  font-size: 16px;
+  padding: 12px 0;
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--primary-blue) !important;
+  font-weight: 600;
+}
+
+.ant-tabs-ink-bar {
+  background: var(--primary-blue) !important;
+  height: 3px !important;
+  border-radius: 3px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .event-detail-page {
+    padding: 12px;
+  }
+  
+  .event-header {
+    flex-direction: column;
+  }
+  
+  .meta-item {
+    padding: 10px;
+  }
+  
+  .action-area {
+    flex-direction: column;
+  }
+  
+  .action-btn {
+    width: 100%;
+  }
 }
