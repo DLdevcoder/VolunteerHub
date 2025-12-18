@@ -257,7 +257,7 @@ else {
 
             <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
                <span><EnvironmentOutlined /> {ev.location}</span>
-               <span><UserOutlined /> {ev.current_participants} người tham gia</span>
+               <span><UserOutlined /> {ev.current_participants}/{ev.target_participants} người</span>
             </div>
           </div>
 
