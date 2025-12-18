@@ -22,6 +22,9 @@ import {
   FireFilled,
   EnvironmentOutlined,
   StarFilled,
+  RiseOutlined,
+  FileTextOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -213,81 +216,80 @@ const AdminDashboard = () => {
       content = currentData.map((ev, index) => {
          const realRank = (currentPage - 1) * pageSize + index;
          return (
-          <div 
-            key={ev.event_id} 
-            className="horizontal-item clickable-card"
-            style={{ 
-              cursor: "pointer", 
-              display: "flex", 
-              alignItems: "center",
-              justifyContent: "space-between",
-              backgroundColor: "#fff", // Fix lỗi mất màu nền
-              padding: "20px"
-            }}
-            onClick={() => navigate(`/events/${ev.event_id}`)}
-          >
-            {/* --- PHẦN TRÁI: THÔNG TIN CHI TIẾT --- */}
-            <div style={{ flex: 1 }}>
-                {/* Dòng 1: Tag TOP */}
-                <div style={{ marginBottom: 8 }}>
-                  <Tag 
-                    color={realRank === 0 ? "#f5222d" : "#3674B5"} 
-                    style={{ margin: 0, fontSize: 13, padding: "2px 8px" }}
-                  >
-                    {realRank === 0 ? "TOP 1" : `TOP ${realRank + 1}`}
-                  </Tag>
-                </div>
-
-                {/* Dòng 2: Tiêu đề to đậm */}
-                <div style={{ fontSize: 22, fontWeight: "bold", color: "#333", marginBottom: 8 }}>
-                    {ev.title}
-                </div>
-
-                {/* Dòng 3: Manager | Quy mô */}
-                <div style={{ fontSize: 14, color: "#666", marginBottom: 8, display: "flex", alignItems: "center" }}>
-                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <UserOutlined /> {ev.manager_name}
-                   </span>
-                   <span style={{ margin: "0 8px", color: "#ccc" }}>|</span>
-                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <TeamOutlined /> <b>{ev.current_participants}/{ev.target_participants}</b>
-                   </span>
-                </div>
-
-                {/* Dòng 4: Chỉ số tăng trưởng (Xanh lá & Xanh dương) */}
-                <div style={{ display: "flex", gap: 16, fontSize: 14 }}>
-                   <span style={{ color: "#389e0d", fontWeight: 600 }}>
-                      <ArrowUpOutlined /> +{ev.new_participants_24h} người
-                   </span>
-                   <span style={{ color: "#3674B5", fontWeight: 600 }}>
-                      <ArrowUpOutlined /> +{ev.new_posts_24h} bài
-                   </span>
-                </div>
+         <div 
+        key={ev.event_id} 
+        className="horizontal-item clickable-card"
+        style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+        onClick={() => navigate(`/events/${ev.event_id}`)}
+      >
+        {/* PHẦN 1 & 2: GIỮ NGUYÊN Y HỆT CODE BẠN GỬI */}
+        <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
+          
+          {/* PHẦN 1: THÔNG TIN */}
+          <div style={{ paddingRight: 24, maxWidth: "65%" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <Tag color={realRank === 0 ? "#f5222d" : "#3674B5"} style={{ margin: 0 }}>
+                {realRank === 0 ? "TOP 1" : `TOP ${realRank + 1}`}
+              </Tag>
             </div>
 
-            {/* --- PHẦN PHẢI: ENGAGEMENT SCORE (Cột dọc) --- */}
-            <div style={{ 
-                textAlign: "center", 
-                paddingLeft: 30, 
-                borderLeft: "1px solid #eee", // Vách ngăn dọc
-                minWidth: 120,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center"
-            }}>
-                <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>Engagement</div>
-                <div style={{ fontSize: 28, fontWeight: "bold", color: "#3674B5", lineHeight: 1 }}>
-                   {ev.engagement_score}
-                </div>
-                <div style={{ marginTop: 6 }}>
-                   <StarFilled style={{ color: "#fadb14", fontSize: 20 }} />
-                </div>
+            <div 
+              style={{ fontSize: 18, fontWeight: "bold", color: "#333", marginBottom: 8 }}
+            >
+              {ev.title}
+            </div>
+
+            <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
+               <span> <UserOutlined /> {ev.manager_name}</span> 
+               <span><TeamOutlined /> {ev.current_participants}/{ev.target_participants} người</span>
             </div>
           </div>
-         );
-      });
-    }
+
+          {/* PHẦN 2: TĂNG TRƯỞNG */}
+          <div 
+            style={{ 
+              display: "flex", 
+              flexDirection: "column", 
+              gap: 4,
+              paddingLeft: 24,
+              borderLeft: "1px solid #eee", 
+              minWidth: 160
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: "bold", color: "#888", marginBottom: 2 }}>
+              <RiseOutlined /> TĂNG TRƯỞNG 24H
+            </div>
+            <div style={{ fontSize: 13, color: "#389e0d", fontWeight: 600 }}>
+              <ArrowUpOutlined /> +{ev.new_participants_24h} người
+            </div>
+            <div style={{ fontSize: 13, color: "#3674B5", fontWeight: 600 }}>
+              <FileTextOutlined /> +{ev.new_posts_24h} bài đăng
+            </div>
+          </div>
+        </div>
+
+        <div style={{ 
+            textAlign: "center", 
+            paddingLeft: 30, 
+            borderLeft: "1px solid #eee", 
+            minWidth: 120,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center"
+        }}>
+            <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>Điểm</div>
+            <div style={{ fontSize: 28, fontWeight: "bold", color: "#3674B5", lineHeight: 1 }}>
+                {ev.engagement_score}
+            </div>
+            <div style={{ marginTop: 6 }}>
+                <StarFilled style={{ color: "#fadb14", fontSize: 20 }} />
+            </div>
+        </div>
+      </div>
+    );
+  });
+}
 
     return (
       <div className="dashboard-section animation-fade-in">

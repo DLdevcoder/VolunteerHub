@@ -16,6 +16,7 @@ import {
   CalendarOutlined,
   EnvironmentOutlined,
   UserOutlined,
+  TeamOutlined,
   ArrowUpOutlined,
   CommentOutlined,
   LikeOutlined,
@@ -128,7 +129,7 @@ const VolunteerDashboard = () => {
 
               <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
                  <span><EnvironmentOutlined /> {ev.location}</span>
-                 <span><UserOutlined /> {ev.current_participants}/{ev.target_participants || "∞"} người</span>
+                 <span><TeamOutlined /> {ev.current_participants}/{ev.target_participants || "∞"} người</span>
               </div>
             </div>
 
@@ -244,9 +245,6 @@ else {
               <Tag color={realRank === 0 ? "#f5222d" : "#3674B5"} style={{ margin: 0 }}>
                 {realRank === 0 ? "TOP 1" : `TOP ${realRank + 1}`}
               </Tag>
-              <Tag color="gold" style={{ margin: 0 }}>
-                <StarFilled /> {ev.engagement_score} điểm
-              </Tag>
             </div>
 
             <div 
@@ -257,7 +255,7 @@ else {
 
             <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
                <span><EnvironmentOutlined /> {ev.location}</span>
-               <span><UserOutlined /> {ev.current_participants}/{ev.target_participants} người</span>
+               <span><TeamOutlined /> {ev.current_participants}/{ev.target_participants} người</span>
             </div>
           </div>
 
@@ -287,12 +285,25 @@ else {
         </div>
 
         {}
-        <div className="item-action-col">
-          <div className="arrow-btn-circle">
-            <RightOutlined />
-          </div>
-        </div>
-      </div>
+                <div style={{ 
+                    textAlign: "center", 
+                    paddingLeft: 30, 
+                    borderLeft: "1px solid #eee", 
+                    minWidth: 120,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center"
+                }}>
+                    <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>Điểm</div>
+                    <div style={{ fontSize: 28, fontWeight: "bold", color: "#3674B5", lineHeight: 1 }}>
+                        {ev.engagement_score}
+                    </div>
+                    <div style={{ marginTop: 6 }}>
+                        <StarFilled style={{ color: "#fadb14", fontSize: 20 }} />
+                    </div>
+                </div>
+              </div>
     );
   });
 }
