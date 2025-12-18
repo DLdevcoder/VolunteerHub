@@ -1,11 +1,9 @@
 import sequelize from "../config/db.js";
 import { QueryTypes } from "sequelize";
 
-class Dashboard {
-  // ==================== DASHBOARD CHO TÌNH NGUYỆN VIÊN ====================
+class DashboardService {
   static async getVolunteerDashboard(user_id) {
     try {
-      // 1. CỘT TRÁI: SỰ KIỆN MỚI CÔNG BỐ
       const newEvents = await sequelize.query(
         `SELECT 
             e.event_id, e.title, e.start_date, e.location, e.current_participants, e.target_participants,
@@ -25,7 +23,6 @@ class Dashboard {
         }
       );
 
-      // 2. CỘT GIỮA: TIN MỚI
       const activityFeed = await sequelize.query(
         `
         (
@@ -50,7 +47,6 @@ class Dashboard {
         }
       );
 
-      // 3. CỘT PHẢI: SỰ KIỆN THU HÚT
       const trendingEvents = await sequelize.query(
         `SELECT 
             e.event_id, e.title, e.location, e.current_participants, e.target_participants,
@@ -82,10 +78,8 @@ class Dashboard {
     }
   }
 
-  // ==================== DASHBOARD CHO QUẢN LÝ SỰ KIỆN ====================
   static async getManagerDashboard(user_id) {
     try {
-      // A. THỐNG KÊ TỔNG QUAN
       const stats = await sequelize.query(
         `SELECT 
            (SELECT COUNT(*) FROM Events WHERE manager_id = ? AND is_deleted = FALSE) as total_created,
@@ -99,7 +93,6 @@ class Dashboard {
         }
       );
 
-      // B. CỘT 1: SỰ KIỆN CHỜ DUYỆT
       const pendingEvents = await sequelize.query(
         `SELECT event_id, title, location, start_date, created_at, target_participants, current_participants,
                 DATEDIFF(NOW(), created_at) as days_waiting
@@ -112,7 +105,6 @@ class Dashboard {
         }
       );
 
-      // C. CỘT 2: TIN MỚI
       const activityFeed = await sequelize.query(
         `
         (
@@ -152,7 +144,6 @@ class Dashboard {
         }
       );
 
-      // D. CỘT 3: TRENDING
       const trendingEvents = await sequelize.query(
         `SELECT 
             e.event_id, e.title, e.location, e.start_date, e.current_participants, e.target_participants,
@@ -185,10 +176,8 @@ class Dashboard {
     }
   }
 
-  // ==================== DASHBOARD CHO ADMIN ====================
   static async getAdminDashboard() {
     try {
-      // A. THỐNG KÊ TỔNG QUAN
       const stats = await sequelize.query(
         `SELECT 
            (SELECT COUNT(*) FROM Users) as total_users,
@@ -201,7 +190,6 @@ class Dashboard {
         { type: QueryTypes.SELECT }
       );
 
-      // B. SỰ KIỆN CHỜ DUYỆT
       const pendingEvents = await sequelize.query(
         `SELECT 
             e.event_id, e.title, e.start_date, e.location, e.target_participants, e.current_participants,
@@ -214,7 +202,6 @@ class Dashboard {
         { type: QueryTypes.SELECT }
       );
 
-      // C. SỰ KIỆN THU HÚT
       const trendingEvents = await sequelize.query(
         `SELECT 
             e.event_id, e.title, e.start_date, e.current_participants, e.target_participants,
@@ -244,7 +231,6 @@ class Dashboard {
     }
   }
 
-  // ==================== THỐNG KÊ TỔNG QUAN (CHART) ====================
   static async getOverviewStats() {
     try {
       const userStats = await sequelize.query(
@@ -302,7 +288,6 @@ class Dashboard {
     }
   }
 
-  // ==================== THỐNG KÊ EVENTS THEO THỜI GIAN ====================
   static async getEventTimeSeries(timeRange = "7d") {
     try {
       let dateCondition, groupFormat;
@@ -349,7 +334,6 @@ class Dashboard {
     }
   }
 
-  // ==================== TOP EVENTS ENGAGEMENT ====================
   static async getTopEngagedEvents(limit = 10) {
     try {
       const topEvents = await sequelize.query(
@@ -388,7 +372,6 @@ class Dashboard {
     }
   }
 
-  // ==================== THỐNG KÊ EVENTS THEO CATEGORY ====================
   static async getEventCategoryStats() {
     try {
       const categoryStats = await sequelize.query(
@@ -413,7 +396,6 @@ class Dashboard {
     }
   }
 
-  // ==================== TOP USERS TÍCH CỰC ====================
   static async getTopActiveUsers(limit = 10) {
     try {
       const activeUsers = await sequelize.query(
@@ -451,7 +433,6 @@ class Dashboard {
     }
   }
 
-  // ==================== XU HƯỚNG ĐĂNG KÝ ====================
   static async getRegistrationTrends(timeRange = "7d") {
     try {
       let dateCondition, groupFormat;
@@ -495,7 +476,6 @@ class Dashboard {
     }
   }
 
-  // ==================== SYSTEM HEALTH ====================
   static async getSystemHealth() {
     try {
       const systemStats = await sequelize.query(
@@ -516,4 +496,4 @@ class Dashboard {
   }
 }
 
-export default Dashboard;
+export default DashboardService;

@@ -1,8 +1,14 @@
 import "./ResetPassword.css";
-import { Button, Form, Input } from "antd";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { Button, Form, Input, Typography } from "antd";
+import {
+  LockOutlined,
+  KeyOutlined,
+  SafetyCertificateOutlined,
+  ArrowLeftOutlined,
+} from "@ant-design/icons";
 
 import {
   changePasswordThunk,
@@ -14,6 +20,8 @@ import {
   authTokenSelector,
 } from "../../redux/selectors/authSelectors.js";
 import useGlobalMessage from "../../utils/hooks/useGlobalMessage.js";
+
+const { Title, Text } = Typography;
 
 const ResetPassword = () => {
   const dispatch = useDispatch();
@@ -52,7 +60,7 @@ const ResetPassword = () => {
 
       if (changePasswordThunk.fulfilled.match(resultAction)) {
         const msg =
-          resultAction.payload?.message || "Change password successfully";
+          resultAction.payload?.message || "Đổi mật khẩu thành công!";
         if (messageApi) {
           messageApi.success({
             content: msg,
@@ -61,68 +69,109 @@ const ResetPassword = () => {
         }
         navigate("/profile");
       }
-      // if rejected: error handled by useEffect above
     } catch (err) {
       console.error(err);
       if (messageApi) {
-        messageApi.error("Unexpected error while changing password");
+        messageApi.error("Đã xảy ra lỗi không mong muốn");
       }
     }
   };
 
   return (
-    <div className="resetPassword-container">
-      <div className="resetPassword-box">
-        <h2>Reset your password</h2>
-        <Form layout="vertical" onFinish={handleFinish}>
-          <Form.Item
-            label="Current Password"
-            name="currentPassword"
-            rules={[
-              { required: true, message: "Please enter your current password" },
-            ]}
-          >
-            <Input.Password placeholder="Enter your current password" />
-          </Form.Item>
+    <div className="reset-password-container">
+      <div className="reset-password-card">
+        {/* === HEADER === */}
+        <div className="reset-header">
+          <div className="icon-wrapper">
+            <SafetyCertificateOutlined style={{ fontSize: 32, color: "#3674B5" }} />
+          </div>
+          <Title level={3} style={{ color: "#333", marginBottom: 4 }}>
+            Đổi mật khẩu
+          </Title>
+          <Text type="secondary">
+            Vui lòng nhập mật khẩu hiện tại và mật khẩu mới để bảo mật tài khoản.
+          </Text>
+        </div>
 
-          <Form.Item
-            label="New Password"
-            name="newPassword"
-            rules={[
-              { required: true, message: "Please enter your new password" },
-              { min: 6, message: "Password must be at least 6 characters" },
-            ]}
+        {/* === FORM BODY === */}
+        <div className="reset-body">
+          <Form
+            layout="vertical"
+            onFinish={handleFinish}
+            size="large"
+            requiredMark={false}
           >
-            <Input.Password placeholder="Enter your new password" />
-          </Form.Item>
+            <Form.Item
+              label="Mật khẩu hiện tại"
+              name="currentPassword"
+              rules={[
+                { required: true, message: "Vui lòng nhập mật khẩu hiện tại" },
+              ]}
+            >
+              <Input.Password
+                prefix={<KeyOutlined className="input-icon" />}
+                placeholder="Nhập mật khẩu cũ"
+              />
+            </Form.Item>
 
-          <Form.Item
-            label="Confirm New Password"
-            name="confirmNewPassword"
-            dependencies={["newPassword"]}
-            rules={[
-              { required: true, message: "Please confirm your new password" },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue("newPassword") === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(
-                    new Error("The two passwords do not match")
-                  );
-                },
-              }),
-            ]}
-          >
-            <Input.Password placeholder="Confirm your new password" />
-          </Form.Item>
+            <Form.Item
+              label="Mật khẩu mới"
+              name="newPassword"
+              rules={[
+                { required: true, message: "Vui lòng nhập mật khẩu mới" },
+                { min: 6, message: "Mật khẩu phải có ít nhất 6 ký tự" },
+              ]}
+            >
+              <Input.Password
+                prefix={<LockOutlined className="input-icon" />}
+                placeholder="Nhập mật khẩu mới"
+              />
+            </Form.Item>
 
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>
-              Reset Password
-            </Button>
-          </Form.Item>
-        </Form>
+            <Form.Item
+              label="Xác nhận mật khẩu mới"
+              name="confirmNewPassword"
+              dependencies={["newPassword"]}
+              rules={[
+                { required: true, message: "Vui lòng xác nhận mật khẩu mới" },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue("newPassword") === value) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(
+                      new Error("Mật khẩu xác nhận không khớp")
+                    );
+                  },
+                }),
+              ]}
+            >
+              <Input.Password
+                prefix={<LockOutlined className="input-icon" />}
+                placeholder="Nhập lại mật khẩu mới"
+              />
+            </Form.Item>
+
+            {/* === FOOTER BUTTONS === */}
+            <div className="form-actions">
+              <Button
+                className="btn-cancel"
+                onClick={() => navigate("/profile")}
+                icon={<ArrowLeftOutlined />}
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading}
+                className="btn-submit"
+              >
+                Xác nhận đổi
+              </Button>
+            </div>
+          </Form>
+        </div>
       </div>
     </div>
   );

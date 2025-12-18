@@ -1,13 +1,14 @@
-import Comment from "../models/Comment.js";
-import Post from "../models/Post.js";
-import Registration from "../models/Registration.js";
-import Event from "../models/Event.js";
-// [SỬA 1] Import Service
+import CommentService from "../services/commentService.js";
 import UserService from "../services/UserService.js";
 import NotificationService from "../services/notificationService.js";
+import PostService from "../services/postService.js";
+import EventService from "../services/eventService.js";
+import RegistrationService from "../services/registrationService.js";
 
 const commentController = {
-  // Xem bình luận
+  // =================================================================
+  // 1. XEM BÌNH LUẬN
+  // =================================================================
   async getPostComments(req, res) {
     try {
       const { post_id } = req.params;
@@ -15,15 +16,16 @@ const commentController = {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
 
-      // Lấy thông tin bài viết để biết nó thuộc Event nào
-      const post = await Post.getById(post_id);
+      // Lấy thông tin bài viết
+      const post = await PostService.getById(post_id);
+
       if (!post)
         return res
           .status(404)
           .json({ success: false, message: "Bài viết không tồn tại" });
 
-      // Lấy thông tin Event
-      const event = await Event.getEventById(post.event_id);
+      // Lấy thông tin sự kiện
+      const event = await EventService.getEventById(post.event_id);
 
       // Chặn Crash nếu Event bị xoá
       if (!event) {
@@ -38,7 +40,7 @@ const commentController = {
       if (event.manager_id === user_id) {
         canView = true;
       } else {
-        const reg = await Registration.findOne(user_id, event.event_id);
+        const reg = await RegistrationService.findOne(user_id, event.event_id);
         if (reg && (reg.status === "approved" || reg.status === "completed")) {
           canView = true;
         }
@@ -51,8 +53,14 @@ const commentController = {
         });
       }
 
-      // Lấy dữ liệu
-      const result = await Comment.getByPostId(post_id, page, limit);
+      // Lấy danh sách comment
+      const result = await CommentService.getByPostId(
+        post_id,
+        page,
+        limit,
+        user_id
+      );
+
       res.json({
         success: true,
         data: result.comments,
@@ -64,7 +72,9 @@ const commentController = {
     }
   },
 
-  // Tạo bình luận
+  // =================================================================
+  // 2. TẠO BÌNH LUẬN
+  // =================================================================
   async createComment(req, res) {
     try {
       const { post_id } = req.params;
@@ -83,13 +93,13 @@ const commentController = {
           .json({ message: "Bình luận quá dài (max 1000)" });
 
       // Check User Active
-      // [SỬA 2] Dùng UserService
       const currentUser = await UserService.findById(user_id);
       if (!currentUser || currentUser.status !== "Active")
         return res.status(403).json({ message: "Tài khoản bị khóa" });
 
-      // Lấy Post và Event
-      const post = await Post.getById(post_id);
+      // Lấy thông tin bài viết
+      const post = await PostService.getById(post_id);
+
       if (!post)
         return res.status(404).json({ message: "Bài viết không tồn tại" });
 
@@ -103,7 +113,7 @@ const commentController = {
       if (post.event_manager_id === user_id) {
         canComment = true;
       } else {
-        const reg = await Registration.findOne(user_id, post.event_id);
+        const reg = await RegistrationService.findOne(user_id, post.event_id);
         if (reg && (reg.status === "approved" || reg.status === "completed")) {
           canComment = true;
         }
@@ -117,18 +127,24 @@ const commentController = {
       }
 
       // Tạo Comment
-      const commentId = await Comment.create({ post_id, user_id, content });
-      const newComment = await Comment.getById(commentId);
+      const commentId = await CommentService.create({
+        post_id,
+        user_id,
+        content,
+      });
+      const newComment = await CommentService.getById(commentId);
 
-      // [BỔ SUNG] Gửi thông báo cho mọi người trong sự kiện (trừ người viết comment)
+      // Gửi thông báo
       try {
-        await NotificationService.notifyNewComment(
-          post.event_id,
-          commentId,
-          post_id,
-          user_id, // author_id (người viết comment) để loại trừ khỏi danh sách nhận noti
-          content // nội dung preview
-        );
+        if (post.user_id !== user_id) {
+          await NotificationService.notifyNewComment(
+            post.event_id,
+            commentId,
+            post_id,
+            user_id,
+            content
+          );
+        }
       } catch (notifyErr) {
         console.error("Notify new comment error:", notifyErr);
       }
@@ -144,14 +160,14 @@ const commentController = {
     }
   },
 
-  // Xoá bình luận
+  // =================================================================
+  // 3. XÓA BÌNH LUẬN
+  // =================================================================
   async deleteComment(req, res) {
     try {
       const { comment_id } = req.params;
       const user_id = req.user.user_id;
 
-      // Check User có bị khoá không
-      // [SỬA 2] Dùng UserService
       const currentUser = await UserService.findById(user_id);
       if (!currentUser || currentUser.status !== "Active") {
         return res.status(403).json({
@@ -161,13 +177,12 @@ const commentController = {
       }
 
       // Lấy info comment
-      const comment = await Comment.getById(comment_id);
+      const comment = await CommentService.getById(comment_id);
       if (!comment)
         return res
           .status(404)
           .json({ success: false, message: "Bình luận không tồn tại" });
 
-      // Sự kiện đóng băng
       if (comment.event_is_deleted || comment.event_status === "rejected") {
         return res
           .status(403)
@@ -176,13 +191,9 @@ const commentController = {
 
       // Check quyền xoá
       let canDelete = false;
-
-      // Chính chủ (Người viết comment)
       if (comment.user_id === user_id) {
         canDelete = true;
-      }
-      // Chủ sự kiện (Manager được xóa comment rác trên tường nhà mình)
-      else if (comment.event_manager_id === user_id) {
+      } else if (comment.event_manager_id === user_id) {
         canDelete = true;
       }
 
@@ -193,8 +204,7 @@ const commentController = {
         });
       }
 
-      // Thực hiện xóa
-      await Comment.delete(comment_id);
+      await CommentService.delete(comment_id);
       res.json({ success: true, message: "Đã xóa bình luận" });
     } catch (error) {
       console.error("Delete comment error:", error);
