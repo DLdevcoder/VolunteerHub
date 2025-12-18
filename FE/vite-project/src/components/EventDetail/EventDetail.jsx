@@ -1,8 +1,17 @@
 import "./EventDetail.css";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, Typography, Spin, Empty, Tabs, Button, Space } from "antd";
+import { Card, Typography, Spin, Empty, Tabs, Button, Space, Tag, Row, Col, Divider } from "antd";
+import {
+  CalendarOutlined,
+  EnvironmentOutlined,
+  TeamOutlined,
+  InfoCircleOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ClockCircleOutlined
+} from "@ant-design/icons";
 
 import {
   eventDetailSelector,
@@ -21,9 +30,9 @@ import EventParticipantsTab from "./EventParticipantsTab";
 import EventVolunteersListTab from "./EventVolunteersListTab";
 import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
 
-// Helper format thời gian (giống EventCard)
+// Helper format thời gian
 const formatDateRange = (start, end) => {
   if (!start || !end) return "";
   const s = new Date(start);
@@ -31,9 +40,7 @@ const formatDateRange = (start, end) => {
 
   const pad = (n) => n.toString().padStart(2, "0");
   const fmt = (d) =>
-    `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(
-      d.getHours()
-    )}:${pad(d.getMinutes())}`;
+    `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
   return `${fmt(s)} - ${fmt(e)}`;
 };
@@ -50,7 +57,7 @@ const EventDetail = () => {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
 
-  // ----- registration status cho event này -----
+  // ----- registration status -----
   const defaultRegState = {
     loading: false,
     hasRegistration: false,
@@ -63,7 +70,7 @@ const EventDetail = () => {
     return map[event_id] || defaultRegState;
   });
 
-  const registrationStatus = registrationState.status; // pending | approved | completed | rejected | cancelled | null
+  const registrationStatus = registrationState.status; 
   const hasRegistration = registrationState.hasRegistration;
   const canAccessPostsFlag = registrationState.canAccessPosts;
 
@@ -75,67 +82,44 @@ const EventDetail = () => {
 
   const isVolunteer = authUser?.role_name === "Volunteer";
 
-  // Quy tắc xem post:
-  // - Manager: luôn được xem
-  // - Volunteer: chỉ khi backend cho phép (approved/completed)
   const canViewPosts = isManager || (isVolunteer && canAccessPostsFlag);
 
-  // ----- load event detail + registration status -----
+  // ----- load data -----
   useEffect(() => {
     if (!event_id) return;
-
     dispatch(fetchEventDetailThunk(event_id));
-
     if (authUser && authUser.role_name === "Volunteer") {
       dispatch(getMyRegistrationStatusThunk(event_id));
     }
   }, [dispatch, event_id, authUser?.user_id, authUser?.role_name, authUser]);
 
-  // ----- Hủy đăng ký -----
+  // ----- Handlers -----
   const handleCancelRegistration = async () => {
     try {
       setCancelLoading(true);
       const res = await dispatch(cancelRegistrationThunk(event_id)).unwrap();
-
-      const msgFromRes =
-        res?.message || res?.payload?.message || res?.data?.message;
+      const msgFromRes = res?.message || res?.payload?.message || res?.data?.message;
       messageApi.success(msgFromRes || "Hủy đăng ký thành công");
-
-      // reload lại trạng thái
       dispatch(getMyRegistrationStatusThunk(event_id));
       dispatch(fetchEventDetailThunk(event_id));
     } catch (err) {
-      const msgErr =
-        err?.message ||
-        err?.payload?.message ||
-        err?.data?.message ||
-        "Không thể hủy đăng ký sự kiện";
+      const msgErr = err?.message || err?.payload?.message || err?.data?.message || "Không thể hủy đăng ký sự kiện";
       messageApi.error(msgErr);
     } finally {
       setCancelLoading(false);
     }
   };
 
-  // ----- Đăng ký tham gia -----
   const handleRegister = async () => {
     try {
       setRegisterLoading(true);
       const res = await dispatch(registerForEventThunk(event_id)).unwrap();
-
-      const msgFromRes =
-        res?.message || res?.payload?.message || res?.data?.message;
-      messageApi.success(
-        msgFromRes || "Đã gửi yêu cầu đăng ký! Vui lòng chờ duyệt."
-      );
-
+      const msgFromRes = res?.message || res?.payload?.message || res?.data?.message;
+      messageApi.success(msgFromRes || "Đã gửi yêu cầu đăng ký! Vui lòng chờ duyệt.");
       dispatch(getMyRegistrationStatusThunk(event_id));
       dispatch(fetchEventDetailThunk(event_id));
     } catch (err) {
-      const msgErr =
-        err?.message ||
-        err?.payload?.message ||
-        err?.data?.message ||
-        "Không thể đăng ký sự kiện";
+      const msgErr = err?.message || err?.payload?.message || err?.data?.message || "Không thể đăng ký sự kiện";
       messageApi.error(msgErr);
     } finally {
       setRegisterLoading(false);
@@ -146,223 +130,181 @@ const EventDetail = () => {
     if (!event) return "";
     const current = event.current_participants ?? 0;
     const target = event.target_participants;
-
     if (target && target > 0) {
-      return `${current}/${target} người tham gia`;
+      return `${current}/${target}`;
     }
-    return `${current} người tham gia`;
+    return `${current}`;
   })();
 
-  // Khi nào hiện nút "Hủy tham gia"
-  const canShowCancelButton =
-    isVolunteer && ["pending", "approved"].includes(registrationStatus);
+  const canShowCancelButton = isVolunteer && ["pending", "approved"].includes(registrationStatus);
+  const canShowRegisterButton = isVolunteer && (!hasRegistration || ["rejected", "cancelled"].includes(registrationStatus));
 
-  // Khi nào hiện nút "Đăng ký tham gia"
-  // - chưa có đăng ký
-  // - hoặc đã bị từ chối / đã hủy trước đó
-  const canShowRegisterButton =
-    isVolunteer &&
-    (!hasRegistration ||
-      ["rejected", "cancelled"].includes(registrationStatus));
-
-  // =========================================================
-  //  CONTENT BELOW INFO BLOCK
-  // =========================================================
-
-  // Nội dung bên trong tab "Bài viết" đối với Volunteer
-  const renderVolunteerPostsTabContent = () => {
-    if (!hasRegistration) {
-      return (
-        <Empty description="Bạn cần đăng ký tham gia sự kiện để xem bài viết và danh sách tình nguyện viên." />
-      );
-    }
+  // --- Render Status Badge ---
+  const renderStatusBadge = () => {
+    if (!registrationStatus) return null;
+    let color = "default";
+    let icon = null;
+    let text = "";
 
     switch (registrationStatus) {
-      case "pending":
-        return (
-          <Empty description="Đăng ký của bạn đang chờ duyệt. Bạn sẽ xem được bài viết sau khi được chấp thuận." />
-        );
-      case "rejected":
-        return (
-          <Empty description="Đăng ký của bạn đã bị từ chối, nên bạn không thể xem bài viết của sự kiện này." />
-        );
-      case "cancelled":
-        return (
-          <Empty description="Bạn đã hủy đăng ký sự kiện này. Hãy đăng ký lại nếu muốn tham gia và xem bài viết." />
-        );
-      default:
-        break;
+      case "pending": color = "orange"; icon = <ClockCircleOutlined />; text = "Đang chờ duyệt"; break;
+      case "approved": color = "success"; icon = <CheckCircleOutlined />; text = "Đã tham gia"; break;
+      case "rejected": color = "error"; icon = <CloseCircleOutlined />; text = "Bị từ chối"; break;
+      case "cancelled": color = "default"; icon = <CloseCircleOutlined />; text = "Đã hủy"; break;
+      default: return null;
     }
+    return <Tag color={color} icon={icon} className="status-badge">{text.toUpperCase()}</Tag>;
+  };
 
+  // --- Content Renderers ---
+  const renderVolunteerPostsTabContent = () => {
+    if (!hasRegistration) return <Empty description="Bạn cần đăng ký tham gia sự kiện để xem bài viết." />;
+    switch (registrationStatus) {
+      case "pending": return <Empty description="Đăng ký đang chờ duyệt. Vui lòng quay lại sau." />;
+      case "rejected": return <Empty description="Đăng ký bị từ chối. Không thể xem bài viết." />;
+      case "cancelled": return <Empty description="Bạn đã hủy đăng ký." />;
+      default: break;
+    }
     if (canViewPosts) {
-      return (
-        <EventPostsTab
-          eventId={event_id}
-          event={event}
-          authUser={authUser}
-          canViewPosts
-          canCreatePost
-        />
-      );
+      return <EventPostsTab eventId={event_id} event={event} authUser={authUser} canViewPosts canCreatePost />;
     }
-
-    return (
-      <Empty description="Bạn không có quyền xem các bài viết của sự kiện này." />
-    );
+    return <Empty description="Không có quyền xem bài viết." />;
   };
 
   const renderTabsOrInfo = () => {
-    // 1. Chưa đăng nhập
     if (!authUser) {
       return (
-        <Card bordered={false}>
-          <Empty description="Bạn cần đăng nhập và đăng ký tham gia sự kiện để xem chi tiết nội dung." />
+        <Card className="content-card">
+          <Empty description="Bạn cần đăng nhập để xem chi tiết." />
         </Card>
       );
     }
 
-    // 2. Manager: 3 tab
     if (isManager) {
       const items = [
-        {
-          key: "posts",
-          label: "Bài viết",
-          children: (
-            <EventPostsTab
-              eventId={event_id}
-              event={event}
-              authUser={authUser}
-              canViewPosts
-              canCreatePost
-            />
-          ),
-        },
-        {
-          key: "volunteers",
-          label: "Danh sách tình nguyện viên",
-          children: <EventVolunteersListTab eventId={event_id} />,
-        },
-        {
-          key: "volunteerManagement",
-          label: "Quản lý người tham gia",
-          children: <EventParticipantsTab eventId={event_id} />,
-        },
+        { key: "posts", label: "Bài viết", children: <EventPostsTab eventId={event_id} event={event} authUser={authUser} canViewPosts canCreatePost /> },
+        { key: "volunteers", label: "DS Tình nguyện viên", children: <EventVolunteersListTab eventId={event_id} /> },
+        { key: "volunteerManagement", label: "Quản lý tham gia", children: <EventParticipantsTab eventId={event_id} /> },
       ];
-
-      return (
-        <Card bordered={false}>
-          <Tabs defaultActiveKey="posts" items={items} />
-        </Card>
-      );
+      return <Card className="content-card"><Tabs defaultActiveKey="posts" items={items} /></Card>;
     }
 
-    // 3. Volunteer (đã đăng nhập)
     if (isVolunteer) {
       if (!hasRegistration) {
         return (
-          <Card bordered={false}>
-            <Empty description="Bạn cần đăng ký tham gia sự kiện để xem bài viết và danh sách tình nguyện viên." />
+          <Card className="content-card">
+            <Empty description="Đăng ký tham gia để xem nội dung chi tiết." />
           </Card>
         );
       }
-
       const items = [
-        {
-          key: "posts",
-          label: "Bài viết",
-          children: renderVolunteerPostsTabContent(),
-        },
-        {
-          key: "volunteers",
-          label: "Danh sách tình nguyện viên",
-          children: <EventVolunteersListTab eventId={event_id} />,
-        },
+        { key: "posts", label: "Bài viết", children: renderVolunteerPostsTabContent() },
+        { key: "volunteers", label: "DS Tình nguyện viên", children: <EventVolunteersListTab eventId={event_id} /> },
       ];
-
-      return (
-        <Card bordered={false}>
-          <Tabs defaultActiveKey="volunteers" items={items} />
-        </Card>
-      );
+      return <Card className="content-card"><Tabs defaultActiveKey="volunteers" items={items} /></Card>;
     }
 
-    // 4. Role khác
     return (
-      <Card bordered={false}>
-        <Empty description="Bạn không có quyền xem nội dung chi tiết của sự kiện này." />
+      <Card className="content-card">
+        <Empty description="Không có quyền truy cập." />
       </Card>
     );
   };
 
   return (
     <div className="event-detail-page">
-      {/* ======= Top info block ======= */}
-      <Card bordered={false} style={{ marginBottom: 16 }}>
+      {/* ======= Event Info Card ======= */}
+      <Card className="info-card" bordered={false}>
         {detailLoading && !event ? (
-          <div style={{ textAlign: "center", padding: 24 }}>
-            <Spin />
-          </div>
+          <div className="loading-box"><Spin size="large" /></div>
         ) : !event ? (
           <Empty description="Không tìm thấy sự kiện" />
         ) : (
-          <div className="event-detail-summary">
-            <Title level={3} style={{ marginBottom: 4 }}>
-              {event.title}
-            </Title>
-
-            <div style={{ marginBottom: 8 }}>
-              <Text strong>Thời gian: </Text>
-              <Text>{formatDateRange(event.start_date, event.end_date)}</Text>
+          <div className="event-detail-wrapper">
+            {/* Header: Title & Status */}
+            <div className="event-header">
+              <div className="header-left">
+                <Title level={2} className="event-title">{event.title}</Title>
+                {renderStatusBadge()}
+              </div>
             </div>
 
-            <div style={{ marginBottom: 8 }}>
-              <Text strong>Địa điểm: </Text>
-              <Text>{event.location}</Text>
-            </div>
+            <Divider style={{ margin: "16px 0" }} />
 
-            <div style={{ marginBottom: 8 }}>
-              <Text strong>Người tham gia: </Text>
-              <Text>{participantsText}</Text>
-            </div>
+            {/* Meta Info Grid */}
+            <Row gutter={[24, 24]} className="meta-info-row">
+              <Col xs={24} md={8}>
+                <div className="meta-item">
+                  <CalendarOutlined className="meta-icon" />
+                  <div>
+                    <div className="meta-label">Thời gian</div>
+                    <div className="meta-value">{formatDateRange(event.start_date, event.end_date)}</div>
+                  </div>
+                </div>
+              </Col>
+              <Col xs={24} md={8}>
+                <div className="meta-item">
+                  <EnvironmentOutlined className="meta-icon" />
+                  <div>
+                    <div className="meta-label">Địa điểm</div>
+                    <div className="meta-value">{event.location}</div>
+                  </div>
+                </div>
+              </Col>
+              <Col xs={24} md={8}>
+                <div className="meta-item">
+                  <TeamOutlined className="meta-icon" />
+                  <div>
+                    <div className="meta-label">Người tham gia</div>
+                    <div className="meta-value highlight">{participantsText} <span style={{fontSize: 12, fontWeight: 400, color: '#888'}}>người</span></div>
+                  </div>
+                </div>
+              </Col>
+            </Row>
 
+            {/* Description */}
             {event.description && (
-              <Paragraph style={{ marginTop: 8 }}>
-                {event.description}
-              </Paragraph>
+              <div className="description-box">
+                <div className="desc-label"><InfoCircleOutlined /> Mô tả sự kiện</div>
+                <Paragraph className="desc-content">{event.description}</Paragraph>
+              </div>
             )}
 
-            {/* Nút hành động cho Volunteer */}
+            {/* Actions */}
             {(canShowCancelButton || canShowRegisterButton) && (
-              <Space style={{ marginTop: 8 }}>
+              <div className="action-area">
                 {canShowCancelButton && (
                   <Button
                     danger
-                    size="small"
+                    size="large"
+                    className="action-btn"
                     loading={cancelLoading}
                     onClick={handleCancelRegistration}
                   >
                     Hủy tham gia
                   </Button>
                 )}
-
                 {canShowRegisterButton && (
                   <Button
                     type="primary"
-                    size="small"
+                    size="large"
+                    className="action-btn register-btn"
                     loading={registerLoading}
                     onClick={handleRegister}
                   >
-                    Đăng ký tham gia
+                    Đăng ký tham gia ngay
                   </Button>
                 )}
-              </Space>
+              </div>
             )}
           </div>
         )}
       </Card>
 
-      {/* ======= Bên dưới: Tabs tuỳ theo role + status ======= */}
-      {renderTabsOrInfo()}
+      {/* ======= Content Tabs ======= */}
+      <div className="tabs-section">
+        {renderTabsOrInfo()}
+      </div>
     </div>
   );
 };
