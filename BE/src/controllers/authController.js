@@ -1,6 +1,5 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-// Đã import UserService, nên bên dưới phải dùng UserService
 import UserService from "../services/UserService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volunteerhub_super_secret_key";
@@ -44,7 +43,6 @@ const authController = {
         });
       }
 
-      // [SỬA] User.getRoleId -> UserService.getRoleId
       const role_id = await UserService.getRoleId(role_name);
       if (!role_id) {
         return res.status(400).json({
@@ -53,7 +51,6 @@ const authController = {
         });
       }
 
-      // [SỬA] User.emailExists -> UserService.emailExists
       const emailExists = await UserService.emailExists(email);
       if (emailExists) {
         return res.status(409).json({
@@ -66,7 +63,6 @@ const authController = {
       const saltRounds = 12;
       const password_hash = await bcrypt.hash(password, saltRounds);
 
-      // [SỬA] User.create -> UserService.create
       const newUserId = await UserService.create({
         email,
         password_hash,
@@ -75,7 +71,6 @@ const authController = {
         role_id,
       });
 
-      // [SỬA] User.findById -> UserService.findById
       const newUser = await UserService.findById(newUserId);
 
       // Tạo JWT token
@@ -120,7 +115,6 @@ const authController = {
         });
       }
 
-      // [ĐÚNG] Chỗ này bạn đã viết đúng UserService
       const user = await UserService.findByEmail(email);
       if (!user) {
         return res.status(401).json({
@@ -183,7 +177,7 @@ const authController = {
     }
   },
 
-  // Refresh token (Giữ nguyên, không dùng Database)
+  // Refresh token
   async refreshToken(req, res) {
     try {
       const { refresh_token } = req.body;
@@ -223,7 +217,7 @@ const authController = {
     }
   },
 
-  // Đăng xuất (Giữ nguyên)
+  // Đăng xuất
   async logout(req, res) {
     res.json({
       success: true,
@@ -236,7 +230,6 @@ const authController = {
     try {
       const user_id = req.user.user_id;
 
-      // [SỬA] User.findById -> UserService.findById
       const user = await UserService.findById(user_id);
       if (!user) {
         return res.status(404).json({
@@ -294,7 +287,6 @@ const authController = {
         });
       }
 
-      // [SỬA] User.changePassword -> UserService.changePassword
       const isChanged = await UserService.changePassword(
         user_id,
         current_password,

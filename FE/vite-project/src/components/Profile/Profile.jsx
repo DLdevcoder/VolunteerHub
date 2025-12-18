@@ -1,9 +1,27 @@
 import "./Profile.css";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, useNavigate } from "react-router-dom";
-import { FaUser } from "react-icons/fa";
-import { Button, Input, Divider, Spin, Space, message, Tag } from "antd";
+import {
+  Button,
+  Input,
+  Spin,
+  Space,
+  message,
+  Tag,
+  Row,
+  Col,
+} from "antd";
+import {
+  UserOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  CalendarOutlined,
+  CameraOutlined,
+  LockOutlined,
+  SafetyCertificateOutlined,
+  ClockCircleOutlined,
+} from "@ant-design/icons";
 
 import { fetchMeThunk, updateMeThunk } from "../../redux/slices/userSlice";
 import {
@@ -20,6 +38,9 @@ import {
 const Profile = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  
+  // Ref để xử lý click vào icon máy ảnh thì mở input file
+  const fileInputRef = useRef(null);
 
   // local editable state
   const [isEditing, setIsEditing] = useState(false);
@@ -42,18 +63,18 @@ const Profile = () => {
 
   // Fetch /users/me if needed
   useEffect(() => {
-    if (token && !me) {
+    if (token) {
       dispatch(fetchMeThunk());
     }
-  }, [token, me, dispatch]);
+  }, [dispatch, token]);
 
   // Route guards
   if (!token) return <Navigate to="/login" replace />;
 
   if (loadingMe && !me) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
-        <Spin />
+      <div className="loading-container">
+        <Spin size="large" />
       </div>
     );
   }
@@ -64,7 +85,7 @@ const Profile = () => {
 
   if (!me && !loadingMe) {
     return (
-      <div style={{ padding: 40, textAlign: "center" }}>
+      <div style={{ padding: 40, textAlign: "center", color: "red" }}>
         {errorMe || "Không thể tải thông tin người dùng"}
       </div>
     );
@@ -72,9 +93,11 @@ const Profile = () => {
 
   // from here, me exists
   const user = me;
-  console.log("in profile.jsx, user = ", user.avatar_url);
+  
+  // Logic kiểm tra status (không phân biệt hoa thường) để tô màu
+  const isUserActive = user.status?.toLowerCase() === "active";
 
-  /* ========= Handlers ========= */
+  /* ========= Handlers (LOGIC GIỮ NGUYÊN) ========= */
 
   const handleEditButtonClick = () => {
     setFormValues({
@@ -134,113 +157,197 @@ const Profile = () => {
     setAvatarPreview(url);
   };
 
+  // Helper trigger input file
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
+  };
+
+  /* ========= JSX GIAO DIỆN MỚI ========= */
   return (
     <div className="profile-container">
-      <div className="profile-box">
-        {/* Upper: avatar + role + status */}
-        <div className="upper">
-          <div className="avatar-container">
-            <div className="ava-wrapper">
+      <div className="profile-card">
+        
+        {/* --- HEADER: Avatar & Name --- */}
+        <div className="profile-header">
+          <div className="avatar-section">
+            <div className={`avatar-wrapper ${isEditing ? "editable" : ""}`}>
               {avatarPreview || user.avatar_url ? (
                 <img
                   src={avatarPreview || user.avatar_url}
                   alt="avatar"
-                  className="ava-image"
+                  className="avatar-img"
                 />
               ) : (
-                <FaUser className="ava-icon" />
+                <div className="avatar-placeholder">
+                  <UserOutlined style={{ fontSize: 40 }} />
+                </div>
+              )}
+
+              {/* Overlay hiển thị khi edit để bấm vào thay ảnh */}
+              {isEditing && (
+                <div className="avatar-overlay" onClick={triggerFileInput}>
+                  <CameraOutlined style={{ color: "#fff", fontSize: 24 }} />
+                </div>
               )}
             </div>
-          </div>
-          <div className="role-and-status">
-            <div className="role">{user.role_name}</div>
-            <Tag color="green" className="status-tag">
-              {user.status}
-            </Tag>
-          </div>
-        </div>
-
-        {isEditing && (
-          <div className="change-avatar">
-            <span className="title">Avatar</span>
+            
+            {/* Input file bị ẩn đi để giao diện đẹp hơn */}
             <input
               type="file"
               accept="image/*"
+              ref={fileInputRef}
+              style={{ display: "none" }}
               onChange={handleAvatarFileChange}
             />
           </div>
-        )}
 
-        <Divider className="profile-divider" />
+          <div className="identity-section">
+            <h1 className="user-name">{user.full_name || "Chưa cập nhật tên"}</h1>
+            
+            <div className="tags-row">
+              {/* Role Tag */}
+              <Tag
+                icon={<SafetyCertificateOutlined />}
+                color="#3674B5"
+                className="custom-tag"
+              >
+                {user.role_name || "USER"}
+              </Tag>
 
-        {/* Lower: info grid */}
-        <div className="lower">
-          <div className="left">
-            <div className="info-item">
-              <div className="item-title">Full name</div>
-              <Input
-                value={isEditing ? formValues.full_name : user.full_name}
-                onChange={handleChangeFullName}
-                disabled={!isEditing}
-              />
-            </div>
-            <div className="info-item">
-              <div className="item-title">Email</div>
-              <Input value={user.email} disabled />
-            </div>
-            <div className="info-item">
-              <div className="item-title">Phone number</div>
-              <Input
-                value={isEditing ? formValues.phone : user.phone}
-                onChange={handleChangePhone}
-                disabled={!isEditing}
-              />
-            </div>
-          </div>
-
-          <div className="right">
-            <div className="info-item">
-              <div className="item-title">Created at</div>
-              <Input value={user.created_at} disabled />
-            </div>
-            <div className="info-item">
-              <div className="item-title">Updated at</div>
-              <Input value={user.updated_at} disabled />
-            </div>
-            <div className="info-item">
-              <div className="item-title">Change password</div>
-              <Button onClick={() => navigate("/reset-password")}>
-                Change password
-              </Button>
+              {/* Status Tag (Màu #A1E3F9) */}
+              <Tag
+                className="custom-tag"
+                style={{
+                  backgroundColor: isUserActive ? "#A1E3F9" : "#ffccc7",
+                  color: isUserActive ? "#2b5a8f" : "#a8071a",
+                  border: "none",
+                  textTransform: "uppercase",
+                }}
+              >
+                {user.status || "UNKNOWN"}
+              </Tag>
             </div>
           </div>
         </div>
 
-        {/* Button area */}
-        <div className="button-area">
+        {/* --- BODY: Form Fields --- */}
+        <div className="profile-body">
+          <Row gutter={[40, 24]}>
+            {/* Cột Trái: Thông tin cá nhân */}
+            <Col xs={24} md={12}>
+              <h3 className="section-title">Thông tin cá nhân</h3>
+              
+              <div className="form-group">
+                <label>Họ và tên</label>
+                <Input
+                  prefix={<UserOutlined className="input-icon" />}
+                  value={isEditing ? formValues.full_name : user.full_name}
+                  onChange={handleChangeFullName}
+                  disabled={!isEditing}
+                  size="large"
+                  placeholder="Nhập họ tên"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Số điện thoại</label>
+                <Input
+                  prefix={<PhoneOutlined className="input-icon" />}
+                  value={isEditing ? formValues.phone : user.phone}
+                  onChange={handleChangePhone}
+                  disabled={!isEditing}
+                  size="large"
+                  placeholder="Nhập số điện thoại"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Email (Không thể thay đổi)</label>
+                <Input
+                  prefix={<MailOutlined className="input-icon" />}
+                  value={user.email}
+                  disabled
+                  className="input-disabled-custom"
+                  size="large"
+                />
+              </div>
+            </Col>
+
+            {/* Cột Phải: Thông tin hệ thống */}
+            <Col xs={24} md={12}>
+              <h3 className="section-title">Thông tin hệ thống</h3>
+              
+              <div className="form-group">
+                <label>Ngày tham gia</label>
+                <Input
+                  prefix={<CalendarOutlined className="input-icon" />}
+                  value={user.created_at ? new Date(user.created_at).toLocaleDateString("vi-VN") : "N/A"}
+                  disabled
+                  className="input-disabled-custom"
+                  size="large"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Cập nhật lần cuối</label>
+                <Input
+                  prefix={<ClockCircleOutlined className="input-icon" />}
+                  value={user.updated_at ? new Date(user.updated_at).toLocaleDateString("vi-VN") : "N/A"}
+                  disabled
+                  className="input-disabled-custom"
+                  size="large"
+                />
+              </div>
+
+              <div className="form-group" style={{ marginTop: 30 }}>
+                <Button 
+                  block 
+                  icon={<LockOutlined />} 
+                  onClick={() => navigate("/reset-password")}
+                  size="large"
+                  className="btn-change-pass"
+                >
+                  Đổi mật khẩu
+                </Button>
+              </div>
+            </Col>
+          </Row>
+        </div>
+
+        {/* --- FOOTER: Buttons --- */}
+        <div className="profile-footer">
           {!isEditing ? (
-            <Button type="primary" onClick={handleEditButtonClick}>
-              Chỉnh sửa thông tin cá nhân
+            <Button 
+              type="primary" 
+              onClick={handleEditButtonClick} 
+              size="large"
+              className="btn-primary-custom"
+            >
+              Chỉnh sửa hồ sơ
             </Button>
           ) : (
-            <Space>
-              <Button
-                danger
-                onClick={handleCancelButtonClick}
+            <Space size="middle">
+              <Button 
+                onClick={handleCancelButtonClick} 
                 disabled={updatingMe}
+                size="large"
+                className="btn-cancel"
               >
                 Hủy bỏ
               </Button>
-              <Button
-                type="primary"
-                onClick={handleAcceptButtonClick}
+              <Button 
+                type="primary" 
+                onClick={handleAcceptButtonClick} 
                 loading={updatingMe}
+                size="large"
+                className="btn-save"
               >
-                Ghi nhận
+                Lưu thay đổi
               </Button>
             </Space>
           )}
         </div>
+
       </div>
     </div>
   );

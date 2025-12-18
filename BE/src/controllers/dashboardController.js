@@ -5,7 +5,6 @@ const dashboardController = {
   // API chung để lấy dashboard dựa trên Role của user
   async getDashboard(req, res) {
     try {
-      // Giả sử middleware xác thực đã gán thông tin vào req.user
       const user_id = req.user.user_id;
       const user_role = req.user.role_name;
 

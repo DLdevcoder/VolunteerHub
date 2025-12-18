@@ -1,151 +1,273 @@
+/* =========================================
+   1. VARIABLES & PALETTE
+   ========================================= */
+:root {
+  --primary-blue: #3674B5;
+  --secondary-blue: #578FCA;
+  --light-blue: #A1E3F9;
+  --pale-mint: #D1F8EF;
+  --bg-main: #f4f6f8;
+  --white: #ffffff;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --border-radius: 16px;
+}
+
+/* =========================================
+   2. LAYOUT CONTAINER
+   ========================================= */
 .profile-container {
-  background-color: #f5f5f5;
+  min-height: calc(100vh - 60px); /* Trừ header nếu có */
+  background-color: var(--bg-main);
+  display: flex;
+  justify-content: center;
+  align-items: center; /* Căn giữa dọc nếu màn hình to */
+  padding: 24px;
+}
+
+.loading-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  height: 80vh;
 }
 
-.profile-box {
-  width: 50%;
-  height: 70%;
-  background-color: white;
-  border-radius: 20px;
-  box-sizing: border-box;
-  padding: 20px;
+/* =========================================
+   3. PROFILE CARD
+   ========================================= */
+.profile-card {
+  width: 100%;
+  max-width: 900px;
+  background-color: var(--white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  animation: fadeIn 0.5s ease-in-out;
 }
 
-.profile-box .upper {
-  height: 30%;
-  display: flex;
-  /* box-sizing: border-box;
-  padding: 5px; */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.profile-box .upper .avatar-container {
-  width: 25%;
+/* =========================================
+   4. HEADER SECTION (Avatar + Name)
+   ========================================= */
+.profile-header {
+  background: linear-gradient(135deg, var(--light-blue) 0%, #fff 50%);
+  padding: 40px 40px 20px 40px;
   display: flex;
+  align-items: center;
+  gap: 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.avatar-section {
+  position: relative;
+}
+
+.avatar-wrapper {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 4px solid var(--white);
+  box-shadow: 0 4px 10px rgba(54, 116, 181, 0.2);
+  overflow: hidden;
+  position: relative;
+  background-color: #eee;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  /* background-color: antiquewhite; */
-
-  .ava-wrapper {
-    height: 100%;
-    aspect-ratio: 1 / 1;
-    border-radius: 50%;
-    background-color: aquamarine;
-
-    .ava-icon,
-    .ava-image {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-    }
-
-    .ava-image {
-      object-fit: cover;
-    }
-  }
 }
 
-.profile-box .upper .role-and-status {
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  color: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Hiệu ứng khi edit avatar */
+.avatar-wrapper.editable {
+  cursor: pointer;
+  border-color: var(--primary-blue);
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.avatar-wrapper.editable:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.identity-section {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  box-sizing: border-box;
-
-  .role {
-    font-size: 4.5rem;
-  }
-
-  /* CHỈ style cho Tag, không động vào .ant-tag nhiều quá */
-  .status-tag {
-    align-self: flex-start;
-    margin-top: 4px;
-    font-size: 1.6rem; /* nhỏ hơn role */
-    line-height: 1;
-  }
 }
 
-.change-avatar {
+.user-name {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tags-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   margin-top: 4px;
-
-  .title {
-    font-weight: 700;
-  }
 }
 
-.profile-divider {
-  margin: 5px 0;
+.role-tag {
+  font-weight: 600;
+  border: none;
+  padding: 4px 12px;
+  font-size: 14px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.05);
 }
 
-.profile-box .lower {
-  flex: 1;
-  box-sizing: border-box;
-  padding: 20px;
+/* =========================================
+   5. BODY SECTION (Form)
+   ========================================= */
+.profile-body {
+  padding: 32px 40px;
+}
+
+.section-title {
+  font-size: 16px;
+  color: var(--secondary-blue);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--light-blue);
+  display: inline-block;
+  padding-bottom: 4px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.input-icon {
+  color: var(--primary-blue);
+  opacity: 0.7;
+}
+
+/* Custom Ant Design Input */
+.ant-input-affix-wrapper {
+  border-radius: 8px;
+  border-color: #e0e0e0;
+  padding: 10px 11px;
+}
+
+.ant-input-affix-wrapper:hover,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 2px rgba(54, 116, 181, 0.1);
+}
+
+.ant-input-affix-wrapper-disabled {
+  background-color: #f9f9f9;
+  border-color: #eee;
+  color: #777;
+}
+
+/* =========================================
+   6. FOOTER & BUTTONS
+   ========================================= */
+.profile-footer {
+  padding: 20px 40px 40px 40px;
   display: flex;
-  justify-content: space-between;
-  /* background-color: rgb(229, 242, 204); */
+  justify-content: flex-end;
+  background-color: var(--white);
+  border-top: 1px solid #f9f9f9;
 }
 
-.profile-box .lower .left {
-  width: 50%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
+.btn-primary-custom, .btn-save {
+  background-color: var(--primary-blue);
+  border-color: var(--primary-blue);
+  border-radius: 8px;
+  font-weight: 600;
+  padding-left: 32px;
+  padding-right: 32px;
+}
 
-  .info-item .item-title {
-    font-weight: 700;
-    margin-bottom: 5px;
+.btn-primary-custom:hover, .btn-save:hover {
+  background-color: var(--secondary-blue);
+  border-color: var(--secondary-blue);
+}
+
+.btn-cancel {
+  border-radius: 8px;
+  color: var(--text-secondary);
+  border-color: #d9d9d9;
+}
+
+.btn-change-password {
+  border-color: var(--light-blue);
+  color: var(--primary-blue);
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.btn-change-password:hover {
+  border-color: var(--primary-blue);
+  color: var(--primary-blue);
+  background-color: var(--pale-mint);
+}
+
+/* =========================================
+   7. RESPONSIVE
+   ========================================= */
+@media (max-width: 768px) {
+  .profile-container {
+    padding: 16px;
+    align-items: flex-start;
   }
-}
-
-.profile-box .lower .right {
-  width: 30%;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-
-  .info-item .item-title {
-    font-weight: 700;
-    margin-bottom: 5px;
+  
+  .profile-header {
+    flex-direction: column;
+    text-align: center;
+    padding: 30px 20px;
   }
-}
-
-.profile-box .button-area {
-  height: 10%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  /* background-color: rgb(215, 215, 247); */
-}
-
-@media (height <= 768px) {
-  .profile-box {
-    height: 90%;
-    width: 70%;
+  
+  .profile-body {
+    padding: 24px 20px;
   }
-  .profile-box .upper {
-    height: 20%;
-
-    .avatar-container {
-      width: 15%;
-    }
-
-    .role-and-status {
-      .role {
-        font-size: 2rem;
-      }
-
-      .status {
-        font-size: 1rem;
-        align-self: flex-start;
-      }
-    }
+  
+  .profile-footer {
+    padding: 0 20px 30px 20px;
+    justify-content: center;
+  }
+  
+  .btn-primary-custom, .btn-save, .btn-cancel {
+    width: 100%;
   }
 }
