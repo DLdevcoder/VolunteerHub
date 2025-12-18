@@ -3,7 +3,6 @@ import PostCard from "./PostCard";
 import { useSelector } from "react-redux";
 
 const ActivityWidget = ({ events }) => {
-  // Lấy thông tin user hiện tại từ Redux để hiển thị Avatar khi comment
   const { user } = useSelector((state) => state.auth);
 
   if (!events || events.length === 0) {

@@ -1,44 +1,23 @@
 import React, { useEffect, useState } from "react";
+import { Spin, Empty, Avatar, Tag, Button, Tooltip, Pagination } from "antd";
 import {
-  Spin,
-  Empty,
-  Avatar,
-  Tag,
-  Button,
-  Tooltip,
-} from "antd";
-
-import {
-  ClockCircleOutlined,
-  MessageFilled,
-  FireFilled,
-  CalendarOutlined,
-  EnvironmentOutlined,
-  UserOutlined,
-  EditOutlined,
-  ArrowUpOutlined,
-  LikeOutlined,
-  CommentOutlined,
-  FileTextOutlined,
-  TeamOutlined,
-  ExclamationCircleOutlined,
-  CheckCircleOutlined,
-  PlayCircleFilled,
-  StarFilled,
-  StarOutlined,
-  RiseOutlined,
-  BellOutlined,
+  ClockCircleOutlined, MessageFilled, FireFilled, CalendarOutlined,
+  EnvironmentOutlined, UserOutlined, EditOutlined, ArrowUpOutlined,
+  FileTextOutlined, ExclamationCircleOutlined, CheckCircleOutlined,
+  PlayCircleFilled, RightOutlined, StarFilled, RiseOutlined, RightCircleFilled, StarOutlined, TeamOutlined
 } from "@ant-design/icons";
 
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import dashboardApi from "../../../apis/dashboardApi";
 import "./Dashboard.css";
 
 const ManagerDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  
   const [currentViewIndex, setCurrentViewIndex] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6;
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -47,13 +26,15 @@ const ManagerDashboard = () => {
         const res = await dashboardApi.getDashboard();
         if (res.success) setData(res.data);
       } catch (error) {
-        console.error(error);
+        console.error("Lỗi tải data:", error);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
   }, []);
+
+  useEffect(() => { setCurrentPage(1); }, [currentViewIndex]);
 
   const timeAgo = (dateString) => {
     if (!dateString) return "";
@@ -72,210 +53,175 @@ const ManagerDashboard = () => {
     { label: "SỰ KIỆN HOT", icon: <FireFilled />, key: "trending" },
   ];
 
+  const getPaginatedData = (list) => {
+    if (!list || !Array.isArray(list)) return [];
+    const startIndex = (currentPage - 1) * pageSize;
+    return list.slice(startIndex, startIndex + pageSize);
+  };
+
   const renderContent = () => {
     let content = null;
-    let headerClass = "";
     let headerText = "";
     let HeaderIcon = null;
+    let sourceData = [];
+    let isGridView = false;
 
+    // --- TAB 0: CHỜ DUYỆT ---
     if (currentViewIndex === 0) {
-      // --- PENDING ---
-      headerClass = "header-yellow";
       headerText = "Sự kiện chờ duyệt";
       HeaderIcon = ClockCircleOutlined;
-      content = data?.col1_pending?.map((ev) => (
-        <div key={ev.event_id} className="dashboard-item pending-item">
-          <div>
-            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: 8}}>
-               <Tag color="warning"><ClockCircleOutlined /> PENDING</Tag>
-               <span className="text-xs text-grey">Chờ {ev.days_waiting} ngày</span>
+      sourceData = data?.col1_pending || [];
+      const currentData = getPaginatedData(sourceData);
+      content = currentData.map((ev) => (
+        <div key={ev.event_id} className="horizontal-item">
+          <div style={{ flex: 1, paddingRight: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <Tag color="#578FCA">PENDING</Tag>
+              <span style={{ fontSize: 13, color: "#888" }}>Chờ {ev.days_waiting} ngày</span>
             </div>
-            <Link to={`/events/${ev.event_id}`} className="text-bold" style={{ fontSize: 16, color: "#333", display: "block", marginBottom: 8 }}>
-              {ev.title}
-            </Link>
-            <div className="text-sm text-grey" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div><EnvironmentOutlined /> {ev.location}</div>
-              <div><CalendarOutlined /> {new Date(ev.start_date).toLocaleDateString("vi-VN")}</div>
-              <div><TeamOutlined /> {ev.current_participants}/{ev.target_participants} người</div>
+            <Link to={`/events/${ev.event_id}`} className="item-info-title" style={{ display: "block" }}>{ev.title}</Link>
+            <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
+               <span><EnvironmentOutlined /> {ev.location}</span>
+               <span><UserOutlined /> {ev.current_participants}/{ev.target_participants}</span>
             </div>
           </div>
-          <div style={{ marginTop: 16, borderTop: "1px dashed #d9d9d9", paddingTop: 12 }}>
-            <Button type="primary" style={{ background: "#faad14", borderColor: "#faad14", fontWeight: "bold" }} block icon={<EditOutlined />} onClick={() => navigate(`/manager/events/${ev.event_id}/edit`)}>
-              CHỈNH SỬA
-            </Button>
-          </div>
+          <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/manager/events/${ev.event_id}/edit`)}>Sửa</Button>
         </div>
       ));
-      if (!data?.col1_pending?.length) content = <Empty description="Không có sự kiện chờ duyệt" />;
     } 
-    
+
+    // --- TAB 1: HOẠT ĐỘNG ---
     else if (currentViewIndex === 1) {
-      // --- ACTIVITY ---
-      headerClass = "header-blue";
       headerText = "Hoạt động mới";
       HeaderIcon = MessageFilled;
-      content = data?.col2_activity?.map((item, idx) => (
-        <div key={`act-${idx}`} className="dashboard-item" style={{ borderLeft: "4px solid #1890ff" }}>
-          <div>
-            <div style={{ fontSize: 12, color: "#1890ff", fontWeight: "bold", marginBottom: 10 }}>
-               <BellOutlined /> {item.event_title}
-            </div>
-            <div style={{ fontSize: 11, color: "#888", marginBottom: 10 }}>
-              <EnvironmentOutlined /> {item.location} • <TeamOutlined /> {item.current_participants}/{item.target_participants}
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <Avatar src={item.author_avatar} icon={<UserOutlined />} size="small" />
-              <div style={{ flex: 1 }}>
-                <div className="text-sm">
-                  <b>{item.author_name}</b> {item.type === "post" ? "vừa đăng tin:" : "vừa bình luận:"}
-                </div>
-                <div className="feed-quote">"{item.content.substring(0, 80)}..."</div>
-                <div style={{ fontSize: 11, color: "#999", display: "flex", justifyContent: "space-between" }}>
-                  <span><ClockCircleOutlined /> {timeAgo(item.created_at)}</span>
-                  {item.type === "post" && (
-                    <span><LikeOutlined /> {item.like_count} • <CommentOutlined /> {item.comment_count}</span>
-                  )}
-                </div>
-              </div>
-            </div>
+      sourceData = data?.col2_activity || [];
+      const currentData = getPaginatedData(sourceData);
+      isGridView = true;
+      content = currentData.map((item, idx) => (
+        <div key={`act-${idx}`} className="activity-card">
+          <div className="act-card-header">
+            <Avatar src={item.author_avatar} icon={<UserOutlined />} size={40} />
+            <div><div style={{ fontWeight: "bold" }}>{item.author_name}</div><div style={{ fontSize: 12, color: "#999" }}>{timeAgo(item.created_at)}</div></div>
           </div>
-          <div style={{ marginTop: 12, paddingTop: 8, borderTop: "1px solid #f0f0f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-             <div style={{ fontSize: 10, color: "#555" }}><FileTextOutlined /> +{item.event_new_posts_24h} bài/24h</div>
-             <Link to={`/events/${item.event_id}`}><Button type="link" size="small" style={{ padding: 0 }}>Xem ngay →</Button></Link>
+          <div className="act-card-content">"{item.content}"</div>
+          <div className="act-card-footer">
+             <div><div style={{ fontSize: 11, color: "#3674B5", fontWeight: "bold" }}>{item.type.toUpperCase()}</div><div style={{ fontWeight: 600 }}>{item.event_title}</div></div>
+             <Button shape="circle" icon={<RightCircleFilled style={{fontSize: 24, color: "#578FCA"}} />} type="text" onClick={() => navigate(`/events/${item.event_id}`)} />
           </div>
         </div>
       ));
-      if (!data?.col2_activity?.length) content = <Empty description="Chưa có hoạt động mới" />;
-    } 
-    
-    else if (currentViewIndex === 2) {
-      /* ========================================================= */
-      /* TAB 3: TRENDING */
-      /* ========================================================= */
-      headerClass = "header-red";
-      headerText = "Sự kiện thu hút của bạn";
+    }
+
+    // --- TAB 2: TRENDING ---
+    else {
+      headerText = "Sự kiện thu hút";
       HeaderIcon = FireFilled;
+      sourceData = data?.col3_trending || [];
+      const currentData = getPaginatedData(sourceData);
 
-      content = data?.col3_trending?.map((ev, idx) => (
-        <div 
-          key={ev.event_id} 
-          // Thêm class clickable-card và sự kiện onClick
-          className={`dashboard-item trending-item clickable-card ${idx === 0 ? "rank-1" : ""}`}
-          onClick={() => navigate(`/events/${ev.event_id}`)}
-        >
-          {/* Nội dung bên trong thẻ */}
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <Tag color={idx === 0 ? "red" : idx === 1 ? "orange" : "blue"}>
-                <StarFilled /> {idx === 0 ? "RẤT HOT" : idx === 1 ? "ĐANG LÊN" : "ĐÁNG CHÚ Ý"}
-              </Tag>
-              <Tooltip title="Điểm Trending">
-                <Tag color="gold"><StarOutlined /> {ev.engagement_score}</Tag>
-              </Tooltip>
+      content = currentData.map((ev, idx) => {
+         const realRank = (currentPage - 1) * pageSize + idx;
+         return (
+          <div 
+            key={ev.event_id} 
+            className="horizontal-item clickable-card"
+            style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+            onClick={() => navigate(`/events/${ev.event_id}`)}
+          >
+            {}
+            <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
+               
+               {/* PHẦN 1: THÔNG TIN */}
+                         <div style={{ paddingRight: 24, maxWidth: "65%" }}>
+                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                             <Tag color={realRank === 0 ? "#f5222d" : "#3674B5"} style={{ margin: 0 }}>
+                               {realRank === 0 ? "TOP 1" : `TOP ${realRank + 1}`}
+                             </Tag>
+                             <Tag color="gold" style={{ margin: 0 }}>
+                               <StarFilled /> {ev.engagement_score} điểm
+                             </Tag>
+                           </div>
+               
+                           <div 
+                             style={{ fontSize: 18, fontWeight: "bold", color: "#333", marginBottom: 8 }}
+                           >
+                             {ev.title}
+                           </div>
+               
+                           <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
+                              <span><EnvironmentOutlined /> {ev.location}</span>
+                              <span><UserOutlined /> {ev.current_participants} người tham gia</span>
+                           </div>
+                         </div>
+
+               {/* PHẦN 2: TĂNG TRƯỞNG */}
+               <div 
+            style={{ 
+                display: "flex", 
+                flexDirection: "column", 
+                gap: 4,
+                paddingLeft: 24,
+                borderLeft: "1px solid #eee", 
+                minWidth: 160
+            }}
+          >
+
+                  <div style={{ fontSize: 11, fontWeight: "bold", color: "#888", marginBottom: 2 }}>
+                    <RiseOutlined /> TĂNG TRƯỞNG 24H
+                  </div>
+                  <div style={{ fontSize: 13, color: "#389e0d", fontWeight: 600 }}>
+                    <ArrowUpOutlined /> +{ev.new_participants_24h} người
+                  </div>
+                  <div style={{ fontSize: 13, color: "#3674B5", fontWeight: 600 }}>
+                    <FileTextOutlined /> +{ev.new_posts_24h} bài đăng
+                  </div>
+               </div>
             </div>
 
-            {/* Title */}
-            <div className="text-bold" style={{ fontSize: 16, color: "#cf1322", marginBottom: 6 }}>
-              {ev.title}
-            </div>
-
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 12 }}>
-               <EnvironmentOutlined /> {ev.location} • <TeamOutlined /> {ev.current_participants}/{ev.target_participants}
-            </div>
-
-            {/* Growth Box */}
-            <div className="growth-box">
-              <div style={{ fontSize: 11, fontWeight: "bold", color: "#555", marginBottom: 6 }}>
-                <RiseOutlined /> TĂNG TRƯỞNG 24H:
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12 }}>
-                 <div style={{ color: "green" }}><ArrowUpOutlined /> +{ev.new_participants_24h} người</div>
-                 <div style={{ color: "blue" }}><FileTextOutlined /> +{ev.new_posts_24h} bài</div>
-                 <div style={{ color: "#f5222d" }}><LikeOutlined /> +{ev.new_likes_24h} thích</div>
-                 <div style={{ color: "#fa8c16" }}><CommentOutlined /> +{ev.new_comments_24h} cmt</div>
+            {/* PHẦN 3: NÚT ĐIỀU HƯỚNG TRÒN (ĐẨY SANG PHẢI) */}
+            <div className="item-action-col">
+              <div className="arrow-btn-circle">
+                <RightOutlined />
               </div>
             </div>
           </div>
-          
-          {/* Gợi ý bấm (Optional - hoặc bỏ đi vì toàn thẻ đã bấm được) */}
-          <div style={{textAlign: 'center', marginTop: 12, color: '#1890ff', fontSize: 12, fontStyle: 'italic'}}>
-            
-          </div>
-        </div>
-      ));
-      if (!data?.col3_trending?.length) content = <Empty description="Chưa có dữ liệu trending" />;
+         );
+      });
     }
 
     return (
       <div className="dashboard-section animation-fade-in">
-        <div className={`section-header ${headerClass}`}>
-          <HeaderIcon /> {headerText}
-        </div>
-        <div className="section-grid">
-          {content}
-        </div>
+        <div className="section-header"><HeaderIcon /> {headerText}</div>
+        <div className={isGridView ? "activity-grid-container" : "list-layout-container"}>{content}</div>
+        <Pagination current={currentPage} pageSize={pageSize} total={sourceData.length} onChange={(page) => setCurrentPage(page)} showSizeChanger={false} style={{ marginTop: 24, textAlign: 'center' }} />
       </div>
     );
   };
 
-  if (loading)
-    return (
-      <div style={{ padding: 100, textAlign: "center" }}>
-        <Spin size="large" />
-      </div>
-    );
+  if (loading) return <div style={{ padding: 100, textAlign: "center" }}><Spin size="large" /></div>;
 
   return (
     <div className="dashboard-container">
-      {/* ========================================================= */}
+      {/* GIỮ NGUYÊN 5 Ô STATS CỦA MANAGER */}
       <div className="stats-grid-container">
-          <div className="stats-card stats-blue">
-            <div className="stats-value">{data?.stats?.total_created}</div>
-            <div className="stats-label"><FileTextOutlined /> sự kiện Đã tạo</div>
-          </div>
-
-          <div className="stats-card stats-orange">
-            <div className="stats-value">{data?.stats?.total_pending}</div>
-            <div className="stats-label"><ExclamationCircleOutlined /> sự kiện Chờ duyệt</div>
-          </div>
-
-          <div className="stats-card stats-green">
-            <div className="stats-value">{data?.stats?.total_approved}</div>
-            <div className="stats-label"><CheckCircleOutlined /> sự kiện Đã duyệt</div>
-          </div>
-
-          <div className="stats-card stats-red">
-            <div className="stats-value">{data?.stats?.total_running}</div>
-            <div className="stats-label"><PlayCircleFilled /> Đang diễn ra</div>
-          </div>
-
-          <div className="stats-card stats-grey">
-            <div className="stats-value">{data?.stats?.total_completed}</div>
-            <div className="stats-label"><CheckCircleOutlined /> Đã xong</div>
-          </div>
+          <div className="stats-card-modern card-theme-1"><div className="stats-left"><span className="stats-title">Đã tạo</span><span className="stats-number">{data?.stats?.total_created}</span></div><div className="stats-icon-bg"><FileTextOutlined /></div></div>
+          <div className="stats-card-modern card-theme-3"><div className="stats-left"><span className="stats-title">Chờ duyệt</span><span className="stats-number">{data?.stats?.total_pending}</span></div><div className="stats-icon-bg"><ExclamationCircleOutlined /></div></div>
+          <div className="stats-card-modern card-theme-2"><div className="stats-left"><span className="stats-title">Đã duyệt</span><span className="stats-number">{data?.stats?.total_approved}</span></div><div className="stats-icon-bg"><CheckCircleOutlined /></div></div>
+          <div className="stats-card-modern card-theme-4"><div className="stats-left"><span className="stats-title">Đang diễn ra</span><span className="stats-number">{data?.stats?.total_running}</span></div><div className="stats-icon-bg"><PlayCircleFilled /></div></div>
+          <div className="stats-card-modern card-theme-5"><div className="stats-left"><span className="stats-title">Đã xong</span><span className="stats-number">{data?.stats?.total_completed}</span></div><div className="stats-icon-bg"><CheckCircleOutlined /></div></div>
       </div>
 
-      {/* ========================================================= */}
       <div className="custom-tabs-container">
         <div className="custom-tabs">
-          <div className={`tab-glider glider-${currentViewIndex}`}></div>
+          <div className="tab-glider tab-theme-blue" style={{ width: "calc((100% - 8px) / 3)", transform: `translateX(${currentViewIndex * 100}%)`, backgroundColor: "#3674B5" }}></div>
           {tabs.map((tab, index) => (
-            <button
-              key={tab.key}
-              className={`tab-btn ${currentViewIndex === index ? "active" : ""}`}
-              onClick={() => setCurrentViewIndex(index)}
-            >
-              <span style={{ marginRight: 6 }}>{tab.icon}</span>
-              {tab.label}
+            <button key={tab.key} className={`tab-btn ${currentViewIndex === index ? "active" : ""}`} onClick={() => setCurrentViewIndex(index)}>
+              <span style={{ marginRight: 6 }}>{tab.icon}</span>{tab.label}
             </button>
           ))}
         </div>
       </div>
-
-      {/* ========================================================= */}
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-         {renderContent()}
-      </div>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>{renderContent()}</div>
     </div>
   );
 };
