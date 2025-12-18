@@ -1,4 +1,4 @@
-import Dashboard from "../models/Dashboard.js";
+import DashboardService from "../services/dashboardService.js";
 
 const dashboardController = {
   // ==================== MAIN DASHBOARD ENDPOINT ====================
@@ -13,16 +13,13 @@ const dashboardController = {
 
       switch (user_role) {
         case "Volunteer":
-          // Cần đảm bảo method này tồn tại bên Model Dashboard
-          dashboardData = await Dashboard.getVolunteerDashboard(user_id);
+          dashboardData = await DashboardService.getVolunteerDashboard(user_id);
           break;
         case "Manager":
-          // Cần đảm bảo method này tồn tại bên Model Dashboard
-          dashboardData = await Dashboard.getManagerDashboard(user_id);
+          dashboardData = await DashboardService.getManagerDashboard(user_id);
           break;
         case "Admin":
-          // Admin có thể lấy data tổng hợp (hoặc gọi getFullDashboard logic)
-          dashboardData = await Dashboard.getAdminDashboard();
+          dashboardData = await DashboardService.getAdminDashboard();
           break;
         default:
           return res.status(403).json({
@@ -52,7 +49,7 @@ const dashboardController = {
   // Dashboard tổng quan (Stats cards)
   async getOverview(req, res) {
     try {
-      const overviewStats = await Dashboard.getOverviewStats();
+      const overviewStats = await DashboardService.getOverviewStats();
 
       res.json({
         success: true,
@@ -80,7 +77,7 @@ const dashboardController = {
         });
       }
 
-      const timeSeries = await Dashboard.getEventTimeSeries(time_range);
+      const timeSeries = await DashboardService.getEventTimeSeries(time_range);
 
       res.json({
         success: true,
@@ -102,7 +99,10 @@ const dashboardController = {
   async getTopEngagedEvents(req, res) {
     try {
       const { limit = 10 } = req.query;
-      const topEvents = await Dashboard.getTopEngagedEvents(parseInt(limit));
+
+      const topEvents = await DashboardService.getTopEngagedEvents(
+        parseInt(limit)
+      );
 
       res.json({
         success: true,
@@ -122,7 +122,7 @@ const dashboardController = {
   // Thống kê events theo category (Pie/Donut chart)
   async getEventCategoryStats(req, res) {
     try {
-      const categoryStats = await Dashboard.getEventCategoryStats();
+      const categoryStats = await DashboardService.getEventCategoryStats();
 
       res.json({
         success: true,
@@ -143,7 +143,10 @@ const dashboardController = {
   async getTopActiveUsers(req, res) {
     try {
       const { limit = 10 } = req.query;
-      const activeUsers = await Dashboard.getTopActiveUsers(parseInt(limit));
+
+      const activeUsers = await DashboardService.getTopActiveUsers(
+        parseInt(limit)
+      );
 
       res.json({
         success: true,
@@ -173,7 +176,7 @@ const dashboardController = {
         });
       }
 
-      const trends = await Dashboard.getRegistrationTrends(time_range);
+      const trends = await DashboardService.getRegistrationTrends(time_range);
 
       res.json({
         success: true,
@@ -194,7 +197,7 @@ const dashboardController = {
   // System health (Server status)
   async getSystemHealth(req, res) {
     try {
-      const systemHealth = await Dashboard.getSystemHealth();
+      const systemHealth = await DashboardService.getSystemHealth();
 
       res.json({
         success: true,
@@ -227,13 +230,13 @@ const dashboardController = {
         registrationTrends,
         systemHealth,
       ] = await Promise.all([
-        Dashboard.getOverviewStats(),
-        Dashboard.getEventTimeSeries(time_range),
-        Dashboard.getTopEngagedEvents(parseInt(events_limit)),
-        Dashboard.getEventCategoryStats(),
-        Dashboard.getTopActiveUsers(parseInt(users_limit)),
-        Dashboard.getRegistrationTrends(time_range),
-        Dashboard.getSystemHealth(),
+        DashboardService.getOverviewStats(),
+        DashboardService.getEventTimeSeries(time_range),
+        DashboardService.getTopEngagedEvents(parseInt(events_limit)),
+        DashboardService.getEventCategoryStats(),
+        DashboardService.getTopActiveUsers(parseInt(users_limit)),
+        DashboardService.getRegistrationTrends(time_range),
+        DashboardService.getSystemHealth(),
       ]);
 
       res.json({

@@ -1,7 +1,5 @@
-// src/controllers/registrationController.js
-import Registration from "../models/Registration.js";
-import Event from "../models/Event.js";
-// [SỬA 1] Import UserService thay vì User Model
+import RegistrationService from "../services/registrationService.js";
+import EventService from "../services/eventService.js";
 import UserService from "../services/UserService.js";
 import Notification from "../models/Notification.js";
 
@@ -15,9 +13,7 @@ const registrationController = {
       const user_id = req.user.user_id;
 
       // 1. Kiểm tra User
-      // [SỬA 2] Dùng UserService.findById
       const currentUser = await UserService.findById(user_id);
-
       if (!currentUser || currentUser.status !== "Active") {
         return res.status(403).json({
           success: false,
@@ -26,7 +22,7 @@ const registrationController = {
       }
 
       // 2. Kiểm tra Sự kiện
-      const event = await Event.getEventById(event_id);
+      const event = await EventService.getEventById(event_id);
 
       if (!event) {
         return res
@@ -50,9 +46,9 @@ const registrationController = {
         });
       }
 
-      // 4. Check full slot (pending + approved <= 120% target)
+      // 4. Check full slot
       if (event.target_participants > 0) {
-        const totalRequests = await Registration.countRequests(event_id);
+        const totalRequests = await RegistrationService.countRequests(event_id);
         const maxAllow = Math.ceil(event.target_participants * 1.2);
 
         if (totalRequests >= maxAllow) {
@@ -65,7 +61,7 @@ const registrationController = {
       }
 
       // 5. Kiểm tra lịch sử đăng ký
-      const existingReg = await Registration.findOne(user_id, event_id);
+      const existingReg = await RegistrationService.findOne(user_id, event_id);
 
       // --- ĐÃ CÓ ĐĂNG KÝ TRƯỚC ĐÓ ---
       if (existingReg) {
@@ -81,7 +77,7 @@ const registrationController = {
 
         // Đã hủy hoặc bị từ chối -> cho đăng ký lại
         if (["cancelled", "rejected"].includes(existingReg.status)) {
-          await Registration.reRegister(user_id, event_id);
+          await RegistrationService.reRegister(user_id, event_id);
 
           // 🔔 Gửi notification cho Manager khi re-register
           try {
@@ -95,7 +91,6 @@ const registrationController = {
                 user_id,
                 user_name: currentUser.full_name,
                 message: `Có đăng ký lại từ ${currentUser.full_name} cho sự kiện "${event.title}"`,
-                // Manager click -> tới tab Participants của event đó
                 url: `/manager/events/${event_id}?tab=participants`,
               },
             });
@@ -111,12 +106,15 @@ const registrationController = {
       }
 
       // --- 6. Đăng ký mới ---
-      const newRegistrationId = await Registration.create(user_id, event_id);
+      const newRegistrationId = await RegistrationService.create(
+        user_id,
+        event_id
+      );
 
       // 🔔 Gửi notification cho Manager khi đăng ký mới
       try {
         await Notification.createAndPush({
-          user_id: event.manager_id, // Manager nhận
+          user_id: event.manager_id,
           type: "new_registration",
           payload: {
             event_id,
@@ -152,8 +150,7 @@ const registrationController = {
       const { event_id } = req.params;
       const user_id = req.user.user_id;
 
-      // Kiểm tra trạng thái đăng ký
-      const existingReg = await Registration.findOne(user_id, event_id);
+      const existingReg = await RegistrationService.findOne(user_id, event_id);
 
       if (!existingReg) {
         return res
@@ -177,9 +174,8 @@ const registrationController = {
         });
       }
 
-      const event = await Event.getEventById(event_id);
+      const event = await EventService.getEventById(event_id);
 
-      // Sự kiện bị xóa mềm
       if (!event) {
         return res.status(404).json({
           success: false,
@@ -189,7 +185,7 @@ const registrationController = {
 
       const now = new Date();
       const eventStart = new Date(event.start_date);
-      const oneDay = 24 * 60 * 60 * 1000; // 24 giờ tính bằng ms
+      const oneDay = 24 * 60 * 60 * 1000;
 
       // Sự kiện đã bắt đầu hoặc kết thúc -> Không cho hủy
       if (eventStart <= now) {
@@ -208,27 +204,27 @@ const registrationController = {
         });
       }
 
-      // Thực hiện huỷ
-      const cancelled = await Registration.cancel(user_id, event_id);
+      const cancelled = await RegistrationService.cancel(user_id, event_id);
       if (!cancelled) {
         return res
           .status(400)
           .json({ success: false, message: "Hủy đăng ký thất bại" });
       }
 
-      // (Tuỳ chọn) Thông báo cho Manager biết TNV hủy đăng ký
+      // Thông báo cho Manager
       try {
-        // [SỬA 2] Dùng UserService.findById
         const currentUser = await UserService.findById(user_id);
         await Notification.createAndPush({
           user_id: event.manager_id,
-          type: "registration_cancelled", // Lưu ý: type này có thể chưa có trong ENUM DB, check lại DB nếu lỗi
+          type: "registration_cancelled",
           payload: {
             event_id,
             event_title: event.title,
             user_id,
             user_name: currentUser?.full_name,
-            message: `${currentUser?.full_name || "Một tình nguyện viên"} đã hủy đăng ký khỏi sự kiện "${event.title}".`,
+            message: `${
+              currentUser?.full_name || "Một tình nguyện viên"
+            } đã hủy đăng ký khỏi sự kiện "${event.title}".`,
             url: `/manager/events/${event_id}?tab=participants`,
           },
         });
@@ -249,28 +245,24 @@ const registrationController = {
   },
 
   // =========================================================
-  // VOLUNTEER & MANAGER – Danh sách TNV xem được công khai
-  // (chỉ khi là manager sự kiện HOẶC đã được approved/completed)
-  // GET /api/registrations/events/:event_id/public-volunteers
+  // PUBLIC VOLUNTEERS
   // =========================================================
   async getPublicVolunteersOfEvent(req, res) {
     try {
       const { event_id } = req.params;
       const userId = req.user.user_id;
 
-      const event = await Event.getEventById(event_id);
+      const event = await EventService.getEventById(event_id);
       if (!event) {
         return res
           .status(404)
           .json({ success: false, message: "Sự kiện không tồn tại" });
       }
 
-      // 1. Nếu là manager của event -> luôn được xem
       let canView = event.manager_id === userId;
 
-      // 2. Nếu không phải manager, chỉ được xem nếu là TNV đã được duyệt / hoàn thành
       if (!canView) {
-        const myReg = await Registration.findOne(userId, event_id);
+        const myReg = await RegistrationService.findOne(userId, event_id);
         if (myReg && ["approved", "completed"].includes(myReg.status)) {
           canView = true;
         }
@@ -284,8 +276,7 @@ const registrationController = {
         });
       }
 
-      // Lấy danh sách đăng ký đầy đủ rồi lọc bớt thông tin nhạy cảm
-      const rawList = await Registration.getByEventId(event_id);
+      const rawList = await RegistrationService.getByEventId(event_id);
 
       const publicList = rawList.map((r) => ({
         registration_id: r.registration_id,
@@ -309,15 +300,14 @@ const registrationController = {
   },
 
   // =========================================================
-  // MANAGER – Lấy danh sách đăng ký của 1 sự kiện
+  // MANAGER – Lấy danh sách đăng ký
   // =========================================================
   async getEventRegistrations(req, res) {
     try {
       const { event_id } = req.params;
       const manager_id = req.user.user_id;
 
-      // Kiểm tra sự kiện tồn tại
-      const event = await Event.getEventById(event_id);
+      const event = await EventService.getEventById(event_id);
 
       if (!event) {
         return res
@@ -325,7 +315,6 @@ const registrationController = {
           .json({ success: false, message: "Sự kiện không tồn tại" });
       }
 
-      // Chủ sở hữu
       if (event.manager_id !== manager_id) {
         return res.status(403).json({
           success: false,
@@ -334,8 +323,7 @@ const registrationController = {
         });
       }
 
-      // Lấy danh sách
-      const list = await Registration.getByEventId(event_id);
+      const list = await RegistrationService.getByEventId(event_id);
 
       res.json({
         success: true,
@@ -358,15 +346,13 @@ const registrationController = {
       const { registration_id } = req.params;
       const manager_id = req.user.user_id;
 
-      // Lấy thông tin đăng ký
-      const reg = await Registration.getDetailById(registration_id);
+      const reg = await RegistrationService.getDetailById(registration_id);
       if (!reg) {
         return res
           .status(404)
           .json({ success: false, message: "Đơn đăng ký không tồn tại" });
       }
 
-      // Check quyền sở hữu (Chỉ chủ sự kiện mới được duyệt)
       if (reg.manager_id !== manager_id) {
         return res.status(403).json({
           success: false,
@@ -374,7 +360,6 @@ const registrationController = {
         });
       }
 
-      // Sự kiện bị xoá mềm
       if (reg.event_is_deleted) {
         return res.status(404).json({
           success: false,
@@ -382,7 +367,6 @@ const registrationController = {
         });
       }
 
-      // Check hết chỗ
       if (
         reg.target_participants > 0 &&
         reg.current_participants >= reg.target_participants
@@ -393,7 +377,6 @@ const registrationController = {
         });
       }
 
-      // Check trạng thái
       if (reg.status === "approved") {
         return res
           .status(400)
@@ -415,7 +398,6 @@ const registrationController = {
         });
       }
 
-      // Check user có đang hoạt động không
       if (reg.user_status !== "Active") {
         return res.status(400).json({
           success: false,
@@ -424,10 +406,9 @@ const registrationController = {
         });
       }
 
-      // Thực hiện duyệt
-      await Registration.approve(registration_id);
+      await RegistrationService.approve(registration_id);
 
-      // 🔔 Gửi thông báo cho TNV: đã được duyệt
+      // Notification
       try {
         await Notification.createAndPush({
           user_id: reg.user_id,
@@ -460,10 +441,7 @@ const registrationController = {
       const manager_id = req.user.user_id;
       let { reason } = req.body;
 
-      // Cắt khoảng trắng thừa
       if (reason) reason = reason.trim();
-
-      // Validate Input
       if (!reason || reason.trim().length < 5) {
         return res.status(400).json({
           success: false,
@@ -471,8 +449,7 @@ const registrationController = {
         });
       }
 
-      // Lấy thông tin & Check quyền
-      const reg = await Registration.getDetailById(registration_id);
+      const reg = await RegistrationService.getDetailById(registration_id);
       if (!reg) {
         return res
           .status(404)
@@ -485,7 +462,6 @@ const registrationController = {
         });
       }
 
-      // Check trạng thái
       if (reg.status === "completed") {
         return res.status(400).json({
           success: false,
@@ -493,7 +469,6 @@ const registrationController = {
         });
       }
 
-      // Đã huỷ -> Cấm
       if (reg.status === "cancelled") {
         return res.status(400).json({
           success: false,
@@ -501,7 +476,6 @@ const registrationController = {
         });
       }
 
-      // Đã từ chối rồi -> Cấm
       if (reg.status === "rejected") {
         return res.status(400).json({
           success: false,
@@ -509,10 +483,9 @@ const registrationController = {
         });
       }
 
-      // Thực hiện từ chối
-      await Registration.reject(registration_id, reason);
+      await RegistrationService.reject(registration_id, reason);
 
-      // 🔔 Gửi thông báo cho TNV: bị từ chối
+      // Notification
       try {
         await Notification.createAndPush({
           user_id: reg.user_id,
@@ -545,8 +518,7 @@ const registrationController = {
       const { registration_id } = req.params;
       const manager_id = req.user.user_id;
 
-      // Lấy thông tin & Check quyền
-      const reg = await Registration.getDetailById(registration_id);
+      const reg = await RegistrationService.getDetailById(registration_id);
       if (!reg) {
         return res
           .status(404)
@@ -565,7 +537,7 @@ const registrationController = {
           message: "Tình nguyện viên này đã được xác nhận hoàn thành rồi.",
         });
       }
-      // Chỉ đánh dấu hoàn thành khi sự kiện đã được duyệt
+
       if (reg.status !== "approved") {
         return res.status(400).json({
           success: false,
@@ -574,12 +546,10 @@ const registrationController = {
         });
       }
 
-      // 🔥 BỔ SUNG: Kiểm tra thời gian sự kiện
       const now = new Date();
       const eventStart = new Date(reg.start_date);
       const eventEnd = new Date(reg.end_date);
 
-      // 1. Sự kiện chưa diễn ra
       if (now < eventStart) {
         return res.status(400).json({
           success: false,
@@ -587,7 +557,6 @@ const registrationController = {
         });
       }
 
-      // 2. Sự kiện chưa kết thúc
       if (now < eventEnd) {
         return res.status(400).json({
           success: false,
@@ -595,8 +564,7 @@ const registrationController = {
         });
       }
 
-      // 🔥 Tùy chọn: Thêm buffer time (ví dụ: cho phép trong 7 ngày sau khi kết thúc)
-      const maxDaysAfterEvent = 7; // Cho phép đánh dấu trong 7 ngày sau khi sự kiện kết thúc
+      const maxDaysAfterEvent = 7;
       const maxCompletionDate = new Date(
         eventEnd.getTime() + maxDaysAfterEvent * 24 * 60 * 60 * 1000
       );
@@ -608,10 +576,9 @@ const registrationController = {
         });
       }
 
-      // Thực hiện
-      await Registration.complete(registration_id, manager_id);
+      await RegistrationService.complete(registration_id, manager_id);
 
-      // 🔔 Thông báo cho TNV: hoàn thành
+      // Notification
       try {
         await Notification.createAndPush({
           user_id: reg.user_id,
@@ -651,8 +618,7 @@ const registrationController = {
     try {
       const userId = req.user.user_id;
 
-      // Lấy danh sách tất cả sự kiện đã đăng ký
-      const history = await Event.getEventHistoryByUserId(userId);
+      const history = await EventService.getEventHistoryByUserId(userId);
 
       res.json({
         success: true,
@@ -670,16 +636,14 @@ const registrationController = {
   },
 
   // =========================================================
-  // VOLUNTEER – Lấy trạng thái đăng ký của bản thân cho 1 event
-  // (dùng cho FE: ẩn/hiện tab Posts, đổi text nút Đăng ký / Hủy)
-  // GET /api/registrations/events/:event_id/my-status
+  // VOLUNTEER – Lấy trạng thái đăng ký của bản thân
   // =========================================================
   async getMyRegistrationStatus(req, res) {
     try {
       const { event_id } = req.params;
       const user_id = req.user.user_id;
 
-      const reg = await Registration.findOne(user_id, event_id);
+      const reg = await RegistrationService.findOne(user_id, event_id);
 
       if (!reg) {
         return res.json({

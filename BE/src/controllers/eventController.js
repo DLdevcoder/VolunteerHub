@@ -1,8 +1,7 @@
-import Event from "../models/Event.js";
+import EventService from "../services/eventService.js";
+import RegistrationService from "../services/registrationService.js";
 import Notification from "../models/Notification.js";
-// [SỬA 1] Import UserService thay vì User Model
 import UserService from "../services/UserService.js";
-import Registration from "../models/Registration.js";
 
 // Hàm helper: Format ngày giữ nguyên giờ nhập vào
 const formatDateAsIs = (dateInput) => {
@@ -16,7 +15,9 @@ const formatDateAsIs = (dateInput) => {
 };
 
 const eventController = {
-  // Tạo sự kiện
+  // =================================================================
+  // 1. TẠO SỰ KIỆN
+  // =================================================================
   async createEvent(req, res) {
     try {
       let {
@@ -91,7 +92,7 @@ const eventController = {
       const formattedStartDate = formatDateAsIs(start_date);
       const formattedEndDate = formatDateAsIs(end_date);
 
-      const isDuplicate = await Event.checkDuplicate(
+      const isDuplicate = await EventService.checkDuplicate(
         title,
         formattedStartDate,
         location
@@ -103,7 +104,7 @@ const eventController = {
         });
       }
 
-      const eventId = await Event.createEvent({
+      const eventId = await EventService.createEvent({
         title,
         description,
         target_participants: target_participants || 0,
@@ -114,11 +115,10 @@ const eventController = {
         category_id: category_id || null,
       });
 
-      const newEvent = await Event.getEventById(eventId);
+      const newEvent = await EventService.getEventById(eventId);
 
-      // 🔔 Gửi thông báo cho tất cả Admin: có sự kiện mới chờ duyệt
+      // 🔔 Gửi thông báo cho tất cả Admin
       try {
-        // [SỬA 2] Dùng UserService.getAdmins()
         const admins = await UserService.getAdmins();
         console.log("Admins from getAdmins():", admins);
 
@@ -145,7 +145,6 @@ const eventController = {
               },
             });
           }
-
           console.log(
             `Created event_pending_approval notifications for ${admins.length} admin(s)`
           );
@@ -189,10 +188,12 @@ const eventController = {
     }
   },
 
-  // Lấy danh mục sự kiện
+  // =================================================================
+  // 2. LẤY DANH MỤC SỰ KIỆN
+  // =================================================================
   async getCategories(req, res) {
     try {
-      const categories = await Event.getAllCategories();
+      const categories = await EventService.getAllCategories();
 
       res.json({
         success: true,
@@ -208,11 +209,13 @@ const eventController = {
     }
   },
 
-  // Lấy danh sách sự kiện (có lọc và phân trang) (hỗ trợ lấy cả sự kiện đã xóa mềm)
+  // =================================================================
+  // 3. LẤY DANH SÁCH SỰ KIỆN (ADMIN/MANAGER)
+  // =================================================================
   async getAllEvents(req, res) {
     try {
       let page = parseInt(req.query.page);
-      // Xử lý limit: Nếu là 'all' thì giữ nguyên, nếu là số thì parse
+      // Xử lý limit
       let limitInput = req.query.limit;
       let limit;
       if (limitInput === "all") {
@@ -269,7 +272,7 @@ const eventController = {
         manager_id: req.query.manager_id,
         search: req.query.search
           ? req.query.search.trim().substring(0, 100)
-          : undefined, // Cắt ngắn search
+          : undefined,
         start_date_from,
         start_date_to,
         sort_by,
@@ -277,7 +280,7 @@ const eventController = {
         is_deleted,
       };
 
-      const result = await Event.getAllEvents(filters);
+      const result = await EventService.getAllEvents(filters);
 
       res.json({
         success: true,
@@ -292,13 +295,14 @@ const eventController = {
     }
   },
 
-  // Lấy danh sách sự kiện đang hoạt động (đã duyệt, chưa kết thúc)
+  // =================================================================
+  // 4. LẤY SỰ KIỆN ACTIVE (HOMEPAGE)
+  // =================================================================
   async getActiveEvents(req, res) {
     try {
       const userId = req.user?.user_id;
       const userRole = req.user?.role_name;
 
-      // Chỉ Volunteer mới cần JOIN Registrations
       const includeUserRegistration = userId && userRole === "Volunteer";
 
       let page = parseInt(req.query.page, 10);
@@ -358,7 +362,7 @@ const eventController = {
         start_date_to,
       };
 
-      const result = await Event.getActiveEvents(
+      const result = await EventService.getActiveEvents(
         filters,
         includeUserRegistration ? userId : null
       );
@@ -377,12 +381,14 @@ const eventController = {
     }
   },
 
-  // Lấy chi tiết sự kiện theo ID (không phân biệt trạng thái, trừ đã xóa mềm)
+  // =================================================================
+  // 5. LẤY CHI TIẾT SỰ KIỆN
+  // =================================================================
   async getEventById(req, res) {
     try {
       const { event_id } = req.params;
 
-      const event = await Event.getEventById(event_id);
+      const event = await EventService.getEventById(event_id);
 
       if (!event) {
         return res.status(404).json({
@@ -406,10 +412,11 @@ const eventController = {
     }
   },
 
-  // Lấy danh sách sự kiện của Manager đang đăng nhập
+  // =================================================================
+  // 6. LẤY SỰ KIỆN CỦA MANAGER
+  // =================================================================
   async getMyEvents(req, res) {
     try {
-      // Kiểm tra User tồn tại (Tránh crash nếu quên middleware) ---
       if (!req.user || !req.user.user_id) {
         return res.status(401).json({
           success: false,
@@ -419,7 +426,6 @@ const eventController = {
 
       const manager_id = req.user.user_id;
 
-      // Giới hạn limit (Chống DoS)
       let page = parseInt(req.query.page);
       let limit = parseInt(req.query.limit);
 
@@ -427,7 +433,6 @@ const eventController = {
       if (isNaN(limit) || limit < 1) limit = 10;
       if (limit > 100) limit = 100;
 
-      // Sort Order chỉ được phép là ASC hoặc DESC
       let sort_order = req.query.sort_order;
       if (sort_order) {
         sort_order = sort_order.toUpperCase();
@@ -445,16 +450,14 @@ const eventController = {
         page,
         limit,
         manager_id: manager_id,
-
         approval_status: req.query.approval_status,
         category_id: category_id,
         search: req.query.search ? req.query.search.trim() : undefined,
-
         sort_by: req.query.sort_by,
         sort_order: sort_order,
       };
 
-      const result = await Event.getAllEvents(filters);
+      const result = await EventService.getAllEvents(filters);
 
       res.json({
         success: true,
@@ -470,7 +473,9 @@ const eventController = {
     }
   },
 
-  // Cập nhật thông tin sự kiện
+  // =================================================================
+  // 7. CẬP NHẬT SỰ KIỆN
+  // =================================================================
   async updateEvent(req, res) {
     try {
       const { event_id } = req.params;
@@ -494,11 +499,12 @@ const eventController = {
       if (start_date) start_date = formatDateAsIs(start_date);
       if (end_date) end_date = formatDateAsIs(end_date);
 
-      const currentEvent = req.event; // set by eventPermission
+      const currentEvent = req.event; // set by eventPermission middleware
       if (!currentEvent) {
         return res.status(500).json({
           success: false,
-          message: "Lỗi hệ thống: Không tìm thấy thông tin sự kiện từ Middleware",
+          message:
+            "Lỗi hệ thống: Không tìm thấy thông tin sự kiện từ Middleware",
         });
       }
 
@@ -511,26 +517,34 @@ const eventController = {
       const isRestrictedMode = isRunning || hasParticipants;
       let message;
 
-      // ---------- Trường hợp đang chạy / đã có người tham gia ----------
       if (isRestrictedMode) {
-        // CHỈ cho phép sửa description và location
-        const allowedFields = ['description', 'location'];
-        const forbiddenFields = ['title', 'target_participants', 'start_date', 'end_date', 'category_id'];
+        const allowedFields = ["description", "location"];
+        const forbiddenFields = [
+          "title",
+          "target_participants",
+          "start_date",
+          "end_date",
+          "category_id",
+        ];
 
-        // Kiểm tra nếu có field không được phép
-        const attemptingForbidden = forbiddenFields.filter(field =>
-          req.body[field] !== undefined && req.body[field] !== null
+        const attemptingForbidden = forbiddenFields.filter(
+          (field) => req.body[field] !== undefined && req.body[field] !== null
         );
 
         if (attemptingForbidden.length > 0) {
-          const reason = isRunning ? "sự kiện đang diễn ra" : "đã có người đăng ký";
+          const reason = isRunning
+            ? "sự kiện đang diễn ra"
+            : "đã có người đăng ký";
           return res.status(400).json({
             success: false,
-            message: `Không thể thay đổi ${attemptingForbidden.join(', ')} vì ${reason}. Chỉ được sửa mô tả và địa điểm.`,
+            message: `Không thể thay đổi ${attemptingForbidden.join(
+              ", "
+            )} vì ${reason}. Chỉ được sửa mô tả và địa điểm.`,
           });
         }
 
-        message = "Cập nhật thông tin thành công (Trạng thái sự kiện được giữ nguyên).";
+        message =
+          "Cập nhật thông tin thành công (Trạng thái sự kiện được giữ nguyên).";
       }
 
       const dataToUpdate = {
@@ -543,14 +557,16 @@ const eventController = {
         category_id,
       };
 
-      // Xoá field undefined
       Object.keys(dataToUpdate).forEach((k) => {
         if (dataToUpdate[k] === undefined) delete dataToUpdate[k];
       });
 
-      // Sự kiện chưa chạy & chưa có người đang ký -> sửa tất
       if (!isRestrictedMode) {
-        if (start_date && end_date && new Date(start_date) > new Date(end_date)) {
+        if (
+          start_date &&
+          end_date &&
+          new Date(start_date) > new Date(end_date)
+        ) {
           return res.status(400).json({
             success: false,
             message: "Ngày bắt đầu phải trước ngày kết thúc",
@@ -561,7 +577,8 @@ const eventController = {
           if (new Date(start_date) > new Date(currentEvent.end_date)) {
             return res.status(400).json({
               success: false,
-              message: "Ngày bắt đầu mới không được lớn hơn ngày kết thúc hiện tại",
+              message:
+                "Ngày bắt đầu mới không được lớn hơn ngày kết thúc hiện tại",
             });
           }
         }
@@ -570,21 +587,21 @@ const eventController = {
           if (new Date(currentEvent.start_date) > new Date(end_date)) {
             return res.status(400).json({
               success: false,
-              message: "Ngày kết thúc mới không được nhỏ hơn ngày bắt đầu hiện tại",
+              message:
+                "Ngày kết thúc mới không được nhỏ hơn ngày bắt đầu hiện tại",
             });
           }
         }
 
-        // Nếu đang approved thì reset về pending để duyệt lại
         if (currentEvent.approval_status === "approved") {
           dataToUpdate.approval_status = "pending";
           dataToUpdate.approved_by = null;
           dataToUpdate.approval_date = null;
-          message = "Cập nhật thành công. Sự kiện đã được chuyển về trạng thái chờ duyệt lại.";
+          message =
+            "Cập nhật thành công. Sự kiện đã được chuyển về trạng thái chờ duyệt lại.";
         }
       }
 
-      // Nếu bị rejected -> reset về pending
       if (currentEvent.approval_status === "rejected") {
         dataToUpdate.approval_status = "pending";
         dataToUpdate.approved_by = null;
@@ -594,7 +611,6 @@ const eventController = {
 
       console.log("[updateEvent] DATA TO UPDATE =", dataToUpdate);
 
-      // Kiểm tra xem có thực sự có gì để cập nhật không
       if (Object.keys(dataToUpdate).length === 0) {
         return res.status(400).json({
           success: false,
@@ -602,7 +618,7 @@ const eventController = {
         });
       }
 
-      const updated = await Event.updateEvent(event_id, dataToUpdate);
+      const updated = await EventService.updateEvent(event_id, dataToUpdate);
 
       if (!updated) {
         return res.status(400).json({
@@ -611,10 +627,10 @@ const eventController = {
         });
       }
 
-      const updatedEvent = await Event.getEventById(event_id);
+      const updatedEvent = await EventService.getEventById(event_id);
       console.log("[updateEvent] UPDATED EVENT =", updatedEvent);
 
-      // 🔔 1) Nếu từ approved/rejected → pending => gửi lại thông báo cho Admin
+      // Notification Logic
       try {
         const prevStatus = currentEvent.approval_status;
         const newStatus = updatedEvent.approval_status;
@@ -648,12 +664,10 @@ const eventController = {
         );
       }
 
-      // 🔔 2) Nếu sự kiện đang chạy / đã có người tham gia & đổi thông tin -> báo TNV
       try {
         const wasRestricted = isRestrictedMode;
         if (wasRestricted) {
-          // CHỈ kiểm tra description và location (vì chỉ được phép sửa 2 trường này)
-          const allowedFieldsToCheck = ['description', 'location'];
+          const allowedFieldsToCheck = ["description", "location"];
           const changedFields = {};
           let hasImportantChange = false;
 
@@ -668,7 +682,8 @@ const eventController = {
           }
 
           if (hasImportantChange) {
-            const regs = await Registration.getByEventId(event_id);
+            const regs = await RegistrationService.getByEventId(event_id);
+
             if (regs && regs.length) {
               const toNotify = regs.filter((r) =>
                 ["approved", "completed", "pending"].includes(r.status)
@@ -716,25 +731,23 @@ const eventController = {
     }
   },
 
-  // Xóa sự kiện (soft delete)
+  // =================================================================
+  // 8. XÓA SỰ KIỆN (SOFT DELETE)
+  // =================================================================
   async deleteEvent(req, res) {
     try {
       const { event_id } = req.params;
       const role_name = req.user.role_name;
 
-      // Lấy thông tin sự kiện hiện tại
-      const currentEvent = await Event.getEventById(event_id);
+      const currentEvent = await EventService.getEventById(event_id);
 
-      // Sự kiện đã bị xoá rồi
       if (!currentEvent) {
         return res
           .status(404)
           .json({ success: false, message: "Sự kiện không tồn tại" });
       }
 
-      // Nếu không phải Admin -> áp dụng các giới hạn hiện tại
       if (role_name !== "Admin") {
-        // Nếu là manager -> không thể xoá sự kiện đang chạy hoặc đã kết thúc
         const now = new Date();
         if (new Date(currentEvent.start_date) <= now) {
           return res.status(400).json({
@@ -744,10 +757,9 @@ const eventController = {
         }
       }
 
-      // 🔹 Lấy danh sách đăng ký trước khi xóa (cả pending / approved / completed)
       let registrations = [];
       try {
-        registrations = await Registration.getByEventId(event_id);
+        registrations = await RegistrationService.getByEventId(event_id);
       } catch (listErr) {
         console.error(
           "Load registrations before delete failed (still continue delete):",
@@ -755,8 +767,7 @@ const eventController = {
         );
       }
 
-      // Xóa mềm sự kiện (an toàn, có thể khôi phục)
-      const deleted = await Event.softDeleteEvent(event_id);
+      const deleted = await EventService.softDeleteEvent(event_id);
 
       if (!deleted) {
         return res.status(400).json({
@@ -765,7 +776,7 @@ const eventController = {
         });
       }
 
-      // 🔔 Gửi thông báo cho TNV đã đăng ký (kể cả pending chưa được duyệt)
+      // Notification
       try {
         if (registrations && registrations.length) {
           const affectedStatuses = [
@@ -782,14 +793,14 @@ const eventController = {
             try {
               await Notification.createAndPush({
                 user_id: reg.user_id,
-                type: "event_cancelled", // đã có trong ENUM Notifications.type
+                type: "event_cancelled",
                 payload: {
                   event_id,
                   event_title: currentEvent.title,
                   registration_id: reg.registration_id,
                   previous_status: reg.status,
                   message: `Sự kiện "${currentEvent.title}" đã bị hủy bởi ban tổ chức.`,
-                  url: `/events/${event_id}`, // FE có thể điều hướng tới trang chi tiết (hoặc history)
+                  url: `/events/${event_id}`,
                 },
               });
             } catch (notifyErr) {
@@ -805,7 +816,6 @@ const eventController = {
           "Event delete: notify volunteers failed:",
           outerNotifyErr
         );
-        // Không throw nữa để không ảnh hưởng tới kết quả xóa
       }
 
       res.json({
@@ -821,14 +831,15 @@ const eventController = {
     }
   },
 
-  // Admin duyệt sự kiện
+  // =================================================================
+  // 9. DUYỆT SỰ KIỆN (ADMIN)
+  // =================================================================
   async approveEvent(req, res) {
     try {
       const { event_id } = req.params;
       const admin_id = req.user.user_id;
 
-      // Duyệt sự kiện (stored procedure chỉ cập nhật trạng thái, notification handle ở đây)
-      const approved = await Event.approveEvent(event_id, admin_id);
+      const approved = await EventService.approveEvent(event_id, admin_id);
 
       if (!approved) {
         return res.status(400).json({
@@ -837,10 +848,9 @@ const eventController = {
         });
       }
 
-      // Lấy thông tin sự kiện sau khi duyệt
-      const approvedEvent = await Event.getEventById(event_id);
+      const approvedEvent = await EventService.getEventById(event_id);
 
-      // 🔔 Gửi thông báo cho Manager: sự kiện đã được duyệt
+      // Notification
       try {
         if (approvedEvent && approvedEvent.manager_id) {
           await Notification.createAndPush({
@@ -876,7 +886,9 @@ const eventController = {
     }
   },
 
-  // Admin từ chối sự kiện
+  // =================================================================
+  // 10. TỪ CHỐI SỰ KIỆN (ADMIN)
+  // =================================================================
   async rejectEvent(req, res) {
     try {
       const { event_id } = req.params;
@@ -890,8 +902,11 @@ const eventController = {
         });
       }
 
-      // Từ chối sự kiện (stored procedure chỉ update, notification handle ở đây)
-      const rejected = await Event.rejectEvent(event_id, admin_id, reason);
+      const rejected = await EventService.rejectEvent(
+        event_id,
+        admin_id,
+        reason
+      );
 
       if (!rejected) {
         return res.status(400).json({
@@ -900,10 +915,9 @@ const eventController = {
         });
       }
 
-      // Lấy thông tin sự kiện sau khi từ chối
-      const rejectedEvent = await Event.getEventById(event_id);
+      const rejectedEvent = await EventService.getEventById(event_id);
 
-      // 🔔 Gửi thông báo cho Manager: sự kiện đã bị từ chối
+      // Notification
       try {
         if (rejectedEvent && rejectedEvent.manager_id) {
           await Notification.createAndPush({
@@ -939,13 +953,14 @@ const eventController = {
     }
   },
 
-  //[VOLUNTEER] Lấy lịch sử tham gia sự kiện của bản thân
+  // =================================================================
+  // 11. LỊCH SỬ THAM GIA
+  // =================================================================
   async getMyEventHistory(req, res) {
     try {
       const userId = req.user.user_id;
 
-      // Lấy danh sách tất cả sự kiện đã đăng ký
-      const history = await Event.getEventHistoryByUserId(userId);
+      const history = await EventService.getEventHistoryByUserId(userId);
 
       res.json({
         success: true,

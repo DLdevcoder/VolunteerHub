@@ -1,21 +1,21 @@
-import Event from "../models/Event.js";
+import EventService from "../services/eventService.js";
 
 const eventPermission = {
-  // Kiểm tra quyền sở hữu sự kiện (Manager tạo sự kiện)
-  // Admin xóa không cần check ownership, Manager phải là chủ sở hữu
+  // =================================================================
+  // 1. KIỂM TRA QUYỀN SỞ HỮU (Dành cho Manager)
+  // =================================================================
   checkEventOwnership: async (req, res, next) => {
     try {
       const { event_id } = req.params;
       const user_id = req.user.user_id;
       const role_name = req.user.role_name;
 
-      // Admin có quyền xóa bất kỳ sự kiện nào (không cần check ownership)
+      // Admin có quyền xóa bất kỳ sự kiện nào
       if (role_name === "Admin") {
         return next();
       }
 
-      // Kiểm tra sự kiện có tồn tại không
-      const eventExists = await Event.eventExists(event_id);
+      const eventExists = await EventService.eventExists(event_id);
       if (!eventExists) {
         return res.status(404).json({
           success: false,
@@ -23,8 +23,7 @@ const eventPermission = {
         });
       }
 
-      // Manager phải là chủ sở hữu mới được thao tác
-      const isOwner = await Event.isEventOwner(event_id, user_id);
+      const isOwner = await EventService.isEventOwner(event_id, user_id);
       if (!isOwner) {
         return res.status(403).json({
           success: false,
@@ -42,12 +41,15 @@ const eventPermission = {
     }
   },
 
-  // Kiểm tra sự kiện có tồn tại không (dùng cho các route public)
+  // =================================================================
+  // 2. KIỂM TRA SỰ KIỆN TỒN TẠI (Public)
+  // =================================================================
   checkEventExists: async (req, res, next) => {
     try {
       const { event_id } = req.params;
 
-      const event = await Event.getEventById(event_id);
+      const event = await EventService.getEventById(event_id);
+
       if (!event) {
         return res.status(404).json({
           success: false,
@@ -67,12 +69,15 @@ const eventPermission = {
     }
   },
 
-  // Kiểm tra sự kiện đã được duyệt chưa (cho volunteer đăng ký)
+  // =================================================================
+  // 3. KIỂM TRA ĐÃ DUYỆT (Cho Volunteer đăng ký)
+  // =================================================================
   checkEventApproved: async (req, res, next) => {
     try {
       const { event_id } = req.params;
 
-      const event = await Event.getEventById(event_id);
+      const event = await EventService.getEventById(event_id);
+
       if (!event) {
         return res.status(404).json({
           success: false,
@@ -87,7 +92,6 @@ const eventPermission = {
         });
       }
 
-      // Lưu thông tin event vào req
       req.event = event;
       next();
     } catch (error) {
@@ -99,19 +103,22 @@ const eventPermission = {
     }
   },
 
-  // Kiểm tra sự kiện chưa bắt đầu (cho phép chỉnh sửa/hủy)
+  // =================================================================
+  // 4. KIỂM TRA SỰ KIỆN CHƯA BẮT ĐẦU (Cho phép sửa/hủy)
+  // =================================================================
   checkEventNotStarted: async (req, res, next) => {
     try {
       const { event_id } = req.params;
 
-      const event = await Event.getEventById(event_id);
+      const event = await EventService.getEventById(event_id);
+
       if (!event) {
         return res.status(404).json({
           success: false,
           message: "Không tìm thấy sự kiện",
         });
       }
-      // Lưu event vào req để tái sử dụng trong controller (tránh query lại DB)
+
       req.event = event;
       next();
     } catch (error) {
@@ -122,23 +129,25 @@ const eventPermission = {
       });
     }
   },
-  
-  // Dùng cho Admin khi muốn Duyệt
+
+  // =================================================================
+  // 5. CHECK CHƯA DUYỆT (Dùng cho Admin khi muốn Duyệt)
+  // =================================================================
   checkEventNotApproved: async (req, res, next) => {
     try {
       const { event_id } = req.params;
-      // Nếu middleware trước đã lấy event rồi thì dùng luôn
-      let event = req.event; 
-      
+      let event = req.event;
+
       if (!event) {
-         event = await Event.getEventById(event_id);
+        event = await EventService.getEventById(event_id);
       }
 
       if (!event) {
-        return res.status(404).json({ success: false, message: "Sự kiện không tồn tại" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Sự kiện không tồn tại" });
       }
 
-      // CHỈ CHẶN NẾU ĐÃ APPROVED
       if (event.approval_status === "approved") {
         return res.status(400).json({
           success: false,
@@ -154,13 +163,19 @@ const eventPermission = {
     }
   },
 
-  // Dùng cho Admin khi muốn Từ chối 
+  // =================================================================
+  // 6. CHECK CHƯA TỪ CHỐI (Dùng cho Admin khi muốn Từ chối)
+  // =================================================================
   checkEventNotRejected: async (req, res, next) => {
     try {
       const { event_id } = req.params;
-      const event = req.event || await Event.getEventById(event_id); 
 
-      if (!event) return res.status(404).json({ success: false, message: "Sự kiện không tồn tại" });
+      const event = req.event || (await EventService.getEventById(event_id));
+
+      if (!event)
+        return res
+          .status(404)
+          .json({ success: false, message: "Sự kiện không tồn tại" });
 
       if (event.approval_status === "rejected") {
         return res.status(400).json({
