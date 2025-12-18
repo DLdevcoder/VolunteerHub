@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import {
-  Row,
-  Col,
   Spin,
   Empty,
   Button,
@@ -10,14 +8,12 @@ import {
   Tag,
   Tooltip,
   Input,
-  // Bỏ import message từ antd ở đây
 } from "antd";
 import {
   UserOutlined,
   TeamOutlined,
   CalendarOutlined,
   ClockCircleOutlined,
-  StarFilled,
   LockOutlined,
   CheckOutlined,
   CloseOutlined,
@@ -25,27 +21,31 @@ import {
   FireFilled,
   EnvironmentOutlined,
   LineChartOutlined,
+  StarFilled,
+  StarOutlined,
 } from "@ant-design/icons";
-import { Link } from "react-router-dom";
+// 1. Thêm useNavigate
+import { Link, useNavigate } from "react-router-dom";
 
 import dashboardApi from "../../../apis/dashboardApi";
-
-// SỬA ĐƯỜNG DẪN IMPORT (chỉ dùng ../../)
 import {
   approveEventThunk,
   rejectEventThunk,
 } from "../../redux/slices/eventSlice";
 
-import useGlobalMessage from "../../utils/hooks/useGlobalMessage"; // Import hook thông báo
-
+import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 import "./Dashboard.css";
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
-  const messageApi = useGlobalMessage(); // Khởi tạo messageApi
+  const messageApi = useGlobalMessage();
+  const navigate = useNavigate(); // 2. Init navigate
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // State quản lý tab: 0 = Pending, 1 = Trending
+  const [currentViewIndex, setCurrentViewIndex] = useState(0);
 
   // Modal reject state
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -71,11 +71,11 @@ const AdminDashboard = () => {
   const handleApprove = async (id) => {
     try {
       await dispatch(approveEventThunk(id)).unwrap();
-      messageApi.success("Đã duyệt sự kiện!"); // Dùng messageApi
+      messageApi.success("Đã duyệt sự kiện!");
       fetchData();
     } catch (error) {
       const errMsg = error?.message || "Lỗi khi duyệt sự kiện";
-      messageApi.error(errMsg); // Dùng messageApi
+      messageApi.error(errMsg);
     }
   };
 
@@ -87,31 +87,24 @@ const AdminDashboard = () => {
 
   const handleRejectConfirm = async () => {
     const reason = rejectReason.trim();
-    
-    // Logic hiển thị cảnh báo giống ảnh bạn gửi
     if (!reason || reason.length < 5) {
-      messageApi.warning("Lý do cần ít nhất 5 ký tự"); // Dùng messageApi sẽ hiện thông báo chuẩn
+      messageApi.warning("Lý do cần ít nhất 5 ký tự");
       return;
     }
-    
     if (!rejectingEvent) return;
 
     const eventId = rejectingEvent.event_id;
-
     try {
       setRejectLoading(true);
       await dispatch(rejectEventThunk({ eventId, reason })).unwrap();
-
-      messageApi.success("Đã từ chối sự kiện!"); // Dùng messageApi
-      
+      messageApi.success("Đã từ chối sự kiện!");
       setRejectModalOpen(false);
       setRejectingEvent(null);
       setRejectReason("");
-      
       fetchData();
     } catch (error) {
       const errMsg = error?.message || "Lỗi khi từ chối sự kiện";
-      messageApi.error(errMsg); // Dùng messageApi
+      messageApi.error(errMsg);
     } finally {
       setRejectLoading(false);
     }
@@ -123,6 +116,133 @@ const AdminDashboard = () => {
     setRejectReason("");
   };
 
+  // Cấu hình Tabs (Admin chỉ có 2 danh sách chính)
+  const tabs = [
+    { label: "CHỜ DUYỆT", icon: <ClockCircleOutlined />, key: "pending" },
+    { label: "XU HƯỚNG", icon: <FireFilled />, key: "trending" },
+  ];
+
+  const renderContent = () => {
+    let content = null;
+    let headerClass = "";
+    let headerText = "";
+    let HeaderIcon = null;
+
+    if (currentViewIndex === 0) {
+      /* ================= TAB 1: PENDING ================= */
+      headerClass = "header-yellow";
+      headerText = `Sự kiện chờ duyệt (${data?.pending_events?.length || 0})`;
+      HeaderIcon = ClockCircleOutlined;
+
+      content = data?.pending_events?.map((ev, index) => (
+        <div key={ev.event_id} className="dashboard-item pending-item">
+          {/* Phần thông tin (Click để xem chi tiết) */}
+          <div 
+             style={{cursor: 'pointer'}} 
+             onClick={() => navigate(`/events/${ev.event_id}`)}
+             title="Xem chi tiết"
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <Tag color="orange">#{index + 1} Pending</Tag>
+              <span className="text-xs text-grey">Chờ {ev.days_waiting} ngày</span>
+            </div>
+
+            <div
+              className="text-bold"
+              style={{ fontSize: 16, color: "#1890ff", marginBottom: 8 }}
+            >
+              {ev.title}
+            </div>
+
+            <div className="text-sm text-grey" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div><UserOutlined /> Quản lý: <b>{ev.manager_name}</b></div>
+              <div><TeamOutlined /> {ev.current_participants}/{ev.target_participants} người</div>
+              <div><CalendarOutlined /> {new Date(ev.start_date).toLocaleDateString("vi-VN")}</div>
+              <div><EnvironmentOutlined /> {ev.location}</div>
+            </div>
+          </div>
+
+          {/* Phần nút thao tác (Tách biệt) */}
+          <div style={{ display: "flex", gap: 10, marginTop: 16, paddingTop: 12, borderTop: "1px dashed #d9d9d9" }}>
+            <Button
+              type="primary"
+              block
+              icon={<CheckOutlined />}
+              onClick={(e) => { e.stopPropagation(); handleApprove(ev.event_id); }}
+            >
+              DUYỆT
+            </Button>
+            <Button
+              danger
+              block
+              icon={<CloseOutlined />}
+              onClick={(e) => { e.stopPropagation(); openRejectModal(ev); }}
+            >
+              TỪ CHỐI
+            </Button>
+          </div>
+        </div>
+      ));
+
+      if (!data?.pending_events?.length) content = <Empty description="Hết việc! Không còn sự kiện chờ duyệt" />;
+    } else {
+      /* ================= TAB 2: TRENDING ================= */
+      headerClass = "header-red";
+      headerText = "Sự kiện thu hút";
+      HeaderIcon = FireFilled;
+
+      content = data?.trending_events?.map((ev, index) => (
+        <div
+          key={ev.event_id}
+          className={`dashboard-item trending-item clickable-card ${index === 0 ? "rank-1" : ""}`}
+          onClick={() => navigate(`/events/${ev.event_id}`)}
+        >
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <Tag color={index === 0 ? "red" : index === 1 ? "volcano" : "gold"}>
+                {index === 0 ? "TOP 1" : index === 1 ? "TOP 2" : `TOP ${index + 1}`}
+              </Tag>
+              <Tooltip title="Điểm tương tác">
+                <Tag color="gold"><StarFilled /> {ev.engagement_score}đ</Tag>
+              </Tooltip>
+            </div>
+
+            <div className="text-bold" style={{ fontSize: 16, color: "#cf1322", marginBottom: 6 }}>
+              {ev.title}
+            </div>
+
+            <div style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
+              <UserOutlined /> {ev.manager_name} | <TeamOutlined /> <b>{ev.current_participants}/{ev.target_participants}</b>
+            </div>
+
+            <div className="growth-box">
+              <div style={{ fontSize: 11, fontWeight: "bold", color: "#555", marginBottom: 4 }}>
+                <LineChartOutlined /> TĂNG TRƯỞNG 24H:
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12 }}>
+                <div style={{ color: "#389e0d" }}><ArrowUpOutlined /> +{ev.new_participants_24h} người</div>
+                <div style={{ color: "#096dd9" }}><ArrowUpOutlined /> +{ev.new_posts_24h} bài</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ));
+
+      if (!data?.trending_events?.length) content = <Empty description="Chưa có dữ liệu trending" />;
+    }
+
+    return (
+      <div className="dashboard-section animation-fade-in">
+        <div className={`section-header ${headerClass}`}>
+          <HeaderIcon /> {headerText}
+        </div>
+        <div className="section-grid">
+          {content}
+        </div>
+      </div>
+    );
+  };
+
   if (loading)
     return (
       <div style={{ padding: 100, textAlign: "center" }}>
@@ -132,224 +252,75 @@ const AdminDashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}>
-          <div className="stats-card stats-blue">
-            <div className="stats-value">
-              <UserOutlined /> {data?.stats?.total_users || 0}
-            </div>
-            <div className="stats-label">Người dùng</div>
-            <div className="text-xs" style={{ color: "#52c41a", marginTop: 4 }}>
-              <ArrowUpOutlined /> +{data?.stats?.new_users_24h || 0}/ngày
-            </div>
+      {/* ================= 1. THỐNG KÊ (GRID) ================= */}
+      <div className="stats-grid-container">
+        <div className="stats-card stats-blue">
+          <div className="stats-value">{data?.stats?.total_users || 0}</div>
+          <div className="stats-label"><UserOutlined /> Người dùng</div>
+          <div className="text-xs" style={{ color: "#52c41a", marginTop: 4 }}>
+             <ArrowUpOutlined /> +{data?.stats?.new_users_24h || 0} (24h)
           </div>
-        </Col>
+        </div>
 
-        <Col span={6}>
-          <div className="stats-card stats-green">
-            <div className="stats-value">
-              <CalendarOutlined /> {data?.stats?.total_events || 0}
-            </div>
-            <div className="stats-label">Sự kiện</div>
-            <div className="text-xs" style={{ color: "#52c41a", marginTop: 4 }}>
-              <ArrowUpOutlined /> +{data?.stats?.new_events_24h || 0}/ngày
-            </div>
+        <div className="stats-card stats-green">
+          <div className="stats-value">{data?.stats?.total_events || 0}</div>
+          <div className="stats-label"><CalendarOutlined /> Sự kiện</div>
+          <div className="text-xs" style={{ color: "#52c41a", marginTop: 4 }}>
+             <ArrowUpOutlined /> +{data?.stats?.new_events_24h || 0} (24h)
           </div>
-        </Col>
+        </div>
 
-        <Col span={6}>
-          <div className="stats-card stats-orange">
-            <div className="stats-value">
-              <ClockCircleOutlined /> {data?.stats?.pending_events || 0}
-            </div>
-            <div className="stats-label">Chờ duyệt</div>
-            <div className="text-xs" style={{ color: "#faad14", marginTop: 4 }}>
-              Cần xử lý gấp
-            </div>
+        <div className="stats-card stats-orange">
+          <div className="stats-value">{data?.stats?.pending_events || 0}</div>
+          <div className="stats-label"><ClockCircleOutlined /> Chờ duyệt</div>
+           <div className="text-xs" style={{ color: "#faad14", marginTop: 4 }}>
+             Cần xử lý gấp
           </div>
-        </Col>
+        </div>
 
-        <Col span={6}>
-          <div className="stats-card stats-red">
-            <div className="stats-value">
-              <LockOutlined /> {data?.stats?.locked_users || 0}
-            </div>
-            <div className="stats-label">Tài khoản khóa</div>
-            <div className="text-xs" style={{ color: "#cf1322", marginTop: 4 }}>
-              +{data?.stats?.new_locked_24h || 0} gần đây
-            </div>
+        <div className="stats-card stats-red">
+          <div className="stats-value">{data?.stats?.locked_users || 0}</div>
+          <div className="stats-label"><LockOutlined /> Đã khóa</div>
+          <div className="text-xs" style={{ color: "#cf1322", marginTop: 4 }}>
+             +{data?.stats?.new_locked_24h || 0} gần đây
           </div>
-        </Col>
-      </Row>
+        </div>
+      </div>
 
-      <Row gutter={24}>
-        {/* Pending events */}
-        <Col xs={24} md={12}>
-          <div className="dashboard-section">
-            <div className="section-header header-yellow">
-              <ClockCircleOutlined /> SỰ KIỆN CHỜ DUYỆT (
-              {data?.pending_events?.length || "đã duyệt hết sự kiện"})
-            </div>
+      {/* ================= 2. TABS (2 ITEM) ================= */}
+      <div className="custom-tabs-container">
+        <div className="custom-tabs">
+          {/* Do Admin chỉ có 2 tab, ta override style width của glider 
+             từ /3 thành /2 để thanh trượt đẹp hơn 
+          */}
+          <div 
+            className={`tab-glider`}
+            style={{
+                width: "calc((100% - 8px) / 2)",
+                transform: `translateX(${currentViewIndex * 100}%)`,
+                backgroundColor: currentViewIndex === 0 ? "#faad14" : "#f5222d" // Vàng cho Pending, Đỏ cho Trending
+            }}
+          ></div>
 
-            <div className="section-body custom-scroll">
-              {data?.pending_events?.map((ev, index) => (
-                <div key={ev.event_id} className="dashboard-item pending-item">
-                  <div
-                    style={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <Link 
-                      to={`/events/${ev.event_id}`}
-                      style={{ fontWeight: "bold", color: "#1890ff", fontSize: "15px" }}
-                    >
-                      {index + 1}. {ev.title}""
-                    </Link>
-                    <Tag color="orange">Chờ {ev.days_waiting} ngày</Tag>
-                  </div>
+          {tabs.map((tab, index) => (
+            <button
+              key={tab.key}
+              className={`tab-btn ${currentViewIndex === index ? "active" : ""}`}
+              onClick={() => setCurrentViewIndex(index)}
+            >
+              <span style={{ marginRight: 6 }}>{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: "#666",
-                      margin: "8px 0",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    <div>
-                      <UserOutlined /> {ev.manager_name} | <TeamOutlined />{" "}
-                      {ev.current_participants}/{ev.target_participants}
-                    </div>
-                    <div>
-                      <CalendarOutlined />{" "}
-                      {new Date(ev.start_date).toLocaleDateString("vi-VN")} |{" "}
-                      <EnvironmentOutlined /> {ev.location}
-                    </div>
-                  </div>
+      {/* ================= 3. CONTENT AREA ================= */}
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        {renderContent()}
+      </div>
 
-                  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                    <Button
-                      type="primary"
-                      size="small"
-                      icon={<CheckOutlined />}
-                      onClick={() => handleApprove(ev.event_id)}
-                    >
-                      DUYỆT
-                    </Button>
-                    <Button
-                      danger
-                      size="small"
-                      icon={<CloseOutlined />}
-                      onClick={() => openRejectModal(ev)}
-                    >
-                      TỪ CHỐI
-                    </Button>
-                  </div>
-                </div>
-              ))}
-
-              {!data?.pending_events?.length && (
-                <Empty description="Hết việc! Không còn sự kiện chờ duyệt" />
-              )}
-            </div>
-          </div>
-        </Col>
-
-        {/* Trending events */}
-        <Col xs={24} md={12}>
-          <div className="dashboard-section">
-            <div className="section-header header-red">
-              <FireFilled /> SỰ KIỆN THU HÚT
-            </div>
-
-            <div className="section-body custom-scroll">
-              {data?.trending_events?.map((ev, index) => (
-                <Link
-                  to={`/events/${ev.event_id}`}
-                  key={ev.event_id}
-                  style={{ display: 'block', textDecoration: 'none' }}
-                >
-                  <div
-                    className={`dashboard-item trending-item ${
-                      index === 0 ? "rank-1" : ""
-                    }`}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: 5,
-                      }}
-                    >
-                      <Tag
-                        color={
-                          index === 0 ? "red" : index === 1 ? "volcano" : "gold"
-                        }
-                      >
-                        {index === 0
-                          ? "TOP 1"
-                          : index === 1
-                            ? "TOP 2"
-                            : `TOP ${index + 1}`}
-                      </Tag>
-
-                      <Tooltip title="Điểm tương tác">
-                        <Tag color="gold">
-                          <StarFilled /> {ev.engagement_score}đ
-                        </Tag>
-                      </Tooltip>
-                    </div>
-
-                    <div className="text-bold" style={{ fontSize: 15, color: "#cf1322" }}>
-                      "{ev.title}"
-                    </div>
-
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: "#666",
-                        marginTop: 4,
-                        marginBottom: 8,
-                      }}
-                    >
-                      <UserOutlined /> {ev.manager_name} | <TeamOutlined />{" "}
-                      <b>
-                        {ev.current_participants}/{ev.target_participants}
-                      </b>
-                    </div>
-
-                    <div className="growth-box">
-                      <div
-                        style={{
-                          fontSize: 11,
-                          fontWeight: "bold",
-                          color: "#555",
-                          marginBottom: 4,
-                        }}
-                      >
-                        <LineChartOutlined /> TĂNG TRƯỞNG 24H:
-                      </div>
-
-                      <Row gutter={4} className="text-xs">
-                        <Col span={12} style={{ color: "#389e0d" }}>
-                          <ArrowUpOutlined /> +{ev.new_participants_24h} người
-                        </Col>
-                        <Col span={12} style={{ color: "#096dd9" }}>
-                          <ArrowUpOutlined /> +{ev.new_posts_24h} bài
-                        </Col>
-                      </Row>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-
-              {!data?.trending_events?.length && (
-                <Empty description="Chưa có dữ liệu trending" />
-              )}
-            </div>
-          </div>
-        </Col>
-      </Row>
-
-      {/* Modal từ chối sự kiện */}
+      {/* ================= 4. MODAL REJECT ================= */}
       <Modal
         title={
           rejectingEvent
@@ -362,16 +333,15 @@ const AdminDashboard = () => {
         okText="Xác nhận từ chối"
         cancelText="Hủy"
         confirmLoading={rejectLoading}
-        okButtonProps={{ danger: false }}
       >
-        <p>Nhập lý do từ chối:</p>
+        <p>Nhập lý do từ chối (bắt buộc):</p>
         <Input.TextArea
           rows={4}
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
           maxLength={500}
           showCount
-          placeholder="Ví dụ: Nội dung sự kiện chưa rõ ràng, cần bổ sung thông tin chi tiết..."
+          placeholder="Ví dụ: Nội dung chưa phù hợp, thiếu thông tin địa điểm..."
           style={{ marginTop: 4, marginBottom: 24 }}
         />
       </Modal>

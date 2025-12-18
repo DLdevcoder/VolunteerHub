@@ -5,7 +5,6 @@ const dashboardController = {
   // API chung để lấy dashboard dựa trên Role của user
   async getDashboard(req, res) {
     try {
-      // Giả sử middleware xác thực đã gán thông tin vào req.user
       const user_id = req.user.user_id;
       const user_role = req.user.role_name;
 
@@ -13,15 +12,12 @@ const dashboardController = {
 
       switch (user_role) {
         case "Volunteer":
-          // Cần đảm bảo method này tồn tại bên Model Dashboard
           dashboardData = await Dashboard.getVolunteerDashboard(user_id);
           break;
         case "Manager":
-          // Cần đảm bảo method này tồn tại bên Model Dashboard
           dashboardData = await Dashboard.getManagerDashboard(user_id);
           break;
         case "Admin":
-          // Admin có thể lấy data tổng hợp (hoặc gọi getFullDashboard logic)
           dashboardData = await Dashboard.getAdminDashboard();
           break;
         default:
