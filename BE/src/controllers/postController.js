@@ -1,12 +1,12 @@
-// src/controllers/postController.js
-import Post from "../models/Post.js";
-import Registration from "../models/Registration.js";
-import Event from "../models/Event.js";
-// [SỬA 1] Import UserService
+import PostService from "../services/postService.js";
+import RegistrationService from "../services/registrationService.js";
+import EventService from "../services/eventService.js";
 import UserService from "../services/UserService.js";
 
 const postController = {
-  // Xem danh sách bài đăng
+  // =================================================================
+  // 1. XEM DANH SÁCH BÀI ĐĂNG
+  // =================================================================
   async getEventPosts(req, res) {
     try {
       const { event_id } = req.params;
@@ -20,14 +20,14 @@ const postController = {
       if (isNaN(limit) || limit < 1) limit = 10;
       if (limit > 50) limit = 50;
 
-      // Kiểm tra sự kiện
-      const event = await Event.getEventById(event_id);
+      const event = await EventService.getEventById(event_id);
+
       if (!event)
         return res
           .status(404)
           .json({ success: false, message: "Sự kiện không tồn tại" });
 
-      // Kiểm tra trạng thái sự kiện (Phải Approved mới có tường)
+      // Kiểm tra trạng thái sự kiện
       if (event.approval_status !== "approved") {
         return res
           .status(403)
@@ -39,7 +39,7 @@ const postController = {
       if (event.manager_id === user_id) {
         canView = true;
       } else {
-        const reg = await Registration.findOne(user_id, event_id);
+        const reg = await RegistrationService.findOne(user_id, event_id);
         if (reg && (reg.status === "approved" || reg.status === "completed")) {
           canView = true;
         }
@@ -53,8 +53,12 @@ const postController = {
         });
       }
 
-      // Lấy dữ liệu (có phân trang)
-      const result = await Post.getByEventId(event_id, page, limit, user_id);
+      const result = await PostService.getByEventId(
+        event_id,
+        page,
+        limit,
+        user_id
+      );
 
       res.json({
         success: true,
@@ -67,7 +71,9 @@ const postController = {
     }
   },
 
-  // Đăng bài mới
+  // =================================================================
+  // 2. ĐĂNG BÀI MỚI
+  // =================================================================
   async createPost(req, res) {
     try {
       const { event_id } = req.params;
@@ -97,8 +103,7 @@ const postController = {
         });
       }
 
-      // (Đảm bảo user không bị khóa sau khi login)
-      // [SỬA 2] Dùng UserService.findById
+      // Kiểm tra User Active
       const currentUser = await UserService.findById(user_id);
       if (!currentUser || currentUser.status !== "Active") {
         return res.status(403).json({
@@ -107,8 +112,8 @@ const postController = {
         });
       }
 
-      // Kiểm tra sự kiện & quyền
-      const event = await Event.getEventById(event_id);
+      const event = await EventService.getEventById(event_id);
+
       if (!event)
         return res
           .status(404)
@@ -124,7 +129,7 @@ const postController = {
       if (event.manager_id === user_id) {
         canPost = true;
       } else {
-        const reg = await Registration.findOne(user_id, event_id);
+        const reg = await RegistrationService.findOne(user_id, event_id);
         if (reg && (reg.status === "approved" || reg.status === "completed")) {
           canPost = true;
         }
@@ -136,9 +141,8 @@ const postController = {
           .json({ success: false, message: "Bạn không có quyền đăng bài." });
       }
 
-      // Tạo bài
-      const postId = await Post.create({ event_id, user_id, content });
-      const newPost = await Post.getById(postId);
+      const postId = await PostService.create({ event_id, user_id, content });
+      const newPost = await PostService.getById(postId);
 
       res.status(201).json({
         success: true,
@@ -151,14 +155,15 @@ const postController = {
     }
   },
 
-  // Xoá bài đăng
+  // =================================================================
+  // 3. XÓA BÀI ĐĂNG
+  // =================================================================
   async deletePost(req, res) {
     try {
       const { post_id } = req.params;
       const user_id = req.user.user_id;
 
-      // Lấy thông tin bài viết
-      const post = await Post.getById(post_id);
+      const post = await PostService.getById(post_id);
 
       if (!post)
         return res
@@ -182,7 +187,7 @@ const postController = {
         canDelete = true;
       }
 
-      // Manager được quyền xóa bài của bất kỳ ai trong sự kiện của mình để dọn dẹp
+      // Manager được quyền xóa bài của bất kỳ ai trong sự kiện của mình
       else if (post.event_manager_id === user_id) {
         canDelete = true;
       }
@@ -195,8 +200,7 @@ const postController = {
         });
       }
 
-      // Thực hiện xóa
-      await Post.delete(post_id);
+      await PostService.delete(post_id);
 
       res.json({ success: true, message: "Đã xóa bài viết thành công" });
     } catch (error) {

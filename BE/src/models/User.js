@@ -1,5 +1,6 @@
 import { DataTypes, Model } from "sequelize";
 import sequelize from "../config/db.js";
+import Role from "./Role.js";
 
 class User extends Model {}
 
@@ -48,5 +49,6 @@ User.init(
     updatedAt: "updated_at",
   }
 );
+User.belongsTo(Role, { foreignKey: "role_id", as: "role" });
 
 export default User;

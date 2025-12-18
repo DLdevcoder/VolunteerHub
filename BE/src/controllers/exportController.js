@@ -1,8 +1,10 @@
-import Export from "../models/Export.js";
+import ExportService from "../services/exportService.js";
 import ExportUtils from "../utils/exportUtils.js";
 
 const exportController = {
-  // Export users
+  // =================================================================
+  // 1. EXPORT USERS
+  // =================================================================
   async exportUsers(req, res) {
     try {
       const { format = "json", ...filters } = req.query;
@@ -15,12 +17,13 @@ const exportController = {
         });
       }
 
-      const users = await Export.exportUsers(filters);
+      const users = await ExportService.exportUsers(filters);
       const filename = ExportUtils.generateFilename("users", format);
 
       if (format === "csv") {
         const fields = ExportUtils.getFieldsForType("users");
-        const csv = ExportUtils.convertToCSV(users, fields, "users"); // Thêm dataType
+        // Truyền thêm "users" để Utils biết cách format ngày tháng
+        const csv = ExportUtils.convertToCSV(users, fields, "users");
 
         ExportUtils.setExportHeaders(res, filename, "csv");
         return res.send(csv);
@@ -45,7 +48,9 @@ const exportController = {
     }
   },
 
-  // Export events
+  // =================================================================
+  // 2. EXPORT EVENTS
+  // =================================================================
   async exportEvents(req, res) {
     try {
       const { format = "json", ...filters } = req.query;
@@ -58,12 +63,12 @@ const exportController = {
         });
       }
 
-      const events = await Export.exportEvents(filters);
+      const events = await ExportService.exportEvents(filters);
       const filename = ExportUtils.generateFilename("events", format);
 
       if (format === "csv") {
         const fields = ExportUtils.getFieldsForType("events");
-        const csv = ExportUtils.convertToCSV(events, fields, "events"); // Thêm dataType
+        const csv = ExportUtils.convertToCSV(events, fields, "events");
 
         ExportUtils.setExportHeaders(res, filename, "csv");
         return res.send(csv);
@@ -88,7 +93,9 @@ const exportController = {
     }
   },
 
-  // Export registrations
+  // =================================================================
+  // 3. EXPORT REGISTRATIONS
+  // =================================================================
   async exportRegistrations(req, res) {
     try {
       const { format = "json", ...filters } = req.query;
@@ -101,12 +108,17 @@ const exportController = {
         });
       }
 
-      const registrations = await Export.exportRegistrations(filters);
+      const registrations = await ExportService.exportRegistrations(filters);
       const filename = ExportUtils.generateFilename("registrations", format);
 
       if (format === "csv") {
         const fields = ExportUtils.getFieldsForType("registrations");
-        const csv = ExportUtils.convertToCSV(registrations, fields);
+        // Thêm tham số "registrations" để format ngày tháng
+        const csv = ExportUtils.convertToCSV(
+          registrations,
+          fields,
+          "registrations"
+        );
 
         ExportUtils.setExportHeaders(res, filename, "csv");
         return res.send(csv);
@@ -131,7 +143,9 @@ const exportController = {
     }
   },
 
-  // Export posts
+  // =================================================================
+  // 4. EXPORT POSTS
+  // =================================================================
   async exportPosts(req, res) {
     try {
       const { format = "json", ...filters } = req.query;
@@ -144,12 +158,13 @@ const exportController = {
         });
       }
 
-      const posts = await Export.exportPostsAndComments(filters);
+      const posts = await ExportService.exportPostsAndComments(filters);
       const filename = ExportUtils.generateFilename("posts", format);
 
       if (format === "csv") {
         const fields = ExportUtils.getFieldsForType("posts");
-        const csv = ExportUtils.convertToCSV(posts, fields);
+        // Thêm tham số "posts" để format ngày tháng
+        const csv = ExportUtils.convertToCSV(posts, fields, "posts");
 
         ExportUtils.setExportHeaders(res, filename, "csv");
         return res.send(csv);
@@ -174,7 +189,9 @@ const exportController = {
     }
   },
 
-  // Export summary report
+  // =================================================================
+  // 5. EXPORT SUMMARY
+  // =================================================================
   async exportSummary(req, res) {
     try {
       const { format = "json" } = req.query;
@@ -187,7 +204,7 @@ const exportController = {
         });
       }
 
-      const summary = await Export.exportSummaryStats();
+      const summary = await ExportService.exportSummaryStats();
       const filename = ExportUtils.generateFilename("summary_report", format);
 
       if (format === "csv") {
@@ -196,7 +213,7 @@ const exportController = {
           label: key,
           value: key,
         }));
-        const csv = ExportUtils.convertToCSV(data, fields);
+        const csv = ExportUtils.convertToCSV(data, fields, "summary");
 
         ExportUtils.setExportHeaders(res, filename, "csv");
         return res.send(csv);
@@ -220,7 +237,9 @@ const exportController = {
     }
   },
 
-  // Export tất cả data (comprehensive report)
+  // =================================================================
+  // 6. EXPORT ALL (COMPREHENSIVE)
+  // =================================================================
   async exportAll(req, res) {
     try {
       const { format = "json", ...filters } = req.query;
@@ -234,11 +253,11 @@ const exportController = {
       }
 
       const [users, events, registrations, posts, summary] = await Promise.all([
-        Export.exportUsers(),
-        Export.exportEvents(),
-        Export.exportRegistrations(),
-        Export.exportPostsAndComments(),
-        Export.exportSummaryStats(),
+        ExportService.exportUsers(),
+        ExportService.exportEvents(),
+        ExportService.exportRegistrations(),
+        ExportService.exportPostsAndComments(),
+        ExportService.exportSummaryStats(),
       ]);
 
       const comprehensiveData = {
