@@ -201,7 +201,7 @@ const EventDetail = () => {
         { key: "posts", label: "Bài viết", children: renderVolunteerPostsTabContent() },
         { key: "volunteers", label: "DS Tình nguyện viên", children: <EventVolunteersListTab eventId={event_id} /> },
       ];
-      return <Card className="content-card"><Tabs defaultActiveKey="volunteers" items={items} /></Card>;
+      return <Card className="content-card"><Tabs defaultActiveKey="posts" items={items} /></Card>;
     }
 
     return (
