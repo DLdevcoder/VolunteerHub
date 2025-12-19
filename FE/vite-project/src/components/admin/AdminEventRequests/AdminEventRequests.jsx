@@ -1,8 +1,18 @@
-// src/components/admin/AdminEventRequests/AdminEventRequests.jsx
+import "../../../../public/style/EventTableShared.css"; 
+import "./AdminEventRequests.css";
+
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Card, Table, Tag, Button, Space, Select, Input, Modal } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
+import { Table, Button, Space, Select, Input, Modal, Typography, Tooltip } from "antd";
+import { 
+  DownloadOutlined, 
+  CheckCircleOutlined, 
+  CloseCircleOutlined,
+  SearchOutlined,
+  FilterOutlined,
+  CalendarOutlined,
+  UserOutlined
+} from "@ant-design/icons";
 
 import {
   fetchAdminEvents,
@@ -22,6 +32,25 @@ import useGlobalMessage from "../../../utils/hooks/useGlobalMessage";
 import exportApi from "../../../../apis/exportApi";
 
 const { Option } = Select;
+const { Title, Text } = Typography;
+
+// Map trạng thái sang Class CSS chung
+const getStatusConfig = (status) => {
+  switch (status) {
+    case "approved": return { className: "tag-approved", label: "Đã duyệt" };
+    case "pending": return { className: "tag-pending", label: "Chờ duyệt" };
+    case "rejected": return { className: "tag-rejected", label: "Từ chối" };
+    default: return { className: "tag-default", label: status };
+  }
+};
+
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleString("vi-VN", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+};
 
 const AdminEventRequests = () => {
   const dispatch = useDispatch();
@@ -38,10 +67,7 @@ const AdminEventRequests = () => {
   const [pageSize, setPageSize] = useState(10);
   const [rowLoadingId, setRowLoadingId] = useState(null);
 
-  // Export state
   const [exportingEvents, setExportingEvents] = useState(false);
-
-  // Modal reject
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectingEvent, setRejectingEvent] = useState(null);
@@ -78,32 +104,16 @@ const AdminEventRequests = () => {
   const handleExportEvents = async () => {
     try {
       setExportingEvents(true);
-      messageApi.loading({
-        content: "Đang tạo file báo cáo sự kiện...",
-        key: "exportMsg",
-      });
-
+      messageApi.loading({ content: "Đang tạo file...", key: "exportMsg" });
       const response = await exportApi.exportEvents("csv");
-
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-
-      const fileName = `events_report_${new Date()
-        .toISOString()
-        .slice(0, 10)}.csv`;
-      link.setAttribute("download", fileName);
-
+      link.setAttribute("download", `events_report_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
-
       link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      messageApi.success({
-        content: "Tải danh sách sự kiện thành công!",
-        key: "exportMsg",
-      });
+      messageApi.success({ content: "Xuất dữ liệu thành công!", key: "exportMsg" });
     } catch (error) {
       console.error(error);
       messageApi.error({ content: "Lỗi xuất dữ liệu.", key: "exportMsg" });
@@ -115,20 +125,11 @@ const AdminEventRequests = () => {
   const handleApprove = async (eventId) => {
     try {
       setRowLoadingId(eventId);
-      const res = await dispatch(approveEventThunk(eventId)).unwrap();
-
-      const msgFromRes =
-        res?.message || res?.payload?.message || res?.data?.message;
-      messageApi.success(msgFromRes || "Duyệt sự kiện thành công");
-
+      await dispatch(approveEventThunk(eventId)).unwrap();
+      messageApi.success("Đã duyệt sự kiện thành công");
       loadData(pagination.page || 1, pageSize);
     } catch (err) {
-      const errMsg =
-        err?.message ||
-        err?.payload?.message ||
-        err?.data?.message ||
-        "Không thể duyệt sự kiện";
-      messageApi.error(errMsg);
+      messageApi.error(err?.message || "Không thể duyệt sự kiện");
     } finally {
       setRowLoadingId(null);
     }
@@ -148,39 +149,19 @@ const AdminEventRequests = () => {
     }
     if (!rejectingEvent) return;
 
-    const eventId = rejectingEvent.event_id;
-
     try {
-      setRowLoadingId(eventId);
-      const res = await dispatch(
-        rejectEventThunk({ eventId, reason })
-      ).unwrap();
-
-      const msgFromRes =
-        res?.message || res?.payload?.message || res?.data?.message;
-      messageApi.success(msgFromRes || "Từ chối sự kiện thành công");
-
+      setRowLoadingId(rejectingEvent.event_id);
+      await dispatch(rejectEventThunk({ eventId: rejectingEvent.event_id, reason })).unwrap();
+      messageApi.success("Đã từ chối sự kiện");
       setRejectModalOpen(false);
       setRejectingEvent(null);
       setRejectReason("");
-
       loadData(pagination.page || 1, pageSize);
     } catch (err) {
-      const errMsg =
-        err?.message ||
-        err?.payload?.message ||
-        err?.data?.message ||
-        "Không thể từ chối sự kiện";
-      messageApi.error(errMsg);
+      messageApi.error(err?.message || "Không thể từ chối sự kiện");
     } finally {
       setRowLoadingId(null);
     }
-  };
-
-  const handleRejectCancel = () => {
-    setRejectModalOpen(false);
-    setRejectingEvent(null);
-    setRejectReason("");
   };
 
   const columns = [
@@ -188,57 +169,75 @@ const AdminEventRequests = () => {
       title: "Tên sự kiện",
       dataIndex: "title",
       key: "title",
+      width: 280,
+      render: (text) => <Text strong style={{ fontSize: 15, color: "#333" }}>{text}</Text>,
     },
     {
-      title: "Manager",
+      title: "Người tạo",
       dataIndex: "manager_name",
       key: "manager_name",
-    },
-    {
-      title: "Thời gian",
-      key: "time",
-      render: (_, record) => (
-        <>
-          {new Date(record.start_date).toLocaleString("vi-VN")} -{" "}
-          {new Date(record.end_date).toLocaleString("vi-VN")}
-        </>
+      width: 180,
+      render: (text) => (
+        <span style={{ color: "#555" }}>
+          <UserOutlined style={{ marginRight: 6, color: "#888" }} />
+          {text}
+        </span>
       ),
     },
     {
-      title: "Trạng thái duyệt",
+      title: "Thời gian diễn ra",
+      key: "time",
+      width: 280,
+      render: (_, record) => (
+        <div style={{ fontSize: 13, color: "#555", display: 'flex', alignItems: 'flex-start' }}>
+          <CalendarOutlined style={{ marginRight: 8, marginTop: 3, color: "#3674B5", flexShrink: 0 }} />
+          <span>{formatDateTime(record.start_date)} - {formatDateTime(record.end_date)}</span>
+        </div>
+      ),
+    },
+    {
+      title: "Trạng thái",
       dataIndex: "approval_status",
       key: "approval_status",
+      width: 140,
+      align: "center",
       render: (status) => {
-        let color = "default";
-        if (status === "approved") color = "green";
-        else if (status === "pending") color = "gold";
-        else if (status === "rejected") color = "red";
-        return <Tag color={color}>{status}</Tag>;
+        const { className, label } = getStatusConfig(status);
+        return <span className={`status-tag ${className}`}>{label}</span>;
       },
     },
     {
       title: "Hành động",
       key: "actions",
+      width: 180,
+      align: "center",
       render: (_, record) => (
         <Space>
-          <Button
-            type="primary"
-            size="small"
-            disabled={record.approval_status === "approved"}
-            loading={rowLoadingId === record.event_id}
-            onClick={() => handleApprove(record.event_id)}
-          >
-            Approve
-          </Button>
-          <Button
-            danger
-            size="small"
-            disabled={record.approval_status === "rejected"}
-            loading={rowLoadingId === record.event_id}
-            onClick={() => openRejectModal(record)}
-          >
-            Reject
-          </Button>
+          <Tooltip title="Duyệt sự kiện">
+            <Button
+              className="btn-admin-approve"
+              size="small"
+              icon={<CheckCircleOutlined />}
+              disabled={record.approval_status === "approved"}
+              loading={rowLoadingId === record.event_id}
+              onClick={() => handleApprove(record.event_id)}
+            >
+              Duyệt
+            </Button>
+          </Tooltip>
+          
+          <Tooltip title="Từ chối">
+            <Button
+              className="btn-admin-reject"
+              size="small"
+              icon={<CloseCircleOutlined />}
+              disabled={record.approval_status === "rejected"}
+              loading={rowLoadingId === record.event_id}
+              onClick={() => openRejectModal(record)}
+            >
+              Hủy
+            </Button>
+          </Tooltip>
         </Space>
       ),
     },
@@ -247,100 +246,96 @@ const AdminEventRequests = () => {
   const pag = pagination || {};
 
   return (
-    <div
-      style={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Card
-        title="Event requests"
-        style={{ flex: 1, display: "flex", flexDirection: "column" }}
-        bodyStyle={{ display: "flex", flexDirection: "column" }}
-        extra={
-          <Space>
-            <Button
-              icon={<DownloadOutlined />}
-              onClick={handleExportEvents}
-              loading={exportingEvents}
-            >
-              Export CSV
-            </Button>
+    <div className="event-table-container">
+      {/* HEADER */}
+      <div className="event-table-header" style={{ display: 'block' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <Title level={3} style={{ color: "#3674B5", margin: 0 }}>
+              Yêu cầu duyệt sự kiện
+            </Title>
+          </div>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={handleExportEvents}
+            loading={exportingEvents}
+            style={{ borderRadius: 6 }}
+          >
+            Xuất Excel
+          </Button>
+        </div>
 
-            <div
-              style={{
-                width: 1,
-                height: 20,
-                background: "#f0f0f0",
-                margin: "0 8px",
-              }}
-            />
-
-            <span>Trạng thái:</span>
+        {/* FILTER BAR */}
+        <div className="admin-filter-bar">
+          <div className="filter-group">
+            <FilterOutlined style={{ color: "#888" }} />
+            <span className="filter-label">Trạng thái:</span>
             <Select
-              style={{ width: 160 }}
+              style={{ width: 140 }}
               value={approvalFilter}
               onChange={setApprovalFilter}
             >
-              <Option value="">All</Option>
-              <Option value="pending">Pending</Option>
-              <Option value="approved">Approved</Option>
-              <Option value="rejected">Rejected</Option>
+              <Option value="">Tất cả</Option>
+              <Option value="pending">Chờ duyệt</Option>
+              <Option value="approved">Đã duyệt</Option>
+              <Option value="rejected">Đã từ chối</Option>
             </Select>
+          </div>
 
-            <Input.Search
+          <div className="filter-group" style={{ flex: 1 }}>
+            <SearchOutlined style={{ color: "#888" }} />
+            <span className="filter-label">Tìm kiếm:</span>
+            <Input
               allowClear
-              placeholder="Tìm kiếm theo tên"
-              style={{ width: 220 }}
+              placeholder="Nhập tên sự kiện..."
+              style={{ maxWidth: 300, borderRadius: 6 }}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onSearch={() => loadData(1, pageSize)}
+              onPressEnter={() => loadData(1, pageSize)}
             />
-          </Space>
-        }
-      >
-        <Table
-          style={{ flex: 1 }}
-          rowKey="event_id"
-          loading={loading}
-          columns={columns}
-          dataSource={events}
-          pagination={{
-            current: pag.page || 1,
-            pageSize,
-            total: pag.total || 0,
-          }}
-          onChange={handleTableChange}
-        />
+          </div>
+        </div>
+      </div>
 
-        <Modal
-          title={
-            rejectingEvent
-              ? `Từ chối sự kiện: ${rejectingEvent.title}`
-              : "Từ chối sự kiện"
-          }
-          open={rejectModalOpen}
-          onOk={handleRejectConfirm}
-          onCancel={handleRejectCancel}
-          okText="Xác nhận từ chối"
-          cancelText="Hủy"
-          confirmLoading={
-            rejectingEvent && rowLoadingId === rejectingEvent.event_id
-          }
-        >
-          <p>Nhập lý do từ chối:</p>
-          <Input.TextArea
-            rows={4}
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
-            maxLength={500}
-            showCount
-            placeholder="Ví dụ: Nội dung sự kiện chưa rõ ràng, cần bổ sung..."
-            style={{ marginTop: 4, marginBottom: 24 }}
-          />
-        </Modal>
-      </Card>
+      {/* TABLE */}
+      <Table
+        className="shared-event-table"
+        rowKey="event_id"
+        loading={loading}
+        columns={columns}
+        dataSource={events}
+        pagination={{
+          current: pag.page || 1,
+          pageSize,
+          total: pag.total || 0,
+          showSizeChanger: true,
+        }}
+        onChange={handleTableChange}
+      />
+
+      {/* REJECT MODAL */}
+      <Modal
+        title={<span className="reject-modal-title">Từ chối sự kiện</span>}
+        open={rejectModalOpen}
+        onOk={handleRejectConfirm}
+        onCancel={() => setRejectModalOpen(false)}
+        okText="Xác nhận"
+        cancelText="Hủy bỏ"
+        okButtonProps={{ danger: true, loading: rowLoadingId === rejectingEvent?.event_id }}
+        destroyOnClose
+      >
+        <p style={{ marginBottom: 8 }}>
+          Bạn đang từ chối sự kiện: <strong>{rejectingEvent?.title}</strong>
+        </p>
+        <Input.TextArea
+          rows={4}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          maxLength={500}
+          showCount
+          placeholder="Vui lòng nhập lý do từ chối để Manager chỉnh sửa..."
+        />
+      </Modal>
     </div>
   );
 };

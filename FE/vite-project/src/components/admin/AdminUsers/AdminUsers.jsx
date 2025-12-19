@@ -1,9 +1,21 @@
-import { CiCirclePlus } from "react-icons/ci";
+import "../../../../public/style/EventTableShared.css"; 
+import "./AdminUsers.css";
+
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Table, Tag, Select, Button, Card, Space } from "antd";
+import { Table, Tag, Select, Button, Space, Typography, Tooltip } from "antd";
 import { useNavigate } from "react-router-dom";
-import { DownloadOutlined } from "@ant-design/icons";
+import { 
+  DownloadOutlined, 
+  PlusOutlined, 
+  UserOutlined, 
+  MailOutlined,
+  SafetyCertificateOutlined,
+  LockOutlined,
+  UnlockOutlined,
+  UserSwitchOutlined,
+  FilterOutlined
+} from "@ant-design/icons";
 
 import {
   fetchUsersThunk,
@@ -14,6 +26,7 @@ import useGlobalMessage from "../../../utils/hooks/useGlobalMessage";
 import exportApi from "../../../../apis/exportApi";
 
 const { Option } = Select;
+const { Title, Text } = Typography;
 
 const AdminUsers = () => {
   const dispatch = useDispatch();
@@ -27,8 +40,6 @@ const AdminUsers = () => {
   const [statusFilter, setStatusFilter] = useState();
   const [pageSize, setPageSize] = useState(10);
   const [rowLoadingId, setRowLoadingId] = useState(null);
-
-  // State loading cho export
   const [exportingUsers, setExportingUsers] = useState(false);
 
   const loadData = (page = 1, limit = pageSize) => {
@@ -52,56 +63,33 @@ const AdminUsers = () => {
     loadData(pag.current, pag.pageSize);
   };
 
-  // Logic export Users
   const handleExportUsers = async () => {
     try {
       setExportingUsers(true);
-      messageApi.loading({
-        content: "Đang xuất danh sách người dùng...",
-        key: "exportUserMsg",
-      });
-      
+      messageApi.loading({ content: "Đang xuất danh sách...", key: "exportUserMsg" });
       const response = await exportApi.exportUsers("csv");
-      
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      const fileName = `users_report_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.setAttribute("download", fileName);
+      link.setAttribute("download", `users_report_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
-      
       link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      messageApi.success({
-        content: "Tải danh sách người dùng thành công!",
-        key: "exportUserMsg",
-      });
+      messageApi.success({ content: "Xuất thành công!", key: "exportUserMsg" });
     } catch (error) {
       console.error(error);
-      messageApi.error({
-        content: "Lỗi xuất dữ liệu người dùng.",
-        key: "exportUserMsg",
-      });
+      messageApi.error({ content: "Lỗi xuất dữ liệu.", key: "exportUserMsg" });
     } finally {
       setExportingUsers(false);
     }
   };
 
-  // Toggle Active <-> Locked (UI gọi “Blocked” nhưng DB dùng “Locked”)
   const toggleStatus = async (user) => {
     const newStatus = user.status === "Active" ? "Locked" : "Active";
     try {
       setRowLoadingId(user.user_id);
-      await dispatch(
-        updateUserStatusThunk({ userId: user.user_id, status: newStatus })
-      ).unwrap();
-      messageApi.success(
-        newStatus === "Locked"
-          ? "Đã khóa tài khoản người dùng"
-          : "Đã mở khóa tài khoản người dùng"
-      );
+      await dispatch(updateUserStatusThunk({ userId: user.user_id, status: newStatus })).unwrap();
+      messageApi.success(newStatus === "Locked" ? "Đã khóa tài khoản" : "Đã mở khóa tài khoản");
     } catch (err) {
       messageApi.error(err || "Không thể cập nhật trạng thái");
     } finally {
@@ -109,32 +97,25 @@ const AdminUsers = () => {
     }
   };
 
-  const makeManager = async (user) => {
+  const changeRole = async (user, newRole) => {
     try {
       setRowLoadingId(user.user_id);
-      await dispatch(
-        updateUserRoleThunk({ userId: user.user_id, role_name: "Manager" })
-      ).unwrap();
-      messageApi.success("Đã cập nhật role user thành Manager");
+      await dispatch(updateUserRoleThunk({ userId: user.user_id, role_name: newRole })).unwrap();
+      messageApi.success(`Đã chuyển quyền thành ${newRole}`);
     } catch (err) {
-      messageApi.error(err || "Không thể cập nhật role");
+      messageApi.error(err || "Không thể cập nhật quyền");
     } finally {
       setRowLoadingId(null);
     }
   };
 
-  const makeVolunteer = async (user) => {
-    try {
-      setRowLoadingId(user.user_id);
-      await dispatch(
-        updateUserRoleThunk({ userId: user.user_id, role_name: "Volunteer" })
-      ).unwrap();
-      messageApi.success("Đã cập nhật role user thành Volunteer");
-    } catch (err) {
-      messageApi.error(err || "Không thể cập nhật role");
-    } finally {
-      setRowLoadingId(null);
-    }
+  // Helper render role tag
+  const renderRoleTag = (role) => {
+    let className = "role-tag";
+    if (role === "Admin") className += " role-admin";
+    else if (role === "Manager") className += " role-manager";
+    else className += " role-volunteer";
+    return <Tag className={className}>{role}</Tag>;
   };
 
   const columns = [
@@ -142,69 +123,98 @@ const AdminUsers = () => {
       title: "Họ tên",
       dataIndex: "full_name",
       key: "full_name",
+      render: (text) => (
+        <span style={{ fontWeight: 600, color: "#333" }}>
+          <UserOutlined style={{ marginRight: 8, color: "#3674B5" }} />
+          {text}
+        </span>
+      ),
     },
     {
       title: "Email",
       dataIndex: "email",
       key: "email",
+      render: (text) => (
+        <span style={{ color: "#555" }}>
+          <MailOutlined style={{ marginRight: 8, color: "#888" }} />
+          {text}
+        </span>
+      ),
     },
     {
-      title: "Role",
+      title: "Vai trò",
       dataIndex: "role_name",
       key: "role_name",
-      render: (role) => <Tag>{role}</Tag>,
+      width: 120,
+      align: "center",
+      render: (role) => renderRoleTag(role),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
+      width: 120,
+      align: "center",
       render: (status) => {
-        const visibleStatus = status === "Locked" ? "Blocked" : status;
+        const isLocked = status === "Locked";
         return (
-          <Tag color={visibleStatus === "Active" ? "green" : "red"}>
-            {visibleStatus}
-          </Tag>
+          <span className={isLocked ? "user-status-locked" : "user-status-active"}>
+            {isLocked ? "Blocked" : "Active"}
+          </span>
         );
       },
     },
     {
       title: "Hành động",
       key: "action",
+      width: 200,
+      align: "center",
       render: (_, record) => {
         const isSelf = currentUser?.user_id === record.user_id;
+        const isLocked = record.status === "Locked";
 
         return (
           <Space>
-            <Button
-              size="small"
-              disabled={isSelf}
-              danger
-              loading={rowLoadingId === record.user_id}
-              onClick={() => toggleStatus(record)}
-            >
-              {record.status === "Active" ? "Block" : "Unblock"}
-            </Button>
-
-            {record.role_name !== "Volunteer" && (
+            <Tooltip title={isLocked ? "Mở khóa tài khoản" : "Khóa tài khoản"}>
               <Button
                 size="small"
-                loading={rowLoadingId === record.user_id}
                 disabled={isSelf}
-                onClick={() => makeVolunteer(record)}
-              >
-                Make Volunteer
-              </Button>
-            )}
+                danger={!isLocked}
+                type={isLocked ? "primary" : "default"} // Locked thì nút xanh để mở, Active thì nút đỏ để khóa
+                className="btn-action-user"
+                icon={isLocked ? <UnlockOutlined /> : <LockOutlined />}
+                loading={rowLoadingId === record.user_id}
+                onClick={() => toggleStatus(record)}
+              />
+            </Tooltip>
 
             {record.role_name !== "Manager" && (
-              <Button
-                size="small"
-                loading={rowLoadingId === record.user_id}
-                disabled={isSelf}
-                onClick={() => makeManager(record)}
-              >
-                Make Manager
-              </Button>
+              <Tooltip title="Đổi thành Manager">
+                <Button
+                  size="small"
+                  icon={<UserSwitchOutlined />}
+                  className="btn-action-user"
+                  loading={rowLoadingId === record.user_id}
+                  disabled={isSelf}
+                  onClick={() => changeRole(record, "Manager")}
+                >
+                  Manager
+                </Button>
+              </Tooltip>
+            )}
+
+            {record.role_name !== "Volunteer" && (
+              <Tooltip title="Đổi thành Volunteer">
+                <Button
+                  size="small"
+                  className="btn-action-user"
+                  loading={rowLoadingId === record.user_id}
+                  disabled={isSelf}
+                  onClick={() => changeRole(record, "Volunteer")}
+                >
+                  Volunteer
+                </Button>
+              </Tooltip>
             )}
           </Space>
         );
@@ -215,42 +225,45 @@ const AdminUsers = () => {
   const pag = admin.pagination || {};
 
   return (
-    <div
-      style={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Card
-        title="Users"
-        style={{ flex: 1, display: "flex", flexDirection: "column" }}
-        bodyStyle={{ display: "flex", flexDirection: "column" }}
-        extra={
+    <div className="event-table-container">
+      {/* HEADER */}
+      <div className="event-table-header" style={{ display: 'block' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <Title level={3} style={{ color: "#3674B5", margin: 0 }}>
+              Quản lý người dùng
+            </Title>
+          </div>
+          
           <Space>
-            {/* Nút Export CSV */}
             <Button
               icon={<DownloadOutlined />}
               onClick={handleExportUsers}
               loading={exportingUsers}
+              style={{ borderRadius: 6 }}
             >
               Export CSV
             </Button>
-            
-            <div style={{ width: 1, height: 20, background: '#f0f0f0', margin: '0 8px' }} />
-
             <Button
               type="primary"
+              icon={<PlusOutlined />}
               onClick={() => navigate("/admin/users/create")}
+              style={{ background: "#3674B5", borderRadius: 6 }}
             >
-              Tạo tài khoản mới
+              Tạo mới
             </Button>
+          </Space>
+        </div>
 
-            <span>Role:</span>
+        {/* FILTER BAR */}
+        <div className="admin-users-filter">
+          <div className="filter-group">
+            <SafetyCertificateOutlined style={{ color: "#888" }} />
+            <span className="filter-label">Vai trò:</span>
             <Select
               allowClear
               style={{ width: 140 }}
-              placeholder="All"
+              placeholder="Tất cả"
               value={roleFilter}
               onChange={setRoleFilter}
             >
@@ -258,35 +271,40 @@ const AdminUsers = () => {
               <Option value="Manager">Manager</Option>
               <Option value="Admin">Admin</Option>
             </Select>
+          </div>
 
-            <span>Status:</span>
+          <div className="filter-group">
+            <FilterOutlined style={{ color: "#888" }} />
+            <span className="filter-label">Trạng thái:</span>
             <Select
               allowClear
               style={{ width: 140 }}
-              placeholder="All"
+              placeholder="Tất cả"
               value={statusFilter}
               onChange={setStatusFilter}
             >
               <Option value="Active">Active</Option>
               <Option value="Locked">Blocked</Option>
             </Select>
-          </Space>
-        }
-      >
-        <Table
-          style={{ flex: 1 }}
-          rowKey="user_id"
-          loading={admin.loadingList}
-          columns={columns}
-          dataSource={admin.list}
-          pagination={{
-            current: pag.current_page || 1,
-            pageSize,
-            total: pag.total_records || 0,
-          }}
-          onChange={handleTableChange}
-        />
-      </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* TABLE */}
+      <Table
+        className="shared-event-table"
+        rowKey="user_id"
+        loading={admin.loadingList}
+        columns={columns}
+        dataSource={admin.list}
+        pagination={{
+          current: pag.current_page || 1,
+          pageSize,
+          total: pag.total_records || 0,
+          showSizeChanger: true,
+        }}
+        onChange={handleTableChange}
+      />
     </div>
   );
 };

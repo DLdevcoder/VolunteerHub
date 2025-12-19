@@ -1,19 +1,38 @@
+import "../../../public/style/EventTableShared.css";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Card, Table, Tag, Spin, Empty, Typography } from "antd";
+import { Table, Spin, Empty, Typography, Space } from "antd";
+import { 
+  CalendarOutlined, 
+  EnvironmentOutlined, 
+  FieldTimeOutlined 
+} from "@ant-design/icons";
 
 import eventApi from "../../../apis/eventApi";
 import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 
-const { Text } = Typography;
+const { Title, Text } = Typography;
+const getStatusConfig = (status) => {
+  switch (status) {
+    case "pending": return { className: "tag-pending", label: "Chờ duyệt" };
+    case "approved": return { className: "tag-approved", label: "Đã tham gia" };
+    case "completed": return { className: "tag-completed", label: "Hoàn thành" };
+    case "rejected": return { className: "tag-rejected", label: "Từ chối" };
+    case "cancelled": return { className: "tag-cancelled", label: "Đã hủy" };
+    default: return { className: "tag-default", label: status };
+  }
+};
 
-const statusColorMap = {
-  pending: "gold",
-  approved: "green",
-  rejected: "red",
-  cancelled: "default",
-  completed: "blue",
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 const History = () => {
@@ -36,129 +55,137 @@ const History = () => {
           messageApi.error(res?.message || "Không tải được lịch sử sự kiện");
           return;
         }
-
-        const list = res.data || [];
-        console.log("My event history:", list); // debug structure từ BE
-        setHistory(list);
+        setHistory(res.data || []);
       } catch (err) {
         console.error("Get history error:", err);
-        const msg =
-          err?.response?.data?.message ||
-          err?.message ||
-          "Không tải được lịch sử sự kiện";
-        messageApi.error(msg);
+        messageApi.error("Không tải được lịch sử sự kiện");
       } finally {
         setLoading(false);
       }
     };
 
-    // chỉ Volunteer mới có tab này, nhưng check thêm cho chắc
     if (authUser && role === "Volunteer") {
       fetchHistory();
     }
   }, [authUser, role, messageApi]);
 
-  if (!authUser) {
+  if (!authUser || role !== "Volunteer") {
     return (
-      <Card title="Lịch sử tham gia">
-        <Empty description="Bạn cần đăng nhập để xem lịch sử tham gia sự kiện." />
-      </Card>
+      // SỬA: Dùng class chung
+      <div className="event-table-container">
+        <Empty description="Vui lòng đăng nhập tài khoản Tình nguyện viên." />
+      </div>
     );
   }
 
-  if (role !== "Volunteer") {
-    return (
-      <Card title="Lịch sử tham gia">
-        <Empty description="Chức năng này chỉ dành cho tài khoản Volunteer." />
-      </Card>
-    );
-  }
-
-  // Helper lấy status từ 1 record (do BE có thể đặt tên khác nhau)
   const getStatusFromRecord = (record) =>
-    record.status || record.registration_status || record.reg_status || "";
+    record.status || record.registration_status || record.reg_status || "pending";
 
   const columns = [
     {
       title: "Sự kiện",
       dataIndex: "title",
       key: "title",
+      width: 250,
       render: (_, record) => (
-        <Text strong>{record.title || record.event_title}</Text>
+        <Text strong style={{ fontSize: 15, color: "#333" }}>
+          {record.title || record.event_title}
+        </Text>
       ),
     },
     {
-      title: "Thời gian",
+      title: "Thời gian diễn ra",
       key: "time",
+      width: 320, 
       render: (_, record) => {
         const start = record.start_date || record.event_start_date;
         const end = record.end_date || record.event_end_date;
-        if (!start || !end) return "(không rõ)";
+        if (!start || !end) return "--";
 
-        return `${new Date(start).toLocaleString(
-          "vi-VN"
-        )} - ${new Date(end).toLocaleString("vi-VN")}`;
+        return (
+          <div style={{ color: "#555", fontSize: 13, display: "flex", alignItems: "flex-start" }}>
+            <CalendarOutlined style={{ marginRight: 8, marginTop: 3, color: "#3674B5", flexShrink: 0 }} />
+            <span>
+              {formatDateTime(start)} - {formatDateTime(end)}
+            </span>
+          </div>
+        );
       },
     },
     {
       title: "Địa điểm",
       dataIndex: "location",
       key: "location",
+      render: (loc) => (
+        <span style={{ color: "#555" }}>
+          <EnvironmentOutlined style={{ marginRight: 6, color: "#3674B5" }} />
+          {loc}
+        </span>
+      )
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
+      width: 150,
       filters: [
-        { text: "Pending", value: "pending" },
-        { text: "Approved", value: "approved" },
-        { text: "Rejected", value: "rejected" },
-        { text: "Cancelled", value: "cancelled" },
-        { text: "Completed", value: "completed" },
+        { text: "Chờ duyệt", value: "pending" },
+        { text: "Đã tham gia", value: "approved" },
+        { text: "Từ chối", value: "rejected" },
+        { text: "Hoàn thành", value: "completed" },
       ],
-      filterMultiple: false,
-      onFilter: (value, record) => {
-        const status = getStatusFromRecord(record);
-        return status === value;
-      },
+      onFilter: (value, record) => getStatusFromRecord(record) === value,
       render: (_, record) => {
-        const status = getStatusFromRecord(record);
-        if (!status) return "-";
-        return (
-          <Tag
-            color={statusColorMap[status] || "default"}
-            style={{ textTransform: "capitalize" }}
-          >
-            {status}
-          </Tag>
-        );
+        const statusKey = getStatusFromRecord(record);
+        const { className, label } = getStatusConfig(statusKey);
+        // SỬA: Dùng class "status-tag" chung
+        return <span className={`status-tag ${className}`}>{label}</span>;
       },
     },
     {
       title: "Ngày đăng ký",
       dataIndex: "registration_date",
       key: "registration_date",
+      width: 160,
+      align: "right",
       render: (val, record) => {
         const date = val || record.reg_date;
-        return date ? new Date(date).toLocaleString("vi-VN") : "-";
+        return (
+          <span style={{ color: "#888", fontSize: 13 }}>
+            <FieldTimeOutlined style={{ marginRight: 4 }} />
+            {date ? new Date(date).toLocaleDateString("vi-VN") : "-"}
+          </span>
+        );
       },
     },
   ];
 
   return (
-    <Card title="Lịch sử tham gia sự kiện">
+    // SỬA: Dùng class container chung
+    <div className="event-table-container">
+      {/* SỬA: Dùng class header chung */}
+      <div className="event-table-header">
+        <div>
+          <Title level={3} style={{ color: "#3674B5", margin: 0 }}>
+            Lịch sử
+          </Title>
+        </div>
+      </div>
+
       {loading ? (
-        <div style={{ textAlign: "center", padding: 24 }}>
-          <Spin />
+        <div style={{ textAlign: "center", padding: 40 }}>
+          <Spin size="large" />
         </div>
       ) : !history.length ? (
-        <Empty description="Bạn chưa tham gia sự kiện nào." />
+        <Empty description="Bạn chưa tham gia sự kiện nào." image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (
         <Table
+          // SỬA: Dùng class table chung
+          className="shared-event-table"
           rowKey={(record) => record.registration_id || record.event_id}
           columns={columns}
           dataSource={history}
-          pagination={false}
+          pagination={{ pageSize: 10 }}
           onRow={(record) => ({
             onClick: () => {
               const eventId = record.event_id;
@@ -167,7 +194,7 @@ const History = () => {
           })}
         />
       )}
-    </Card>
+    </div>
   );
 };
 

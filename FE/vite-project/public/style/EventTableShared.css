@@ -1,0 +1,93 @@
+/* src/styles/EventTableShared.css */
+
+:root {
+  --primary-color: #3674B5;
+  --bg-mint: #D1F8EF;
+  --bg-pale-blue: #A1E3F9;
+}
+
+/* --- 1. CONTAINER CHUNG --- */
+.event-table-container {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.event-table-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f5f5f5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* --- 2. TABLE STYLES --- */
+.shared-event-table .ant-table-thead > tr > th {
+  background-color: #F7FBFF !important; /* Header nền xanh siêu nhạt */
+  color: #3674B5 !important;           /* Chữ xanh chủ đạo */
+  font-weight: 700 !important;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.shared-event-table .ant-table-tbody > tr > td {
+  padding: 16px 16px;
+  font-size: 14px;
+}
+
+/* Hiệu ứng hover dòng */
+.shared-event-table .ant-table-tbody > tr:hover > td {
+  background-color: #f0f7ff !important;
+  cursor: pointer;
+}
+
+/* --- 3. STATUS TAGS (Đồng bộ toàn hệ thống) --- */
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 100px;
+  text-transform: capitalize;
+  border: 1px solid transparent;
+}
+
+/* Các màu sắc */
+.tag-pending { background-color: #D1F8EF; color: #3674B5; border-color: #D1F8EF; }
+.tag-approved { background-color: #A1E3F9; color: #1e4b7a; border-color: #A1E3F9; }
+.tag-completed { background-color: #f6ffed; color: #52c41a; border-color: #b7eb8f; }
+.tag-rejected { background-color: #fff1f0; color: #ff4d4f; border-color: #ffa39e; }
+.tag-cancelled, .tag-default { background-color: #f5f5f5; color: #999; border-color: #d9d9d9; }
+
+/* --- 4. ACTION BUTTONS (Outline) --- */
+.btn-outline-edit {
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  background-color: #fff !important;
+  border: 1px solid #3674B5 !important;
+  color: #3674B5 !important;
+  box-shadow: none !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+}
+
+.btn-outline-edit:hover {
+  background-color: #3674B5 !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .event-table-container { padding: 16px; }
+  .event-table-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+}

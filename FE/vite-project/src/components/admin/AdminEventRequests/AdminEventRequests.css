@@ -1,0 +1,59 @@
+/* src/components/admin/AdminEventRequests/AdminEventRequests.css */
+
+/* Import style chung nếu cần, hoặc giả sử đã import ở component */
+
+.admin-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+/* Custom Modal Style */
+.reject-modal-title {
+  color: #ff4d4f;
+  font-weight: 600;
+}
+
+/* Action Buttons specific for Admin */
+.btn-admin-approve {
+  border-color: #3674B5 !important;
+  color: #3674B5 !important;
+  background: #fff !important;
+}
+.btn-admin-approve:hover {
+  background: #3674B5 !important;
+  color: #fff !important;
+}
+
+.btn-admin-reject {
+  border-color: #ff4d4f !important;
+  color: #ff4d4f !important;
+  background: #fff !important;
+}
+.btn-admin-reject:hover {
+  background: #ff4d4f !important;
+  color: #fff !important;
+}
+
+@media (max-width: 768px) {
+  .admin-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
