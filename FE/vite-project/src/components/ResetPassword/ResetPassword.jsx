@@ -88,9 +88,6 @@ const ResetPassword = () => {
           <Title level={3} style={{ color: "#333", marginBottom: 4 }}>
             Đổi mật khẩu
           </Title>
-          <Text type="secondary">
-            Vui lòng nhập mật khẩu hiện tại và mật khẩu mới để bảo mật tài khoản.
-          </Text>
         </div>
 
         {/* === FORM BODY === */}
