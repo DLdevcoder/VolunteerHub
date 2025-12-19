@@ -1,8 +1,4 @@
-/* =========================================
-   1. GLOBAL VARIABLES & RESET
-   ========================================= */
 :root {
-  /* Colors */
   --primary-blue: #3674B5;
   --color-dark-blue: #3674B5;
   --color-med-blue: #578FCA;
@@ -13,7 +9,6 @@
   --border-color: #eee;
   --bg-main: #f4f6f8;
 
-  /* Effects */
   --shadow-sm: 0 2px 6px rgba(0,0,0,0.03);
   --shadow-md: 0 4px 15px rgba(0, 0, 0, 0.05);
   --transition: all 0.3s ease;
@@ -37,9 +32,6 @@
   margin: 0 !important;
 }
 
-/* =========================================
-   2. STATS CARDS (Flexbox Optimized)
-   ========================================= */
 .stats-grid-container {
   display: flex;
   gap: 16px;
@@ -94,7 +86,6 @@
   flex-shrink: 0;
 }
 
-/* Stats Card Themes */
 .card-theme-1 { border-left-color: var(--color-dark-blue); }
 .card-theme-1 .stats-number, .card-theme-1 .stats-icon-bg { color: var(--color-dark-blue); }
 .card-theme-1 .stats-icon-bg { background: rgba(54, 116, 181, 0.1); }
@@ -115,9 +106,6 @@
 .card-theme-5 .stats-number, .card-theme-5 .stats-icon-bg { color: #08979c; }
 .card-theme-5 .stats-icon-bg { background: var(--color-pale-mint); }
 
-/* =========================================
-   3. CUSTOM TABS
-   ========================================= */
 .custom-tabs-container {
   display: flex;
   justify-content: center;
@@ -167,9 +155,6 @@
   margin-right: 6px;
 }
 
-/* =========================================
-   4. LAYOUTS SYNC (Admin & Volunteer)
-   ========================================= */
 .dashboard-section { margin-bottom: 20px; }
 
 .section-header {
@@ -194,7 +179,6 @@
   gap: 16px;
 }
 
-/* Thẻ hàng ngang chuẩn đồng bộ 2025 */
 .horizontal-item {
   background: #fff;
   border: 1px solid #e8e8e8;
@@ -219,7 +203,6 @@
   flex: 1;
 }
 
-/* Khóa Width 380px để không bị nhảy vách ngăn */
 .item-info-main, .trending-info-panel, .pending-info-col {
   width: 380px; 
   padding-right: 24px;
@@ -237,7 +220,6 @@
   display: block;
 }
 
-/* Vách ngăn dọc */
 .item-stats-side, .trending-stats-panel {
   display: flex;
   flex-direction: column;
@@ -247,7 +229,6 @@
   min-width: 160px;
 }
 
-/* Styles cho nội dung bên trong */
 .pending-status-row, .trending-tags-row {
   display: flex;
   align-items: center;
@@ -262,9 +243,6 @@
 .trending-stat-growth { font-size: 13px; color: var(--growth-green); font-weight: 600; }
 .trending-stat-posts { font-size: 13px; color: var(--primary-blue); font-weight: 600; }
 
-/* =========================================
-   5. ACTIVITY GRID (Tab Hoạt động)
-   ========================================= */
 .activity-grid-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -316,9 +294,6 @@
 .activity-type-label { font-size: 11px; color: var(--primary-blue); font-weight: bold; margin-bottom: 2px; }
 .activity-event-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
 
-/* =========================================
-   6. NAVIGATION & ACTION BUTTONS
-   ========================================= */
 .item-action-col {
   margin-left: auto;
   padding-left: 20px;
@@ -350,9 +325,6 @@
 .arrow-btn-circle:hover { background-color: var(--primary-blue); }
 .arrow-btn-circle:hover .anticon { color: #fff; }
 
-/* =========================================
-   7. RESPONSIVE
-   ========================================= */
 .pagination-wrapper { margin-top: 24px; text-align: center; }
 
 @media (max-width: 1200px) {
@@ -366,4 +338,23 @@
   .item-info-main, .trending-info-panel, .pending-info-col { width: 100%; padding-right: 0; }
   .item-stats-side, .trending-stats-panel { border-left: none; padding-left: 0; border-top: 1px solid var(--border-color); padding-top: 12px; width: 100%; }
   .item-action-col { margin-left: 0; padding-left: 0; width: 100%; justify-content: flex-end; }
+}
+
+.trending-info-section {
+  padding-right: 24px;
+  flex: 1; 
+  min-width: 0; 
+}
+
+@media (min-width: 1200px) {
+  .trending-info-section {
+    flex: none; 
+    width: 400px; 
+  }
+}
+
+@media (min-width: 1200px) {
+  .trending-growth-section {
+    flex: 1; 
+  }
 }

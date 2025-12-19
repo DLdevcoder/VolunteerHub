@@ -195,6 +195,7 @@ const AdminDashboard = () => {
         </div>
       ));
     } 
+
     else {
       headerText = "Sự kiện thu hút";
       HeaderIcon = FireFilled;
@@ -205,45 +206,68 @@ const AdminDashboard = () => {
          const realRank = (currentPage - 1) * pageSize + index;
          return (
          <div 
-            key={ev.event_id} 
-            className="horizontal-item clickable-card"
-            style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
-            onClick={() => navigate(`/events/${ev.event_id}`)}
-          >
-            <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
-              <div style={{ paddingRight: 24, maxWidth: "65%" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <Tag color={realRank === 0 ? "#f5222d" : "#3674B5"} style={{ margin: 0 }}>
-                    {realRank === 0 ? "TOP 1" : `TOP ${realRank + 1}`}
-                  </Tag>
-                </div>
-                <div style={{ fontSize: 18, fontWeight: "bold", color: "#333", marginBottom: 8 }}>{ev.title}</div>
-                <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
+           key={ev.event_id} 
+           className="horizontal-item clickable-card"
+           style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+           onClick={() => navigate(`/events/${ev.event_id}`)}
+         >
+           <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
+             
+             <div className="trending-info-section">
+               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                 <Tag color={realRank === 0 ? "#f5222d" : "#3674B5"} style={{ margin: 0 }}>
+                   {realRank === 0 ? "TOP 1" : `TOP ${realRank + 1}`}
+                 </Tag>
+               </div>
+               <div 
+                 style={{ 
+                   fontSize: 18, 
+                   fontWeight: "bold", 
+                   color: "#333", 
+                   marginBottom: 8,
+                   whiteSpace: "nowrap",
+                   overflow: "hidden",
+                   textOverflow: "ellipsis"
+                 }}
+                 title={ev.title}
+               >
+                 {ev.title}
+               </div>
+               <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
                    <span> <UserOutlined /> {ev.manager_name}</span> 
                    <span><TeamOutlined /> {ev.current_participants}/{ev.target_participants} người</span>
-                </div>
-              </div>
+               </div>
+             </div>
+             <div 
+               className="trending-growth-section"
+               style={{ 
+                 display: "flex", 
+                 flexDirection: "column", 
+                 gap: 4, 
+                 paddingLeft: 24, 
+                 borderLeft: "1px solid #eee", 
+                 minWidth: 160 
+               }}
+             >
+               <div style={{ fontSize: 11, fontWeight: "bold", color: "#888", marginBottom: 2 }}>
+                 <RiseOutlined /> TĂNG TRƯỞNG 24H
+               </div>
+               <div style={{ fontSize: 13, color: "#389e0d", fontWeight: 600 }}>
+                 <ArrowUpOutlined /> +{ev.new_participants_24h} người
+               </div>
+               <div style={{ fontSize: 13, color: "#3674B5", fontWeight: 600 }}>
+                 <FileTextOutlined /> +{ev.new_posts_24h} bài đăng
+               </div>
+             </div>
+           </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 24, borderLeft: "1px solid #eee", minWidth: 160 }}>
-                <div style={{ fontSize: 11, fontWeight: "bold", color: "#888", marginBottom: 2 }}>
-                  <RiseOutlined /> TĂNG TRƯỞNG 24H
-                </div>
-                <div style={{ fontSize: 13, color: "#389e0d", fontWeight: 600 }}>
-                  <ArrowUpOutlined /> +{ev.new_participants_24h} người
-                </div>
-                <div style={{ fontSize: 13, color: "#3674B5", fontWeight: 600 }}>
-                  <FileTextOutlined /> +{ev.new_posts_24h} bài đăng
-                </div>
-              </div>
-            </div>
-
-            <div style={{ textAlign: "center", paddingLeft: 30, borderLeft: "1px solid #eee", minWidth: 120, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>Điểm</div>
-                <div style={{ fontSize: 28, fontWeight: "bold", color: "#3674B5", lineHeight: 1 }}>{ev.engagement_score}</div>
-                <div style={{ marginTop: 6 }}><StarFilled style={{ color: "#fadb14", fontSize: 20 }} /></div>
-            </div>
-          </div>
-        );
+           <div style={{ textAlign: "center", paddingLeft: 30, minWidth: 120, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+               <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>Điểm</div>
+               <div style={{ fontSize: 28, fontWeight: "bold", color: "#3674B5", lineHeight: 1 }}>{ev.engagement_score}</div>
+               <div style={{ marginTop: 6 }}><StarFilled style={{ color: "#fadb14", fontSize: 20 }} /></div>
+           </div>
+         </div>
+       );
       });
     }
 
@@ -256,7 +280,6 @@ const AdminDashboard = () => {
           {content.length > 0 ? content : <Empty description="Không có dữ liệu" />}
         </div>
         
-        {/* PHẦN PHÂN TRANG - ĐÃ CHỈNH SANG TRÁI */}
         {sourceData.length > pageSize && (
           <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-start" }}>
             <Pagination
