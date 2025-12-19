@@ -1,10 +1,11 @@
 // src/components/AppHeader/AppHeader.jsx
 import "./AppHeader.css";
-import { Avatar, Badge, Dropdown, List, Spin } from "antd";
-import { BellOutlined } from "@ant-design/icons";
-import { SlLogout } from "react-icons/sl";
+import { Badge, Dropdown, List, Spin, Typography } from "antd";
+import { BellOutlined, UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { useEffect, useState } from "react";
+
 import authSlice from "../../redux/slices/authSlice";
 import { meSelector } from "../../redux/selectors/userSelectors";
 import {
@@ -17,8 +18,9 @@ import {
   fetchRecentNotificationsThunk,
   markNotificationReadThunk,
 } from "../../redux/slices/notificationSlice";
-import { useEffect } from "react";
 import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
+
+const { Text } = Typography;
 
 const AppHeader = () => {
   const navigate = useNavigate();
@@ -32,62 +34,45 @@ const AppHeader = () => {
   const recent = useSelector(recentNotificationsSelector);
   const loadingRecent = useSelector(loadingRecentNotificationsSelector);
 
-  // ---- helper: sync badge + recent list ----
+  const [avatarSrc, setAvatarSrc] = useState("");
+
+  useEffect(() => {
+    if (user?.avatar_url) {
+      setAvatarSrc(user.avatar_url);
+    } else {
+      setAvatarSrc("/images/avatar.png");
+    }
+  }, [user]);
+
   const syncHeaderNotifications = () => {
     if (!token) return;
     dispatch(fetchUnreadCountThunk());
     dispatch(fetchRecentNotificationsThunk(5));
   };
 
-  // 1️⃣ Fetch once when we have token (on first render / after login)
   useEffect(() => {
     if (!token) return;
-    console.log("[Header] Initial fetch notifications");
     syncHeaderNotifications();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // 2️⃣ Listen to Service Worker messages (instant real-time if push works)
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
     const handleSwMessage = (event) => {
       const data = event.data;
-      console.log("[Header] SW message received:", data);
-
       if (!data || data.type !== "NEW_NOTIFICATION") return;
-
-      // Khi có push notification mới -> reload count + recent list
-      console.log("[Header] Detected NEW_NOTIFICATION from SW, syncing…");
       syncHeaderNotifications();
     };
 
     navigator.serviceWorker.addEventListener("message", handleSwMessage);
-
-    return () => {
+    return () =>
       navigator.serviceWorker.removeEventListener("message", handleSwMessage);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // 3️⃣ Polling fallback: every 5s, while logged in, refresh from server
   useEffect(() => {
     if (!token) return;
-
-    console.log("[Header] Start polling notifications every 5s");
-    // Run once immediately
-    syncHeaderNotifications();
-
-    const id = setInterval(() => {
-      console.log("[Header] Poll tick -> fetching notifications");
-      syncHeaderNotifications();
-    }, 5000); // 5 seconds so you can see it quickly
-
-    return () => {
-      console.log("[Header] Stop polling notifications");
-      clearInterval(id);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const id = setInterval(() => syncHeaderNotifications(), 5000);
+    return () => clearInterval(id);
   }, [token]);
 
   const handleAvatarDropdownClicked = ({ key }) => {
@@ -102,35 +87,41 @@ const AppHeader = () => {
 
   const handleNotificationClick = (item) => {
     if (!item.is_read) {
-      dispatch(markNotificationReadThunk(item.notification_id)).then(() => {
-        // sau khi mark read -> sync header lại (badge & list)
-        syncHeaderNotifications();
-      });
+      dispatch(markNotificationReadThunk(item.notification_id)).then(() =>
+        syncHeaderNotifications()
+      );
     }
-    // sau này có thể điều hướng dựa trên item.url nếu BE trả về
   };
 
   const handleGoToNotificationsPage = () => {
     navigate("/notifications");
   };
 
+  const handleImageError = () => {
+    setAvatarSrc("/images/avatar.png");
+  };
+
   const notificationOverlay = (
     <div className="header-notification-dropdown">
+      <div className="notif-header">
+        <Text strong>Thông báo</Text>
+      </div>
+
       {loadingRecent ? (
-        <div style={{ padding: 12, textAlign: "center" }}>
+        <div className="notif-loading">
           <Spin size="small" />
         </div>
       ) : (
         <>
           <List
+            className="notif-list"
             size="small"
             dataSource={recent}
-            locale={{ emptyText: "Không có thông báo" }}
+            locale={{ emptyText: "Không có thông báo mới" }}
             renderItem={(item) => {
-              let notifTitle = item.title || "Thông báo mới";
+              let notifTitle = item.title || "Thông báo hệ thống";
               let notifMessage = item.body || "";
 
-              // Fallback: payload.message nếu body không có
               if (!notifMessage) {
                 try {
                   const payload =
@@ -138,42 +129,39 @@ const AppHeader = () => {
                       ? JSON.parse(item.payload || "{}")
                       : item.payload || {};
                   notifMessage = payload.message || "";
-                } catch {
-                  // ignore parse error
-                }
+                } catch {}
               }
 
               return (
                 <List.Item
-                  className={item.is_read ? "notif-item read" : "notif-item"}
+                  className={`notif-item ${
+                    item.is_read ? "read" : "unread"
+                  }`}
                   onClick={() => handleNotificationClick(item)}
                 >
                   <div className="notif-content">
-                    <div className="notif-title">{notifTitle}</div>
-                    <div
-                      className="notif-message"
-                      style={{ whiteSpace: "pre-line" }}
-                    >
+                    <div className="notif-title text-ellipsis">
+                      {notifTitle}
+                    </div>
+                    <div className="notif-body text-ellipsis-multiline">
                       {notifMessage}
                     </div>
+                    <div className="notif-time">
+                      {item.created_at
+                        ? new Date(item.created_at).toLocaleDateString("vi-VN")
+                        : ""}
+                    </div>
                   </div>
+                  {!item.is_read && <div className="notif-dot" />}
                 </List.Item>
               );
             }}
           />
-
           <div
-            className="notif-footer-view-all"
-            style={{
-              padding: "8px 12px",
-              borderTop: "1px solid #f0f0f0",
-              textAlign: "center",
-              cursor: "pointer",
-              fontWeight: 500,
-            }}
+            className="notif-footer"
             onClick={handleGoToNotificationsPage}
           >
-            Tất cả thông báo
+            Xem tất cả thông báo
           </div>
         </>
       )}
@@ -182,36 +170,63 @@ const AppHeader = () => {
 
   return (
     <div className="appHeader-container">
-      <div className="appHeader-logo">VolunteerHub</div>
+      <div
+        className="appHeader-logo"
+        onClick={() => navigate("/dashboard")}
+      >
+        VolunteerHub
+      </div>
 
-      <div className="appHeader-noti-and-ava-wrapper">
-        <div className="appHeader-notification-icon">
-          <Dropdown trigger={["click"]} popupRender={() => notificationOverlay}>
-            <Badge count={unreadCount} size="small">
-              <Avatar size="large" icon={<BellOutlined />} />
+      <div className="appHeader-right">
+        <Dropdown
+          trigger={["click"]}
+          dropdownRender={() => notificationOverlay}
+          placement="bottomRight"
+          overlayClassName="notif-dropdown-root"
+        >
+          <div className="header-icon-btn">
+            <Badge count={unreadCount} size="small" offset={[-2, 2]}>
+              <BellOutlined style={{ fontSize: 20, color: "#555" }} />
             </Badge>
-          </Dropdown>
-        </div>
+          </div>
+        </Dropdown>
 
-        <div className="appHeader-avatar-wrapper">
-          <Dropdown
-            trigger={["click"]}
-            menu={{
-              items: [
-                { key: "1", label: "Profile" },
-                {
-                  key: "2",
-                  label: "Logout",
-                  icon: <SlLogout />,
-                  danger: true,
-                },
-              ],
-              onClick: handleAvatarDropdownClicked,
-            }}
-          >
-            <img src={user?.avatar_url || "images/avatar.png"} alt="avatar" />
-          </Dropdown>
-        </div>
+        <Dropdown
+          trigger={["click"]}
+          placement="bottomRight"
+          menu={{
+            items: [
+              {
+                key: "1",
+                label: "Hồ sơ cá nhân",
+                icon: <UserOutlined />,
+              },
+              {
+                type: "divider",
+              },
+              {
+                key: "2",
+                label: "Đăng xuất",
+                icon: <LogoutOutlined />,
+                danger: true,
+              },
+            ],
+            onClick: handleAvatarDropdownClicked,
+          }}
+        >
+          <div className="appHeader-avatar-wrapper">
+            <img
+              src={avatarSrc}
+              alt="avatar"
+              onError={handleImageError}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
+          </div>
+        </Dropdown>
       </div>
     </div>
   );
