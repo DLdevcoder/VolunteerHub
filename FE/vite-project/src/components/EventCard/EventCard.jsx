@@ -1,23 +1,38 @@
-// src/components/EventCard/EventCard.jsx
-import { Card, Tag, Button } from "antd";
-import { IoIosTime } from "react-icons/io";
+import { Button } from "antd";
+import { CalendarOutlined } from "@ant-design/icons"; // Thêm icon mới
 import { FaLocationDot } from "react-icons/fa6";
-import { FaUserFriends } from "react-icons/fa";
+import { 
+  FaUserFriends, 
+  FaBookReader,        
+  FaLeaf,              
+  FaHandsHelping,      
+  FaShapes             
+} from "react-icons/fa"; 
 import { useNavigate } from "react-router-dom";
 import "./EventCard.css";
 
-const formatDateRange = (start, end) => {
+const formatFullDateTime = (start, end) => {
   if (!start || !end) return "";
   const s = new Date(start);
   const e = new Date(end);
-
   const pad = (n) => n.toString().padStart(2, "0");
   const fmt = (d) =>
-    `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(
-      d.getHours()
-    )}:${pad(d.getMinutes())}`;
+    `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
   return `${fmt(s)} - ${fmt(e)}`;
+};
+
+const getCategoryInfo = (name) => {
+  const lowerName = name?.toLowerCase() || "";
+  if (lowerName.includes("giáo dục")) {
+    return { icon: <FaBookReader />, colorClass: "ec-cat-edu", label: "Giáo dục" };
+  } else if (lowerName.includes("môi trường")) {
+    return { icon: <FaLeaf />, colorClass: "ec-cat-env", label: "Môi trường" };
+  } else if (lowerName.includes("xã hội")) {
+    return { icon: <FaHandsHelping />, colorClass: "ec-cat-soc", label: "Xã hội" };
+  } else {
+    return { icon: <FaShapes />, colorClass: "ec-cat-default", label: name || "Khác" };
+  }
 };
 
 const EventCard = ({ event, onRegister, registeringId, userRole }) => {
@@ -26,161 +41,111 @@ const EventCard = ({ event, onRegister, registeringId, userRole }) => {
   const {
     event_id,
     title,
-    description,
     location,
     start_date,
     end_date,
     category_name,
     target_participants,
     current_participants,
-    // 🔹 2 field mới từ backend:
     has_available_slots,
     user_registration_status,
   } = event;
 
+  const { icon, colorClass, label } = getCategoryInfo(category_name);
+  const fullTimeDisplay = formatFullDateTime(start_date, end_date);
+  
   const participantsText =
-    target_participants && target_participants > 0
+    target_participants > 0
       ? `${current_participants}/${target_participants}`
-      : `${current_participants ?? 0} người tham gia`;
+      : `${current_participants}`;
 
   const now = new Date();
   const hasStarted = start_date && new Date(start_date) <= now;
-
   let buttonText = "Đăng ký";
   let disabled = false;
+  let btnClass = "ec-btn-default"; 
 
   if (hasStarted) {
-    buttonText = "Đã bắt đầu";
+    buttonText = "Đã kết thúc";
     disabled = true;
+    btnClass = "ec-btn-disabled";
   } else {
     switch (user_registration_status) {
-      case "pending":
-        buttonText = "Đang chờ duyệt";
-        disabled = true;
+      case "pending": 
+        buttonText = "Chờ duyệt"; 
+        disabled = true; 
+        btnClass = "ec-btn-pending";
         break;
-      case "approved":
-        buttonText = "Đã tham gia";
-        disabled = true;
+      case "approved": 
+        buttonText = "Đã tham gia"; 
+        disabled = true; 
+        btnClass = "ec-btn-approved";
         break;
-      case "completed":
-        buttonText = "Đã hoàn thành";
-        disabled = true;
+      case "completed": 
+        buttonText = "Hoàn thành"; 
+        disabled = true; 
+        btnClass = "ec-btn-success"; 
         break;
       case "rejected":
-        if (has_available_slots === false) {
-          buttonText = "Đã đủ người";
-          disabled = true;
-        } else {
-          buttonText = "Đăng ký lại";
-          disabled = false;
-        }
-        break;
-
       case "cancelled":
-        if (has_available_slots === false) {
-          buttonText = "Đã đủ người";
-          disabled = true;
-        } else {
-          buttonText = "Đăng ký lại";
-          disabled = false;
-        }
+        buttonText = has_available_slots === false ? "Đủ người" : "Đăng ký lại";
+        disabled = has_available_slots === false;
         break;
       default:
-        if (has_available_slots === false) {
-          buttonText = "Đã đủ người";
-          disabled = true;
-        } else {
-          buttonText = "Đăng ký";
-          disabled = false;
-        }
+        buttonText = has_available_slots === false ? "Hết chỗ" : "Đăng ký";
+        disabled = has_available_slots === false;
         break;
     }
   }
 
-  // Hiển thị nút cho Volunteer + user chưa login
   const showButton = !userRole || userRole === "Volunteer";
-
-  const handleCardClick = () => {
-    navigate(`/events/${event_id}`);
-  };
-
-  const handleRegisterClick = (e) => {
-    e.stopPropagation();
-    if (!disabled && onRegister) {
-      onRegister(event_id);
-    }
-  };
-
-  const getCategoryTagColor = (name) => {
-    switch (name) {
-      case "Môi trường":
-        return "green";
-      case "Giáo dục":
-        return "blue";
-      case "Xã hội":
-        return "orange";
-
-      default:
-        return "gray";
-    }
+  
+  const handleRegisterClick = (e) => { 
+    e.stopPropagation(); 
+    if (!disabled && onRegister) onRegister(event_id); 
   };
 
   return (
-    <Card hoverable className="card-container" onClick={handleCardClick}>
-      <div className="card-header-container">
-        <div className="header-title">{title}</div>
-        <div className="header-tag">
-          {category_name && (
-            <Tag color={getCategoryTagColor(category_name)}>
-              {category_name}
-            </Tag>
-          )}
+    <div id={`ec-card-${event_id}`} className="ec-item-wrapper" onClick={() => navigate(`/events/${event_id}`)}>
+      <div className={`ec-category-box ${colorClass}`}>
+        <div className="ec-cat-icon-large">{icon}</div>
+        <span className="ec-cat-label">{label}</span>
+      </div>
+
+      <div className="ec-info-section">
+        <h3 className="ec-title" title={title}>{title}</h3>
+        <div className="ec-meta-column">
+          <div className="ec-meta-item">
+            <div className="ec-meta-icon-wrapper"><CalendarOutlined /></div> {/* Đã đổi icon ở đây */}
+            <span className="ec-meta-text">{fullTimeDisplay}</span>
+          </div>
+          <div className="ec-meta-item">
+            <div className="ec-meta-icon-wrapper"><FaLocationDot /></div>
+            <span className="ec-meta-text ec-location-text" title={location}>{location}</span>
+          </div>
         </div>
       </div>
 
-      <div className="card-content-container">
-        <div className="date">
-          <div className="date-icon">
-            <IoIosTime />
-          </div>
-          <div className="date-content">
-            {formatDateRange(start_date, end_date)}
-          </div>
+      <div className="ec-action-section">
+        <div className="ec-participants-badge">
+          <FaUserFriends style={{ fontSize: 14, color: '#999' }} /> 
+          <span>{participantsText} người</span>
         </div>
 
-        <div className="location">
-          <div className="location-icon">
-            <FaLocationDot />
-          </div>
-          <div className="location-content">{location}</div>
-        </div>
-
-        <div className="description">{description}</div>
-
-        <div className="register-container">
-          <div className="participants">
-            <div className="participants-icon">
-              <FaUserFriends />
-            </div>
-            <div className="participants-content">{participantsText}</div>
-          </div>
-
-          <div className="buttons">
-            {showButton && (
-              <Button
-                type="primary"
-                size="small"
-                onClick={handleRegisterClick}
-                loading={registeringId === event_id}
-                disabled={disabled}
-              >
-                {buttonText}
-              </Button>
-            )}
-          </div>
-        </div>
+        {showButton && (
+          <Button
+            type="primary"
+            className={`ec-action-btn ${btnClass}`}
+            onClick={handleRegisterClick}
+            loading={registeringId === event_id}
+            disabled={disabled}
+            size="middle"
+          >
+            {buttonText}
+          </Button>
+        )}
       </div>
-    </Card>
+    </div>
   );
 };
 
