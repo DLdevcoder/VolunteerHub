@@ -2,22 +2,17 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Avatar,
-  Input,
   Spin,
   message,
   Modal,
   Popover,
-  Tooltip,
   Button,
-  Popconfirm,
 } from "antd";
 import {
   UserOutlined,
-  DeleteOutlined,
   SendOutlined,
-  ExportOutlined,
 } from "@ant-design/icons";
-import { AiOutlineLike, AiFillLike } from "react-icons/ai";
+import { AiOutlineLike } from "react-icons/ai";
 import { FaRegCommentAlt, FaGlobeAmericas } from "react-icons/fa";
 
 import postApi from "../../../apis/postApi";
@@ -31,31 +26,116 @@ import {
 import ReactionModal from "./ReactionModal";
 import "./post.css";
 
-const timeAgo = (dateString) => {
+// --- 1. LOGIC FORMAT THỜI GIAN (Dùng chung cho Post và Comment) ---
+const formatPostTime = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
-  const seconds = Math.floor((new Date() - date) / 1000);
+  const now = new Date();
+  
+  const seconds = Math.floor((now - date) / 1000);
+
   if (seconds < 60) return "Vừa xong";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} phút trước`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  return date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+  if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes} phút trước`;
+  }
+  if (seconds < 86400) {
+    const hours = Math.floor(seconds / 3600);
+    return `${hours} giờ trước`;
+  }
+
+  const day = date.getDate();
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+  const hoursStr = date.getHours().toString().padStart(2, "0");
+  const minutesStr = date.getMinutes().toString().padStart(2, "0");
+  const currentYear = now.getFullYear();
+
+  let timeStr = `${day} tháng ${month} lúc ${hoursStr}:${minutesStr}`;
+  if (year !== currentYear) {
+    timeStr = `${day} tháng ${month}, ${year} lúc ${hoursStr}:${minutesStr}`;
+  }
+
+  return timeStr;
 };
 
-const stringToColor = () => "#1877f2";
+// --- 2. COMPONENT CON: ITEM BÌNH LUẬN (Xử lý riêng logic Xem thêm/Thu gọn cho từng cmt) ---
+const CommentItem = ({ cmt }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const CHARACTER_LIMIT = 200; // Giới hạn ký tự cho comment
 
-const PostCard = ({ post, currentUser, onDelete }) => {
-  const [currentReaction, setCurrentReaction] = useState(
-    post.current_reaction || null
+  const renderCommentContent = () => {
+    const content = cmt.content || "";
+
+    if (content.length <= CHARACTER_LIMIT) {
+      return <span className="comment-text-content">{content}</span>;
+    }
+
+    if (isExpanded) {
+      return (
+        <span className="comment-text-content">
+          {content}{" "}
+          <span
+            onClick={() => setIsExpanded(false)}
+            style={{ fontWeight: 600, cursor: "pointer", color: "#65676b", marginLeft: 5 }}
+          >
+            Thu gọn
+          </span>
+        </span>
+      );
+    }
+
+    const shortContent = content.substring(0, CHARACTER_LIMIT);
+    return (
+      <span className="comment-text-content">
+        {shortContent}...{" "}
+        <span
+          onClick={() => setIsExpanded(true)}
+          style={{ fontWeight: 600, cursor: "pointer", color: "#65676b", marginLeft: 5 }}
+        >
+          Xem thêm
+        </span>
+      </span>
+    );
+  };
+
+  return (
+    <div className="comment-item">
+      <Avatar
+        src={cmt.avatar_url}
+        icon={<UserOutlined />}
+        size={32}
+        style={{ marginTop: 4 }}
+      />
+      <div className="comment-bubble">
+        <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap" }}>
+          <Link to="#" className="comment-username" style={{ marginRight: 8 }}>
+            {cmt.full_name}
+          </Link>
+          {/* Hiển thị thời gian comment ngay cạnh tên */}
+          <span style={{ fontSize: 11, color: "#65676b" }}>
+            {formatPostTime(cmt.created_at)}
+          </span>
+        </div>
+        
+        {renderCommentContent()}
+      </div>
+    </div>
   );
-  const [reactionCount, setReactionCount] = useState(
-    parseInt(post.like_count) || 0
-  );
+};
+
+// --- 3. COMPONENT CHÍNH: POST CARD ---
+const PostCard = ({ post, currentUser }) => {
+  const [currentReaction, setCurrentReaction] = useState(post.current_reaction || null);
+  const [reactionCount, setReactionCount] = useState(parseInt(post.like_count) || 0);
   const [reactionStats, setReactionStats] = useState(post.reaction_stats || {});
 
   const [isReactionModalOpen, setIsReactionModalOpen] = useState(false);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  
+  // State Xem thêm/Thu gọn cho nội dung bài viết chính
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -99,11 +179,8 @@ const PostCard = ({ post, currentUser, onDelete }) => {
     }
   };
 
-  // --- LOGIC HIỂN THỊ ICON STACK ---
   const getTopReactions = () => {
-    let types = Object.keys(reactionStats).filter(
-      (type) => reactionStats[type] > 0
-    );
+    let types = Object.keys(reactionStats).filter((type) => reactionStats[type] > 0);
     if (types.length === 0 && reactionCount > 0) {
       types = [currentReaction || "like"];
     }
@@ -136,6 +213,9 @@ const PostCard = ({ post, currentUser, onDelete }) => {
       const res = await postApi.createComment(post.post_id, commentText);
       if (res.success) {
         const newComment = res.data.comment || res.data;
+        // Giả lập thêm created_at nếu API trả về thiếu, để hiển thị ngay lập tức là "Vừa xong"
+        if (!newComment.created_at) newComment.created_at = new Date().toISOString();
+        
         setComments((prev) => [...prev, newComment]);
         setCommentText("");
       }
@@ -144,12 +224,9 @@ const PostCard = ({ post, currentUser, onDelete }) => {
     }
   };
 
-  const totalComments = commentsLoaded
-    ? comments.length
-    : parseInt(post.comment_count) || 0;
-  const isOwner = currentUser?.user_id === post.user_id;
+  const totalComments = commentsLoaded ? comments.length : parseInt(post.comment_count) || 0;
 
-  // --- COMPONENTS CON (Header & Actions) ---
+  // --- COMPONENTS CON ---
   const PostHeader = () => (
     <div className="post-header">
       <Link to="#">
@@ -163,7 +240,7 @@ const PostCard = ({ post, currentUser, onDelete }) => {
       <div className="post-info">
         <span className="post-author-name">{post.full_name}</span>
         <span className="post-time">
-          {timeAgo(post.created_at)} · <FaGlobeAmericas size={12} />
+          {formatPostTime(post.created_at)} · <FaGlobeAmericas size={12} />
         </span>
       </div>
     </div>
@@ -192,28 +269,17 @@ const PostCard = ({ post, currentUser, onDelete }) => {
 
   const ActionBar = ({ isInModal = false }) => (
     <div className={isInModal ? "modal-actions-bar" : "post-actions-bar"}>
-      <Popover
-        content={ReactionMenu}
-        trigger="hover"
-        overlayClassName="reaction-popover"
-      >
+      <Popover content={ReactionMenu} trigger="hover" overlayClassName="reaction-popover">
         <div
           className={`action-button ${currentReaction ? "active" : ""}`}
           onClick={() => handleReaction(currentReaction || "like")}
         >
-          {currentReaction ? (
-            getReactionIcon(currentReaction)
-          ) : (
-            <AiOutlineLike size={20} />
-          )}
+          {currentReaction ? getReactionIcon(currentReaction) : <AiOutlineLike size={20} />}
           <span>{getReactionLabel(currentReaction)}</span>
         </div>
       </Popover>
 
-      <div
-        className={`action-button ${isInModal ? "disabled" : ""}`}
-        onClick={!isInModal ? openCommentModal : undefined}
-      >
+      <div className={`action-button ${isInModal ? "disabled" : ""}`} onClick={!isInModal ? openCommentModal : undefined}>
         <FaRegCommentAlt size={18} /> <span>Bình luận</span>
       </div>
     </div>
@@ -221,21 +287,14 @@ const PostCard = ({ post, currentUser, onDelete }) => {
 
   const renderStatsBar = () => (
     <div className="post-stats-bar">
-      <div
-        className="reaction-summary"
-        onClick={() => setIsReactionModalOpen(true)}
-      >
+      <div className="reaction-summary" onClick={() => setIsReactionModalOpen(true)}>
         {reactionCount > 0 && (
           <>
             <div className="reaction-icons-stack">
               {topReactions.map((type, index) => {
                 const IconComp = REACTION_ICONS[type];
                 return IconComp ? (
-                  <div
-                    key={type}
-                    className="reaction-icon-stack-item"
-                    style={{ zIndex: 3 - index }}
-                  >
+                  <div key={type} className="reaction-icon-stack-item" style={{ zIndex: 3 - index }}>
                     <IconComp size={10} color={getReactionColor(type)} />
                   </div>
                 ) : null;
@@ -247,22 +306,57 @@ const PostCard = ({ post, currentUser, onDelete }) => {
       </div>
 
       <div className="post-stats-right">
-        {totalComments > 0 && (
-          <span onClick={openCommentModal}>{totalComments} bình luận</span>
-        )}
+        {totalComments > 0 && <span onClick={openCommentModal}>{totalComments} bình luận</span>}
       </div>
     </div>
   );
+
+  // Render nội dung bài viết (Main Post)
+  const renderPostContent = () => {
+    const content = post.content || "";
+    const CHARACTER_LIMIT = 200;
+
+    if (content.length <= CHARACTER_LIMIT) {
+      return <div className="post-content-text">{content}</div>;
+    }
+
+    if (isExpanded) {
+      return (
+        <div className="post-content-text">
+          {content}{" "}
+          <span
+            onClick={() => setIsExpanded(false)}
+            style={{ fontWeight: 600, cursor: "pointer", color: "#65676b", marginLeft: 5 }}
+          >
+            Thu gọn
+          </span>
+        </div>
+      );
+    }
+
+    const shortContent = content.substring(0, CHARACTER_LIMIT);
+    return (
+      <div className="post-content-text">
+        {shortContent}...{" "}
+        <span
+          onClick={() => setIsExpanded(true)}
+          style={{ fontWeight: 600, cursor: "pointer", color: "#65676b", marginLeft: 5 }}
+        >
+          Xem thêm
+        </span>
+      </div>
+    );
+  };
 
   return (
     <>
       {/* ================= CARD BÀI VIẾT ================= */}
       <div className="fb-card">
         <PostHeader />
-        <div className="post-content-text">{post.content}</div>
+        
+        {renderPostContent()}
 
         {renderStatsBar()}
-
         <ActionBar />
       </div>
 
@@ -289,16 +383,11 @@ const PostCard = ({ post, currentUser, onDelete }) => {
         centered
         className="fb-post-modal"
         styles={{
-          body: {
-            padding: 0,
-            height: "70vh",
-            display: "flex",
-            flexDirection: "column",
-          },
+          body: { padding: 0, height: "70vh", display: "flex", flexDirection: "column" },
         }}
       >
         <div className="fb-post-modal-scroll">
-          {/* Nội dung bài gốc */}
+          {/* Nội dung bài gốc trong Modal luôn full */}
           <div className="modal-post-body">
             <PostHeader />
             <div className="post-content-text" style={{ fontSize: 16 }}>
@@ -306,10 +395,7 @@ const PostCard = ({ post, currentUser, onDelete }) => {
             </div>
           </div>
 
-          {/* Stats Bar trong Modal */}
           {renderStatsBar()}
-
-          {/* Action Bar trong Modal (Giữ chức năng Like/Share, disable nút Comment) */}
           <ActionBar isInModal={true} />
 
           {/* Danh sách Comment */}
@@ -321,28 +407,14 @@ const PostCard = ({ post, currentUser, onDelete }) => {
             )}
 
             {!commentsLoading && comments.length === 0 && (
-              <div
-                style={{ textAlign: "center", color: "#65676b", padding: 20 }}
-              >
+              <div style={{ textAlign: "center", color: "#65676b", padding: 20 }}>
                 Chưa có bình luận nào.
               </div>
             )}
 
+            {/* Sử dụng Component CommentItem thay vì render trực tiếp */}
             {comments.map((cmt) => (
-              <div key={cmt.comment_id} className="comment-item">
-                <Avatar
-                  src={cmt.avatar_url}
-                  icon={<UserOutlined />}
-                  size={32}
-                  style={{ marginTop: 4 }}
-                />
-                <div className="comment-bubble">
-                  <Link to="#" className="comment-username">
-                    {cmt.full_name}
-                  </Link>
-                  <span className="comment-text-content">{cmt.content}</span>
-                </div>
-              </div>
+              <CommentItem key={cmt.comment_id} cmt={cmt} />
             ))}
             <div ref={commentsEndRef} />
           </div>
@@ -351,11 +423,7 @@ const PostCard = ({ post, currentUser, onDelete }) => {
         {/* Footer Input */}
         <div className="fb-post-modal-footer">
           <div className="comment-input-area">
-            <Avatar
-              src={currentUser?.avatar_url}
-              icon={<UserOutlined />}
-              size={32}
-            />
+            <Avatar src={currentUser?.avatar_url} icon={<UserOutlined />} size={32} />
             <div className="comment-input-pill" style={{ width: "100%" }}>
               <input
                 className="comment-input-real"
@@ -371,11 +439,7 @@ const PostCard = ({ post, currentUser, onDelete }) => {
               />
               <Button
                 type="text"
-                icon={
-                  <SendOutlined
-                    style={{ color: commentText.trim() ? "#1877f2" : "#ccc" }}
-                  />
-                }
+                icon={<SendOutlined style={{ color: commentText.trim() ? "#1877f2" : "#ccc" }} />}
                 onClick={handleSendComment}
               />
             </div>
