@@ -136,7 +136,6 @@ const Events = () => {
         <Title level={2} style={{ color: "#3674B5", margin: 0 }}>
           Danh sách sự kiện
         </Title>
-        <p style={{ color: "#666" }}>Tìm kiếm cơ hội tình nguyện phù hợp với bạn</p>
       </div>
 
       {/* FILTER BAR */}

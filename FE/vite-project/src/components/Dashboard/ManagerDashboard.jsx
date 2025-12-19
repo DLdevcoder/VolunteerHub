@@ -103,7 +103,7 @@ const ManagerDashboard = () => {
             <Avatar src={item.author_avatar} icon={<UserOutlined />} size={40} />
             <div><div style={{ fontWeight: "bold" }}>{item.author_name}</div><div style={{ fontSize: 12, color: "#999" }}>{timeAgo(item.created_at)}</div></div>
           </div>
-          <div className="act-card-content">"{item.content}"</div>
+          <div className="act-card-content">{item.content}</div>
           <div className="act-card-footer">
              <div><div style={{ fontSize: 11, color: "#3674B5", fontWeight: "bold" }}>{item.type.toUpperCase()}</div><div style={{ fontWeight: 600 }}>{item.event_title}</div></div>
              <Button shape="circle" icon={<RightCircleFilled style={{fontSize: 24, color: "#578FCA"}} />} type="text" onClick={() => navigate(`/events/${item.event_id}`)} />

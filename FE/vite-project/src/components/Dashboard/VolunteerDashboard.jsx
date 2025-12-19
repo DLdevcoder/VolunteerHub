@@ -20,17 +20,14 @@ import {
   ArrowUpOutlined,
   CommentOutlined,
   LikeOutlined,
-  CheckCircleFilled,
   FileTextOutlined,
   StarFilled,
-  StarOutlined,
   RiseOutlined,
-  BellOutlined,
   RightOutlined,
   RightCircleFilled,
 } from "@ant-design/icons";
 
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import dashboardApi from "../../../apis/dashboardApi";
 import "./Dashboard.css";
 
@@ -43,7 +40,7 @@ const VolunteerDashboard = () => {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 6;
+  const pageSize = 6; // Đã thiết lập tối đa 6 item 1 trang
 
   const navigate = useNavigate();
 
@@ -106,65 +103,39 @@ const VolunteerDashboard = () => {
         <div 
             key={ev.event_id} 
             className="horizontal-item clickable-card"
-            style={{ cursor: "pointer", display: "flex", alignItems: "center" }} // Flex row
+            style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
             onClick={() => navigate(`/events/${ev.event_id}`)}
         >
-          {}
           <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
-            
-            {/* PHẦN 1: THÔNG TIN */}
-            <div style={{ paddingRight: 24, maxWidth: "65%" }}> {/* Giới hạn width để không đẩy Stats đi quá xa nếu text dài */}
+            <div style={{ paddingRight: 24, maxWidth: "65%" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <Tag color="#1890ff" style={{ margin: 0 }}>NEW</Tag>
                 <span style={{ fontSize: 13, color: "#888" }}>
                   <CalendarOutlined /> {new Date(ev.start_date).toLocaleDateString("vi-VN")}
                 </span>
               </div>
-
-              <div 
-                style={{ fontSize: 18, fontWeight: "bold", color: "#3674B5", marginBottom: 8 }}
-              >
+              <div style={{ fontSize: 18, fontWeight: "bold", color: "#3674B5", marginBottom: 8 }}>
                 {ev.title}
               </div>
-
               <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
                  <span><EnvironmentOutlined /> {ev.location}</span>
                  <span><TeamOutlined /> {ev.current_participants}/{ev.target_participants || "∞"} người</span>
               </div>
             </div>
-
-            {/* PHẦN 2: THỐNG KÊ*/}
-            <div 
-              style={{ 
-                  display: "flex", 
-                  flexDirection: "column", 
-                  gap: 4,
-                  paddingLeft: 24,
-                  borderLeft: "1px solid #eee",
-                  minWidth: 100
-              }}
-            >
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 24, borderLeft: "1px solid #eee", minWidth: 100 }}>
                <div style={{fontSize: 13, color: "#666"}}>
-                  <FileTextOutlined style={{color: "#3674B5", marginRight: 6}} /> 
-                  <b>{ev.total_posts}</b> bài
+                  <FileTextOutlined style={{color: "#3674B5", marginRight: 6}} /> <b>{ev.total_posts}</b> bài
                </div>
                <div style={{fontSize: 13, color: "#666"}}>
-                  <LikeOutlined style={{color: "#ff4d4f", marginRight: 6}} /> 
-                  <b>{ev.total_reactions}</b> tương tác
+                  <LikeOutlined style={{color: "#ff4d4f", marginRight: 6}} /> <b>{ev.total_reactions}</b> tương tác
                </div>
                <div style={{fontSize: 13, color: "#666"}}>
-                  <CommentOutlined style={{color: "#faad14", marginRight: 6}} /> 
-                  <b>{ev.total_comments}</b> bình luận
+                  <CommentOutlined style={{color: "#faad14", marginRight: 6}} /> <b>{ev.total_comments}</b> bình luận
                </div>
             </div>
-
           </div>
-
-          {/* PHẦN 3: TRẠNG THÁI*/}
           <div className="item-action-col">
-            <div className="arrow-btn-circle">
-              <RightOutlined />
-            </div>
+            <div className="arrow-btn-circle"><RightOutlined /></div>
           </div>
         </div>
       ));
@@ -189,124 +160,63 @@ const VolunteerDashboard = () => {
               </div>
             </div>
           </div>
-
-          <div className="act-card-content">
-             "{item.content}"
-          </div>
-
+          <div className="act-card-content">{item.content}</div>
           <div className="act-card-footer">
              <div style={{ overflow: "hidden" }}>
                 <div style={{ fontSize: 11, color: "#3674B5", fontWeight: "bold", marginBottom: 2 }}>
                    {item.type === "post" ? "POST" : "COMMENT"}
                 </div>
-                <div 
-                  style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "180px" }}
-                  title={item.event_title}
-                >
+                <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "180px" }} title={item.event_title}>
                   {item.event_title}
                 </div>
              </div>
              <Tooltip title="Xem chi tiết">
-                <Button 
-                   shape="circle" 
-                   icon={<RightCircleFilled style={{fontSize: 24, color: "#578FCA"}} />} 
-                   type="text"
-                   onClick={() => navigate(`/events/${item.event_id}`)}
-                />
+                <Button shape="circle" icon={<RightCircleFilled style={{fontSize: 24, color: "#578FCA"}} />} type="text" onClick={() => navigate(`/events/${item.event_id}`)} />
              </Tooltip>
           </div>
         </div>
       ));
     } 
 
-    /* TAB 2: TRENDING*/
-else {
-  headerText = "Sự kiện thu hút";
-  HeaderIcon = FireFilled;
-  sourceData = data?.col3_trending || [];
-  const currentData = getPaginatedData(sourceData);
+    /* TAB 2: TRENDING */
+    else {
+      headerText = "Sự kiện thu hút";
+      HeaderIcon = FireFilled;
+      sourceData = data?.col3_trending || [];
+      const currentData = getPaginatedData(sourceData);
 
-  content = currentData.map((ev, idx) => {
-    const realRank = (currentPage - 1) * pageSize + idx;
-    
-    return (
-      <div 
-        key={ev.event_id} 
-        className="horizontal-item clickable-card"
-        style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
-        onClick={() => navigate(`/events/${ev.event_id}`)}
-      >
-        {}
-        <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
-          
-          {/* PHẦN 1: THÔNG TIN*/}
-          <div style={{ paddingRight: 24, maxWidth: "65%" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <Tag color={realRank === 0 ? "#f5222d" : "#3674B5"} style={{ margin: 0 }}>
-                {realRank === 0 ? "TOP 1" : `TOP ${realRank + 1}`}
-              </Tag>
-            </div>
-
-            <div 
-              style={{ fontSize: 18, fontWeight: "bold", color: "#333", marginBottom: 8 }}
-            >
-              {ev.title}
-            </div>
-
-            <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
-               <span><EnvironmentOutlined /> {ev.location}</span>
-               <span><TeamOutlined /> {ev.current_participants}/{ev.target_participants} người</span>
-            </div>
-          </div>
-
-          {/* PHẦN 2: CHỈ SỐ TĂNG TRƯỞNG*/}
-          <div 
-            style={{ 
-                display: "flex", 
-                flexDirection: "column", 
-                gap: 4,
-                paddingLeft: 24,
-                borderLeft: "1px solid #eee", 
-                minWidth: 160
-            }}
-          >
-             <div style={{ fontSize: 11, fontWeight: "bold", color: "#888", marginBottom: 2 }}>
-                <RiseOutlined /> TĂNG TRƯỞNG 24H
-             </div>
-             <div style={{ fontSize: 13, color: "#389e0d", fontWeight: 600 }}>
-                <ArrowUpOutlined style={{ marginRight: 6 }} /> 
-                +{ev.new_participants_24h} người
-             </div>
-             <div style={{ fontSize: 13, color: "#3674B5", fontWeight: 600 }}>
-                <FileTextOutlined style={{ marginRight: 6 }} /> 
-                +{ev.new_posts_24h} bài đăng
-             </div>
-          </div>
-        </div>
-
-        {}
-                <div style={{ 
-                    textAlign: "center", 
-                    paddingLeft: 30, 
-                    borderLeft: "1px solid #eee", 
-                    minWidth: 120,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center"
-                }}>
-                    <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>Điểm</div>
-                    <div style={{ fontSize: 28, fontWeight: "bold", color: "#3674B5", lineHeight: 1 }}>
-                        {ev.engagement_score}
-                    </div>
-                    <div style={{ marginTop: 6 }}>
-                        <StarFilled style={{ color: "#fadb14", fontSize: 20 }} />
-                    </div>
+      content = currentData.map((ev, idx) => {
+        const realRank = (currentPage - 1) * pageSize + idx;
+        return (
+          <div key={ev.event_id} className="horizontal-item clickable-card" style={{ cursor: "pointer", display: "flex", alignItems: "center" }} onClick={() => navigate(`/events/${ev.event_id}`)}>
+            <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
+              <div style={{ paddingRight: 24, maxWidth: "65%" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <Tag color={realRank === 0 ? "#f5222d" : "#3674B5"} style={{ margin: 0 }}>
+                    {realRank === 0 ? "TOP 1" : `TOP ${realRank + 1}`}
+                  </Tag>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: "bold", color: "#333", marginBottom: 8 }}>{ev.title}</div>
+                <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
+                   <span><EnvironmentOutlined /> {ev.location}</span>
+                   <span><TeamOutlined /> {ev.current_participants}/{ev.target_participants} người</span>
                 </div>
               </div>
-    );
-  });
-}
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 24, borderLeft: "1px solid #eee", minWidth: 160 }}>
+                 <div style={{ fontSize: 11, fontWeight: "bold", color: "#888", marginBottom: 2 }}><RiseOutlined /> TĂNG TRƯỞNG 24H</div>
+                 <div style={{ fontSize: 13, color: "#389e0d", fontWeight: 600 }}><ArrowUpOutlined style={{ marginRight: 6 }} /> +{ev.new_participants_24h} người</div>
+                 <div style={{ fontSize: 13, color: "#3674B5", fontWeight: 600 }}><FileTextOutlined style={{ marginRight: 6 }} /> +{ev.new_posts_24h} bài đăng</div>
+              </div>
+            </div>
+            <div style={{ textAlign: "center", paddingLeft: 30, borderLeft: "1px solid #eee", minWidth: 120, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>Điểm</div>
+                <div style={{ fontSize: 28, fontWeight: "bold", color: "#3674B5", lineHeight: 1 }}>{ev.engagement_score}</div>
+                <div style={{ marginTop: 6 }}><StarFilled style={{ color: "#fadb14", fontSize: 20 }} /></div>
+            </div>
+          </div>
+        );
+      });
+    }
 
     return (
       <div className="dashboard-section animation-fade-in">
@@ -318,8 +228,13 @@ else {
           {content.length > 0 ? content : <Empty description="Chưa có dữ liệu" />}
         </div>
 
+        {/* PHẦN PHÂN TRANG ĐÃ CĂN TRÁI */}
         {sourceData.length > pageSize && (
-          <div style={{ marginTop: 24, display: "flex", justifyContent: "center" }}>
+          <div style={{ 
+            marginTop: 24, 
+            display: "flex", 
+            justifyContent: "flex-start" // Đã đổi từ center sang flex-start để dịch sang trái
+          }}>
              <Pagination
                 current={currentPage}
                 pageSize={pageSize}
