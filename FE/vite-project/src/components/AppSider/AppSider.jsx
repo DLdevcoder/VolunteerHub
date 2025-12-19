@@ -1,4 +1,5 @@
-// src/components/AppSider/AppSider.jsx (or wherever your file is)
+// src/components/AppSider/AppSider.jsx
+import { useEffect } from "react"; // Import thêm useEffect
 import { Layout, Menu } from "antd";
 import {
   CalendarOutlined,
@@ -8,7 +9,7 @@ import {
   FileAddOutlined,
   UnorderedListOutlined,
   UserOutlined,
-  FileExcelOutlined,
+  // FileExcelOutlined,
 } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -26,10 +27,14 @@ const AppSider = () => {
   const role = authUser?.role_name; // 'Volunteer' | 'Manager' | 'Admin' | undefined
 
   // ====== selected key detection ======
-  let selectedKey = "events";
+  // MẶC ĐỊNH: Đổi thành 'dashboard' thay vì 'events'
+  let selectedKey = "dashboard";
 
   if (path.startsWith("/history")) {
     selectedKey = "history";
+  } else if (path.startsWith("/events")) {
+    // Thêm check cho events vì giờ mặc định là dashboard
+    selectedKey = "events";
   } else if (path.startsWith("/dashboard")) {
     selectedKey = "dashboard";
   } else if (path.startsWith("/manager/events/create")) {
@@ -43,6 +48,14 @@ const AppSider = () => {
   } else if (path.startsWith("/admin/export")) {
     selectedKey = "admin-export";
   }
+
+  // ====== Auto redirect to dashboard if at root '/' ======
+  // Logic này đảm bảo khi vừa login xong (thường về '/') sẽ nhảy sang dashboard
+  useEffect(() => {
+    if (path === "/") {
+      navigate("/dashboard");
+    }
+  }, [path, navigate]);
 
   // ====== navigation handler ======
   const handleMenuClicked = ({ key }) => {
@@ -63,11 +76,18 @@ const AppSider = () => {
 
   // ====== build menu items based on role ======
 
-  // volunteer (or unknown) menu
+  // 1. Tạo item Dashboard riêng để tái sử dụng
+  const dashboardItem = { 
+    key: "dashboard", 
+    icon: <AppstoreOutlined />, 
+    label: "Dashboard" 
+  };
+
+  // 2. Sắp xếp lại volunteerItems: Dashboard -> Events -> History
   const volunteerItems = [
+    dashboardItem, // Đưa Dashboard lên đầu
     { key: "events", icon: <CalendarOutlined />, label: "Events" },
     { key: "history", icon: <HistoryOutlined />, label: "Lịch sử" },
-    { key: "dashboard", icon: <AppstoreOutlined />, label: "Dashboard" },
   ];
 
   // manager group
@@ -117,23 +137,23 @@ const AppSider = () => {
   let defaultOpenKeys = [];
 
   if (role === "Manager") {
-    // Managers: only Manager tabs + Dashboard
+    // Managers: Dashboard + Manager Group
     items = [
-      { key: "dashboard", icon: <AppstoreOutlined />, label: "Dashboard" },
+      dashboardItem,
       managerGroup,
     ];
     defaultOpenKeys = ["manager"];
   } else if (role === "Admin") {
-    // Admins: only Admin tabs + Dashboard
+    // Admins: Dashboard + Admin Group
     items = [
-      { key: "dashboard", icon: <AppstoreOutlined />, label: "Dashboard" },
+      dashboardItem,
       adminGroup,
     ];
     defaultOpenKeys = ["admin"];
   } else {
-    // Volunteers (or not logged in): Events + History + Dashboard
+    // Volunteers (or not logged in): Dashboard + Events + History
     items = volunteerItems;
-    defaultOpenKeys = []; // no group to auto-open
+    defaultOpenKeys = []; 
   }
 
   return (

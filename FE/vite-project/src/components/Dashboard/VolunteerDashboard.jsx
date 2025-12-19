@@ -172,7 +172,7 @@ const VolunteerDashboard = () => {
 
     /* TAB 1: HOẠT ĐỘNG */
     else if (currentViewIndex === 1) {
-      headerText = "Hoạt động mới (Đã tham gia)";
+      headerText = "Hoạt động mới";
       HeaderIcon = MessageFilled;
       sourceData = data?.col2_feed || [];
       const currentData = getPaginatedData(sourceData);

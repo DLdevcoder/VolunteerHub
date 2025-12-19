@@ -1,96 +1,268 @@
+/* src/components/AppHeader/AppHeader.css */
+
+/* --- Container Chính --- */
 .appHeader-container {
-  height: 100px;
+  height: 64px;
+  background: #ffffff; /* Nền trắng hiện đại */
+  padding: 0 24px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  box-sizing: border-box;
-  background: linear-gradient(rgb(0, 72, 103), rgba(217, 221, 209, 0));
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Shadow nhẹ */
+  position: sticky;
+  top: 0;
+  z-index: 999;
 }
 
+/* --- Logo (Bên trái) --- */
 .appHeader-logo {
-  font-size: 24px;
-  font-weight: bold;
-  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  color: #3674B5; /* Màu xanh chủ đạo */
+  letter-spacing: 0.5px;
 }
 
-.appHeader-search-input {
-  width: 50%;
-}
-
-.appHeader-search-input .search-input {
-  width: 100%;
-  height: 100%;
-}
-
-.appHeader-noti-and-ava-wrapper {
+/* --- Bên Phải --- */
+.appHeader-right {
   display: flex;
-  gap: 7px;
+  align-items: center;
+  gap: 16px;
 }
 
-/* Wrapper of the notification dropdown */
-.header-notification-dropdown {
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 280px;
-  max-height: 360px;
-  overflow-y: auto;
-  padding: 8px 0;
+/* Nút chuông */
+.header-icon-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-.header-notification-dropdown {
-  .notif-item {
-    cursor: pointer;
-    padding-inline: 12px;
-  }
-
-  .notif-item.read {
-    opacity: 0.7;
-  }
-
-  .notif-title {
-    font-weight: 600;
-    margin-bottom: 2px;
-  }
-
-  .notif-message {
-    font-size: 12px;
-    color: #555;
-  }
-
-  .notif-footer-view-all:hover {
-    background-color: #f5f5f5;
-  }
+.header-icon-btn:hover {
+  background-color: #f5f5f5;
 }
 
+/* Avatar Wrapper */
 .appHeader-avatar-wrapper {
   height: 40px;
   width: 40px;
-  background-color: white;
+  cursor: pointer;
   border-radius: 50%;
+  border: 1px solid #f0f0f0;
+  overflow: hidden; /* Để cắt ảnh tròn */
 }
 
-.appHeader-avatar-wrapper > img {
+.appHeader-avatar-wrapper img {
+  width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 50%;
+  display: block;
 }
 
+/* --- NOTIFICATION DROPDOWN (Xử lý cắt chữ) --- */
+.header-notification-dropdown {
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  width: 300px; /* Độ rộng vừa phải */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+}
+
+.notif-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  background-color: #fff;
+}
+
+.notif-list {
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.notif-item {
+  padding: 12px 16px !important;
+  border-bottom: 1px solid #f9f9f9;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: flex-start;
+}
+
+.notif-item:hover {
+  background-color: #f0f7ff;
+}
+
+.notif-item.unread {
+  background-color: #e6f7ff;
+}
+
+.notif-content {
+  flex: 1;
+  min-width: 0; /* Quan trọng để text-ellipsis hoạt động trong flex */
+  margin-right: 8px;
+}
+
+/* Xử lý cắt chữ Tiêu đề (1 dòng) */
+.text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+/* Xử lý cắt chữ Nội dung (tối đa 2 dòng) */
+.text-ellipsis-multiline {
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Hiện tối đa 2 dòng */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.notif-time {
+  font-size: 11px;
+  color: #999;
+}
+
+.notif-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #ff4d4f;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.notif-loading {
+  padding: 20px;
+  text-align: center;
+}
+
+.notif-footer {
+  padding: 12px;
+  text-align: center;
+  font-weight: 500;
+  color: #3674B5;
+  cursor: pointer;
+  border-top: 1px solid #f0f0f0;
+}
+
+.notif-footer:hover {
+  background-color: #f9f9f9;
+  text-decoration: underline;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
   .appHeader-container {
-    flex-direction: column;
-    height: auto;
-    padding: 10px;
-    gap: 10px;
+    padding: 0 16px;
   }
+}
 
-  .appHeader-search-input {
-    width: 70%;
-  }
+/* src/components/AppHeader/AppHeader.css */
 
-  .appHeader-noti-and-ava-wrapper {
-    justify-content: center;
-    width: 100%;
-  }
+.appHeader-container {
+  height: 64px;
+  background: #ffffff;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 999;
+}
+
+.appHeader-logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: #3674B5;
+  letter-spacing: 0.5px;
+  cursor: pointer; /* Thêm con trỏ tay để biết click được */
+}
+
+.appHeader-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-icon-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.header-icon-btn:hover {
+  background-color: #f5f5f5;
+}
+
+/* AVATAR WRAPPER */
+.appHeader-avatar-wrapper {
+  height: 40px;
+  width: 40px;
+  cursor: pointer;
+  border-radius: 50%;
+  border: 1px solid #e0e0e0; /* Viền xám nhẹ để tránh bị lẫn vào nền trắng */
+  background-color: #f0f0f0; /* Màu nền dự phòng nếu ảnh chưa load kịp */
+  overflow: hidden;
+  display: flex;       /* Căn giữa ảnh bên trong */
+  align-items: center;
+  justify-content: center;
+}
+
+.appHeader-avatar-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Các phần CSS Notification Dropdown giữ nguyên như cũ */
+.header-notification-dropdown {
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+}
+
+.notif-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; background-color: #fff; }
+.notif-list { max-height: 350px; overflow-y: auto; }
+.notif-item { padding: 12px 16px !important; border-bottom: 1px solid #f9f9f9; cursor: pointer; transition: background 0.2s; display: flex; align-items: flex-start; }
+.notif-item:hover { background-color: #f0f7ff; }
+.notif-item.unread { background-color: #e6f7ff; }
+.notif-content { flex: 1; min-width: 0; margin-right: 8px; }
+.text-ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: #333; margin-bottom: 4px; font-size: 14px; }
+.text-ellipsis-multiline { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: #666; line-height: 1.4; margin-bottom: 4px; }
+.notif-time { font-size: 11px; color: #999; }
+.notif-dot { width: 8px; height: 8px; background-color: #ff4d4f; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.notif-loading { padding: 20px; text-align: center; }
+.notif-footer { padding: 12px; text-align: center; font-weight: 500; color: #3674B5; cursor: pointer; border-top: 1px solid #f0f0f0; }
+.notif-footer:hover { background-color: #f9f9f9; text-decoration: underline; }
+
+@media (max-width: 768px) {
+  .appHeader-container { padding: 0 16px; }
 }

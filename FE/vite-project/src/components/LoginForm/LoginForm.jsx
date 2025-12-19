@@ -48,7 +48,7 @@ const LoginForm = () => {
             duration: 2,
           });
         }
-        navigate("/events");
+        navigate("/dashboard");
       }
     } catch (err) {
       console.error(err);
