@@ -1,4 +1,3 @@
-// src/components/Notifications/Notifications.jsx
 import "./Notifications.css";
 import { useEffect, useState } from "react";
 import {
@@ -10,7 +9,15 @@ import {
   Pagination,
   Space,
   Popconfirm,
+  Tooltip
 } from "antd";
+import { 
+  BellOutlined, 
+  CheckCircleOutlined, 
+  ReloadOutlined, 
+  DeleteOutlined, 
+  ClockCircleOutlined 
+} from "@ant-design/icons";
 import { useDispatch, useSelector } from "react-redux";
 
 import {
@@ -48,7 +55,6 @@ const Notifications = () => {
   const [page, setPage] = useState(currentPageFromStore);
   const [pageSize, setPageSize] = useState(pageSizeFromStore);
 
-  // helper: sync AppHeader after any change in notifications
   const syncHeaderNotifications = () => {
     dispatch(fetchUnreadCountThunk());
     dispatch(fetchRecentNotificationsThunk(5));
@@ -56,9 +62,9 @@ const Notifications = () => {
 
   useEffect(() => {
     dispatch(fetchNotificationsThunk({ page, limit: pageSize })).then(() => {
-      // đồng bộ header mỗi lần reload list
       syncHeaderNotifications();
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, page, pageSize]);
 
   const handlePageChange = (p, size) => {
@@ -80,7 +86,9 @@ const Notifications = () => {
     });
   };
 
-  const handleDelete = (item) => {
+  const handleDelete = (item, e) => {
+    // Ngăn chặn sự kiện click lan ra item (tránh trigger markRead khi đang xóa)
+    e?.stopPropagation(); 
     dispatch(deleteNotificationThunk(item.notification_id)).then(() => {
       syncHeaderNotifications();
     });
@@ -95,7 +103,9 @@ const Notifications = () => {
   const renderTime = (iso) => {
     if (!iso) return null;
     try {
-      return new Date(iso).toLocaleString("vi-VN");
+      return new Date(iso).toLocaleString("vi-VN", {
+        hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric"
+      });
     } catch {
       return iso;
     }
@@ -103,10 +113,8 @@ const Notifications = () => {
 
   const getBodyText = (item) => {
     if (item.body) return item.body;
-
     const rawPayload = item.payload;
     if (!rawPayload) return "";
-
     if (typeof rawPayload === "string") {
       try {
         const obj = JSON.parse(rawPayload);
@@ -118,85 +126,89 @@ const Notifications = () => {
       if (rawPayload.message) return rawPayload.message;
       return JSON.stringify(rawPayload);
     }
-
     return "";
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <Space
-        style={{ width: "100%", marginBottom: 16 }}
-        align="center"
-        justify="space-between"
-      >
-        <Title level={3} style={{ margin: 0 }}>
-          Tất cả thông báo
+    <div className="notifications-page-wrapper">
+      {/* HEADER SECTION */}
+      <div className="ntf-header">
+        <Title level={3} className="ntf-title">
+          <BellOutlined /> Tất cả thông báo
         </Title>
 
-        <Space>
-          <Button onClick={handleRefresh}>Refresh</Button>
-          <Button onClick={handleMarkAllRead} type="primary">
+        <div className="ntf-actions">
+          <Tooltip title="Tải lại danh sách">
+            <Button 
+              icon={<ReloadOutlined />} 
+              onClick={handleRefresh} 
+              className="ntf-btn-refresh"
+            />
+          </Tooltip>
+          <Button 
+            type="primary" 
+            icon={<CheckCircleOutlined />} 
+            onClick={handleMarkAllRead}
+            className="ntf-btn-mark-all"
+          >
             Đánh dấu tất cả đã đọc
           </Button>
-        </Space>
-      </Space>
+        </div>
+      </div>
 
+      {/* CONTENT SECTION */}
       {loading ? (
-        <div style={{ textAlign: "center", marginTop: 40 }}>
-          <Spin />
+        <div style={{ textAlign: "center", padding: "60px 0" }}>
+          <Spin size="large" />
         </div>
       ) : (
         <>
           <List
+            className="ntf-list"
             itemLayout="horizontal"
             dataSource={notifications}
-            locale={{ emptyText: "Không có thông báo nào" }}
+            locale={{ emptyText: "Bạn chưa có thông báo nào." }}
             renderItem={(item) => {
-              const title = item.title || item.type || "Thông báo";
+              const title = item.title || item.type || "Thông báo hệ thống";
               const mainText = getBodyText(item);
+              const isRead = item.is_read;
 
               return (
                 <List.Item
-                  style={{
-                    backgroundColor: item.is_read ? "#fff" : "#e6f7ff",
-                    borderRadius: 8,
-                    marginBottom: 8,
-                    padding: 12,
-                    cursor: "pointer",
-                  }}
+                  className={`ntf-list-item ${isRead ? "ntf-item-read" : "ntf-item-unread"}`}
                   onClick={() => handleMarkRead(item)}
                   actions={[
                     <Popconfirm
                       key="delete"
-                      title="Xóa thông báo?"
+                      title="Bạn có chắc chắn muốn xóa thông báo này?"
                       okText="Xóa"
                       cancelText="Hủy"
-                      onConfirm={() => handleDelete(item)}
+                      okButtonProps={{ danger: true }}
+                      onConfirm={(e) => handleDelete(item, e)}
+                      onCancel={(e) => e?.stopPropagation()}
                     >
-                      <Button danger type="link">
-                        Xóa
-                      </Button>
+                      <Button 
+                        type="text" 
+                        danger 
+                        icon={<DeleteOutlined />} 
+                        className="ntf-btn-delete"
+                        onClick={(e) => e.stopPropagation()} // Ngăn click nhầm vào item
+                      />
                     </Popconfirm>,
                   ]}
                 >
                   <List.Item.Meta
                     title={
-                      <Space>
+                      <div className="ntf-item-title">
                         <Text strong>{title}</Text>
-                        {!item.is_read && <Tag color="blue">Chưa đọc</Tag>}
-                      </Space>
+                        {!isRead && <Tag color="#3674B5" style={{ marginLeft: 8, borderRadius: 10 }}>Mới</Tag>}
+                      </div>
                     }
                     description={
                       <>
-                        {mainText && (
-                          <div style={{ whiteSpace: "pre-line" }}>
-                            {mainText}
-                          </div>
-                        )}
-                        <div style={{ marginTop: 4 }}>
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            {renderTime(item.created_at)}
-                          </Text>
+                        {mainText && <div className="ntf-item-body">{mainText}</div>}
+                        <div className="ntf-item-time">
+                          <ClockCircleOutlined /> {renderTime(item.created_at)}
                         </div>
                       </>
                     }
@@ -206,16 +218,19 @@ const Notifications = () => {
             }}
           />
 
-          <div style={{ marginTop: 16, textAlign: "right" }}>
-            <Pagination
-              current={page}
-              pageSize={pageSize}
-              total={totalFromStore}
-              showSizeChanger
-              onChange={handlePageChange}
-              onShowSizeChange={handlePageChange}
-            />
-          </div>
+          {/* PAGINATION SECTION */}
+          {totalFromStore > 0 && (
+            <div className="ntf-pagination-wrapper">
+              <Pagination
+                current={page}
+                pageSize={pageSize}
+                total={totalFromStore}
+                showSizeChanger
+                onChange={handlePageChange}
+                onShowSizeChange={handlePageChange}
+              />
+            </div>
+          )}
         </>
       )}
     </div>

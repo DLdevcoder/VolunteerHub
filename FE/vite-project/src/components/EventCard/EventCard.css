@@ -8,7 +8,6 @@
   --ec-pale-blue: #A1E3F9;
 }
 
-/* --- CONTAINER (THẺ EVENT) --- */
 .ec-item-wrapper {
   display: flex;
   align-items: center;
@@ -19,28 +18,17 @@
   gap: 20px;
   cursor: pointer;
   min-height: 120px;
-  
-  /* Hiệu ứng chuyển động mượt mà */
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   box-shadow: 0 2px 6px rgba(0,0,0,0.02);
 }
 
-/* --- HIỆU ỨNG HOVER ĐẸP --- */
 .ec-item-wrapper:hover {
-  /* Đổi nền thành màu Mint theo yêu cầu */
   background-color: #D1F8EF; 
-  
-  /* Nổi lên cao hơn một chút */
   transform: translateY(-5px);
-  
-  /* Đổ bóng sâu hơn và có màu xanh nhẹ */
   box-shadow: 0 12px 24px rgba(54, 116, 181, 0.25);
-  
-  /* Đổi màu viền thẻ thành xanh đậm cho đồng bộ */
   border-color: #3674B5;
 }
 
-/* --- CATEGORY BOX (OUTLINE) --- */
 .ec-category-box {
   display: flex;
   flex-direction: column;
@@ -52,8 +40,6 @@
   flex-shrink: 0;
   gap: 6px;
   text-align: center;
-  
-  /* Nền trắng để nổi bật trên nền thẻ (khi thẻ đổi màu hover) */
   background-color: #ffffff; 
   border-width: 2px;
   border-style: solid;
@@ -74,33 +60,26 @@
   line-height: 1.2;
 }
 
-/* --- CẬP NHẬT MÀU SẮC DANH MỤC --- */
-
-/* Giáo dục: #3674B5 */
 .ec-cat-edu {
   border-color: #3674B5;
   color: #3674B5; 
 }
 
-/* Môi trường: ĐÃ SỬA THÀNH #3674B5 */
 .ec-cat-env {
   border-color: #578FCA; 
   color: #578FCA; 
 }
 
-/* Xã hội: #A1E3F9 */
 .ec-cat-soc {
   border-color: #A1E3F9;
-  color: #567b88; /* Giữ chữ đậm để dễ đọc */
+  color: #567b88; 
 }
 
-/* Mặc định */
 .ec-cat-default {
   border-color: #e0e0e0;
   color: #999;
 }
 
-/* --- INFO SECTION --- */
 .ec-info-section {
   flex: 1;
   display: flex;
@@ -123,7 +102,6 @@
   transition: color 0.2s;
 }
 
-/* Khi hover thẻ, tiêu đề chuyển màu xanh đậm cho đẹp */
 .ec-item-wrapper:hover .ec-title {
   color: #3674B5;
 }
@@ -162,7 +140,6 @@
   max-width: 400px;
 }
 
-/* --- ACTION SECTION --- */
 .ec-action-section {
   display: flex;
   flex-direction: column;
@@ -176,7 +153,6 @@
   transition: border-color 0.3s;
 }
 
-/* Khi hover, đường kẻ ngăn cách chuyển màu theo */
 .ec-item-wrapper:hover .ec-action-section {
   border-left-color: rgba(54, 116, 181, 0.2);
 }
@@ -187,18 +163,15 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background-color: #f9f9f9; /* Nền xám nhạt */
+  background-color: #f9f9f9; 
   padding: 4px 10px;
   border-radius: 6px;
-  
-  /* Khi thẻ hover (nền Mint), badge này sẽ nổi bật vì nó màu trắng/xám */
   transition: background-color 0.3s;
 }
 .ec-item-wrapper:hover .ec-participants-badge {
-  background-color: #fff; /* Chuyển nền badge thành trắng khi hover thẻ */
+  background-color: #fff; 
 }
 
-/* --- BUTTONS --- */
 .ec-action-btn {
   border-radius: 6px !important;
   font-weight: 600 !important;
@@ -216,7 +189,6 @@
   color: #fff !important; 
 }
 
-/* Màu các loại nút (Giữ nguyên logic viền màu) */
 .ec-btn-default { border-color: var(--ec-primary-blue) !important; color: var(--ec-primary-blue) !important; }
 .ec-btn-default:hover:not(:disabled) { background-color: var(--ec-primary-blue) !important; }
 
@@ -228,7 +200,6 @@
 
 .ec-btn-disabled { border-color: #d9d9d9 !important; color: #bbb !important; background-color: #f5f5f5 !important; }
 
-/* Responsive */
 @media (max-width: 768px) {
   .ec-item-wrapper { flex-direction: column; align-items: flex-start; padding: 12px; gap: 12px; }
   .ec-category-box { width: 100%; height: auto; flex-direction: row; padding: 8px; justify-content: flex-start; gap: 10px; border-width: 1px; }

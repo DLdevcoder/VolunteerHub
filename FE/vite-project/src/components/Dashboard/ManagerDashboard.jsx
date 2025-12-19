@@ -128,41 +128,50 @@ const ManagerDashboard = () => {
             style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
             onClick={() => navigate(`/events/${ev.event_id}`)}
           >
-            {}
+            
             <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
                
-               {/* PHẦN 1: THÔNG TIN */}
-                         <div style={{ paddingRight: 24, maxWidth: "65%" }}>
-                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                             <Tag color={realRank === 0 ? "#f5222d" : "#3674B5"} style={{ margin: 0 }}>
-                               {realRank === 0 ? "TOP 1" : `TOP ${realRank + 1}`}
-                             </Tag>
-                           </div>
+               {/* PHẦN 1: THÔNG TIN (SỬ DỤNG CLASS MỚI) */}
+               <div className="trending-info-section">
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <Tag color={realRank === 0 ? "#f5222d" : "#3674B5"} style={{ margin: 0 }}>
+                      {realRank === 0 ? "TOP 1" : `TOP ${realRank + 1}`}
+                    </Tag>
+                  </div>
                
-                           <div 
-                             style={{ fontSize: 18, fontWeight: "bold", color: "#333", marginBottom: 8 }}
-                           >
-                             {ev.title}
-                           </div>
+                  <div 
+                    style={{ 
+                      fontSize: 18, 
+                      fontWeight: "bold", 
+                      color: "#333", 
+                      marginBottom: 8,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }}
+                    title={ev.title}
+                  >
+                    {ev.title}
+                  </div>
                
-                           <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
-                              <span><EnvironmentOutlined /> {ev.location}</span>
-                              <span><TeamOutlined /> {ev.current_participants}/{ev.target_participants} người</span>
-                           </div>
-                         </div>
-
-               {/* PHẦN 2: TĂNG TRƯỞNG */}
+                  <div style={{ display: "flex", gap: 16, color: "#666", fontSize: 14 }}>
+                     <span><EnvironmentOutlined /> {ev.location}</span>
+                     <span><TeamOutlined /> {ev.current_participants}/{ev.target_participants} người</span>
+                  </div>
+               </div>
+               
+               {/* PHẦN 2: TĂNG TRƯỞNG (SỬ DỤNG CLASS MỚI) */}
                <div 
-            style={{ 
-                display: "flex", 
-                flexDirection: "column", 
-                gap: 4,
-                paddingLeft: 24,
-                borderLeft: "1px solid #eee", 
-                minWidth: 160
-            }}
-          >
-
+                 className="trending-growth-section"
+                 style={{ 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    gap: 4,
+                    paddingLeft: 24,
+                    borderLeft: "1px solid #eee", 
+                    minWidth: 160
+                 }}
+               >
                   <div style={{ fontSize: 11, fontWeight: "bold", color: "#888", marginBottom: 2 }}>
                     <RiseOutlined /> TĂNG TRƯỞNG 24H
                   </div>
@@ -175,25 +184,25 @@ const ManagerDashboard = () => {
                </div>
             </div>
 
-                    <div style={{ 
-                        textAlign: "center", 
-                        paddingLeft: 30, 
-                        borderLeft: "1px solid #eee", 
-                        minWidth: 120,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center"
-                    }}>
-                        <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>Điểm</div>
-                        <div style={{ fontSize: 28, fontWeight: "bold", color: "#3674B5", lineHeight: 1 }}>
-                            {ev.engagement_score}
-                        </div>
-                        <div style={{ marginTop: 6 }}>
-                            <StarFilled style={{ color: "#fadb14", fontSize: 20 }} />
-                        </div>
-                    </div>
-                  </div>
+            {/* PHẦN 3: ĐIỂM SỐ */}
+            <div style={{ 
+                textAlign: "center", 
+                paddingLeft: 30, 
+                minWidth: 120,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center"
+            }}>
+                <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>Điểm</div>
+                <div style={{ fontSize: 28, fontWeight: "bold", color: "#3674B5", lineHeight: 1 }}>
+                    {ev.engagement_score}
+                </div>
+                <div style={{ marginTop: 6 }}>
+                    <StarFilled style={{ color: "#fadb14", fontSize: 20 }} />
+                </div>
+            </div>
+          </div>
          );
       });
     }

@@ -1,12 +1,11 @@
 .event-posts-tab-container {
-  max-width: 680px; /* Standard feed width */
+  max-width: 680px; 
   margin: 0 auto;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   background-color: transparent;
 }
 
-/* === CREATE POST WIDGET === */
 .ept-create-post-widget {
   background: #ffffff;
   border-radius: 8px;
@@ -30,12 +29,11 @@
   flex: 1;
 }
 
-/* Customizing Ant Design TextArea to look like a clean input */
 .ept-textarea.ant-input {
   width: 100%;
   border: none !important;
   resize: none;
-  font-size: 16px; /* Larger font size like FB */
+  font-size: 16px; 
   padding: 8px 0;
   min-height: 40px;
   outline: none !important;
@@ -64,7 +62,6 @@
   justify-content: flex-end;
 }
 
-/* FB Style Button */
 .ept-post-btn.ant-btn-primary {
   background-color: #1877f2;
   border-color: #1877f2;
@@ -89,15 +86,12 @@
   color: #bcc0c4 !important;
 }
 
-/* === POST LIST STYLES === */
-/* Remove default list styles from Ant Design */
 .ept-list-item.ant-list-item {
   padding: 0 !important;
   border-bottom: none !important;
-  margin-bottom: 16px; /* Space between posts */
+  margin-bottom: 16px; 
 }
 
-/* Style for the delete button container */
 .ept-delete-btn-container {
   position: absolute;
   top: 12px;
@@ -105,7 +99,6 @@
   z-index: 10;
 }
 
-/* Style for the delete icon button */
 .ept-delete-btn.ant-btn-text {
   width: 30px;
   height: 30px;
@@ -114,16 +107,15 @@
   align-items: center;
   justify-content: center;
   color: #65676b;
-  background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
+  background-color: rgba(255, 255, 255, 0.8); 
   transition: all 0.2s;
 }
 
 .ept-delete-btn.ant-btn-text:hover {
   background-color: #f0f2f5;
-  color: #f02849; /* Red on hover */
+  color: #f02849; 
 }
 
-/* Loading & Empty states */
 .ept-loading-container,
 .ept-empty-container {
   text-align: center;
@@ -133,50 +125,32 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-/* --- TÙY CHỈNH Ô NHẬP LIỆU (Input Style Facebook) --- */
-
-/* Wrapper để căn chỉnh input với avatar */
 .ept-input-container {
   flex: 1;
   display: flex;
   align-items: center;
 }
 
-/* Style cho Textarea */
 .ept-textarea.ant-input {
   width: 100%;
-
-  /* 1. MÀU NỀN XÁM NHẠT */
   background-color: #f0f2f5 !important;
-
-  /* 2. BO TRÒN VIÊN THUỐC */
   border-radius: 24px !important;
-
-  /* Căn chỉnh text và padding */
   padding: 10px 16px !important;
   font-size: 15px;
   color: #050505;
-
-  /* Reset viền và resize */
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
   resize: none;
-
-  /* Chiều cao tối thiểu */
   min-height: 40px;
-
-  /* Hiệu ứng chuyển màu mượt */
   transition: background-color 0.2s;
 }
 
-/* Placeholder màu xám đậm hơn chút cho dễ đọc */
 .ept-textarea.ant-input::placeholder {
   color: #65676b;
   font-size: 15px;
 }
 
-/* Khi hover hoặc focus thì nền đậm hơn chút (giống FB) */
 .ept-textarea.ant-input:hover,
 .ept-textarea.ant-input:focus,
 .ept-textarea.ant-input-focused {
@@ -184,7 +158,6 @@
   box-shadow: none !important;
 }
 
-/* Filter Bar Container */
 .participants-filter-bar {
   display: flex;
   align-items: center;
@@ -195,9 +168,8 @@
   margin-bottom: 16px;
 }
 
-/* Custom Table Styles */
 .participants-table .ant-table-thead > tr > th {
-  background-color: #f0f5fa !important; /* Xanh rất nhạt */
+  background-color: #f0f5fa !important; 
   color: var(--primary-blue);
   font-weight: 700;
   border-bottom: 2px solid #e1e9f0;
@@ -207,7 +179,6 @@
   background-color: #fcfdfe !important;
 }
 
-/* Nút hoàn thành custom */
 .btn-complete {
   color: var(--primary-blue);
   border-color: var(--primary-blue);

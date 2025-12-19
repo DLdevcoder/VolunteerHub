@@ -1,0 +1,128 @@
+.notifications-page-wrapper {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 24px 32px;
+  max-width: 1000px;
+  margin: 0 auto;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.ntf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ntf-title {
+  margin: 0 !important;
+  color: #3674B5 !important; 
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ntf-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.ntf-btn-refresh {
+  border-radius: 6px;
+}
+.ntf-btn-mark-all {
+  border-radius: 6px;
+  background-color: #3674B5;
+  border-color: #3674B5;
+}
+.ntf-btn-mark-all:hover {
+  background-color: #578FCA !important;
+  border-color: #578FCA !important;
+}
+
+.ntf-list-item {
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 16px 20px !important; 
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  position: relative;
+}
+
+.ntf-list-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.ntf-item-unread {
+  background-color: #f0f9ff; 
+  border-left: 4px solid #3674B5; 
+}
+
+.ntf-item-read {
+  background-color: #ffffff;
+  border: 1px solid #f0f0f0;
+  opacity: 0.9;
+}
+.ntf-item-read:hover {
+  border-color: #d9d9d9;
+}
+
+.ntf-item-title {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ntf-item-body {
+  color: #555;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.ntf-item-time {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #999;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ntf-btn-delete {
+  color: #ff4d4f;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.ntf-list-item:hover .ntf-btn-delete {
+  opacity: 1;
+}
+
+.ntf-pagination-wrapper {
+  margin-top: 24px;
+  text-align: right;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+@media (max-width: 768px) {
+  .notifications-page-wrapper {
+    padding: 16px;
+  }
+  .ntf-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .ntf-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
