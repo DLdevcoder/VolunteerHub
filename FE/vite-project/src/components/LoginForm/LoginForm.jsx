@@ -1,9 +1,9 @@
-// src/components/LoginForm/LoginForm.jsx
 import "./LoginForm.css";
-import { Button, Form, Input } from "antd";
+import { Button, Form, Input, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect } from "react";
+import { UserOutlined, LockOutlined } from "@ant-design/icons";
 
 import { loginThunk, clearMessages } from "../../redux/slices/authSlice.jsx";
 import {
@@ -12,15 +12,16 @@ import {
 } from "../../redux/selectors/authSelectors.js";
 import useGlobalMessage from "../../utils/hooks/useGlobalMessage.js";
 
+const { Title } = Typography;
+
 const LoginForm = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const messageApi = useGlobalMessage(); // global message instance
+  const messageApi = useGlobalMessage();
 
   const error = useSelector(authErrorSelector);
   const loading = useSelector(authLoadingSelector);
 
-  // Show error toast whenever auth.error changes
   useEffect(() => {
     if (error && messageApi) {
       messageApi.error({
@@ -30,14 +31,6 @@ const LoginForm = () => {
       dispatch(clearMessages());
     }
   }, [error, messageApi, dispatch]);
-
-  const handleForgotPasswordOptionClicked = () => {
-    navigate("/reset-password");
-  };
-
-  const handleRegisterOptionClicked = () => {
-    navigate("/register");
-  };
 
   const handleFinish = async (values) => {
     try {
@@ -49,57 +42,106 @@ const LoginForm = () => {
       );
 
       if (loginThunk.fulfilled.match(resultAction)) {
-        // Show success before navigating away
         if (messageApi) {
           messageApi.success({
-            content: "Login successful",
+            content: "Đăng nhập thành công!",
             duration: 2,
           });
         }
         navigate("/events");
       }
-      // If rejected: auth.error will be set → useEffect will show messageApi.error
     } catch (err) {
       console.error(err);
       if (messageApi) {
-        messageApi.error("Unexpected error");
+        messageApi.error("Lỗi không xác định");
       }
     }
   };
 
   return (
-    <div className="loginFrom-container">
-      <div className="loginForm-box">
-        <div className="loginForm-box-left">
-          <div className="image-wrapper">
-            <img src="images/loginBackground.png" alt="Login" />
-          </div>
-        </div>
-        <div className="loginForm-box-right">
-          <h2>Login</h2>
-          <Form layout="vertical" onFinish={handleFinish}>
-            <Form.Item label="Email" name="email">
-              <Input placeholder="Enter your email" />
-            </Form.Item>
-            <Form.Item label="Password" name="password">
-              <Input.Password placeholder="Enter your password" />
-            </Form.Item>
-            <Form.Item>
-              <Button type="primary" htmlType="submit" block loading={loading}>
-                Submit
-              </Button>
-            </Form.Item>
-          </Form>
-          <div className="loginForm-options-wrapper">
-            <div
-              className="forgot-password-option"
-              onClick={handleForgotPasswordOptionClicked}
-            >
-              Forgot Password?
+    <div className="login-page-scope">
+      <div className="login-container">
+        <div className="login-box">
+          <div className="login-left">
+            <div className="login-bg-overlay">
+              <div className="brand-welcome">
+                <h1>Volunteer Hub</h1>
+                <p>Kết nối trái tim, lan tỏa yêu thương.</p>
+              </div>
+              <img
+                src="images/loginBackground.png"
+                alt="Login"
+                className="login-img"
+              />
             </div>
-            <div className="register-option">
-              Don't have an account?{" "}
-              <span onClick={handleRegisterOptionClicked}>Register</span>
+          </div>
+
+          <div className="login-right">
+            <div className="login-header">
+              <Title level={2} style={{ color: "#3674B5", marginBottom: 8 }}>
+                Đăng nhập
+              </Title>
+            </div>
+
+            <Form
+              layout="vertical"
+              onFinish={handleFinish}
+              size="large"
+              requiredMark={false}
+              className="login-form"
+            >
+              <Form.Item
+                label="Email"
+                name="email"
+                rules={[
+                  { required: true, message: "Vui lòng nhập email" },
+                  { type: "email", message: "Email không hợp lệ" },
+                ]}
+              >
+                <Input
+                  prefix={<UserOutlined className="input-icon" />}
+                  placeholder="Nhập email"
+                />
+              </Form.Item>
+
+              <Form.Item
+                label="Mật khẩu"
+                name="password"
+                rules={[{ required: true, message: "Vui lòng nhập mật khẩu" }]}
+              >
+                <Input.Password
+                  prefix={<LockOutlined className="input-icon" />}
+                  placeholder="Nhập mật khẩu"
+                />
+              </Form.Item>
+
+              <div className="forgot-pass-link">
+                <span onClick={() => navigate("/reset-password")}>
+                  Quên mật khẩu?
+                </span>
+              </div>
+
+              <Form.Item style={{ marginTop: 24 }}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  loading={loading}
+                  className="login-btn"
+                >
+                  Đăng nhập
+                </Button>
+              </Form.Item>
+            </Form>
+
+            <div className="register-footer">
+              Chưa có tài khoản?
+              <span
+                onClick={() => navigate("/register")}
+                className="register-link"
+              >
+                Đăng ký ngay
+              </span>
             </div>
           </div>
         </div>

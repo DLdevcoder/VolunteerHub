@@ -1,8 +1,15 @@
 import "./RegisterForm.css";
 import { useEffect } from "react";
-import { Button, Form, Input, Select } from "antd";
+import { Button, Form, Input, Select, Typography, Row, Col } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import {
+  UserOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  LockOutlined,
+  SafetyCertificateOutlined,
+} from "@ant-design/icons";
 
 import { registerThunk, clearMessages } from "../../redux/slices/authSlice";
 import {
@@ -11,6 +18,7 @@ import {
 } from "../../redux/selectors/authSelectors.js";
 import useGlobalMessage from "../../utils/hooks/useGlobalMessage.js";
 
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 const RegisterForm = () => {
@@ -21,13 +29,9 @@ const RegisterForm = () => {
   const error = useSelector(authErrorSelector);
   const loading = useSelector(authLoadingSelector);
 
-  // Show error from auth slice
   useEffect(() => {
     if (error && messageApi) {
-      messageApi.error({
-        content: error,
-        duration: 3,
-      });
+      messageApi.error({ content: error, duration: 3 });
       dispatch(clearMessages());
     }
   }, [error, messageApi, dispatch]);
@@ -42,117 +46,178 @@ const RegisterForm = () => {
       password: values.password,
       full_name: values.fullName,
       phone: values.phoneNumber,
-      role_name: values.role || "Volunteer", // 👈 from Select
+      role_name: values.role || "Volunteer",
     };
 
     try {
       const resultAction = await dispatch(registerThunk(payload));
-
       if (registerThunk.fulfilled.match(resultAction)) {
         if (messageApi) {
           messageApi.success({
-            content: "Register successfully! Please log in.",
+            content: "Đăng ký thành công! Vui lòng đăng nhập.",
             duration: 2,
           });
         }
         navigate("/login");
       }
-      // if rejected: error handled by useEffect above
     } catch (err) {
       console.error(err);
-      if (messageApi) {
-        messageApi.error("Unexpected error while registering");
-      }
+      if (messageApi) messageApi.error("Lỗi không xác định khi đăng ký");
     }
   };
 
   return (
-    <div className="registerForm-container">
-      <div className="registerForm-box">
-        <h2>Register</h2>
-        <Form layout="vertical" onFinish={handleRegister}>
-          <Form.Item
-            label="Full name"
-            name="fullName"
-            rules={[{ required: true, message: "Please enter your full name" }]}
-          >
-            <Input placeholder="Enter your full name" />
-          </Form.Item>
+    <div className="register-page-scope">
+      <div className="register-container">
+        <div className="register-box">
+          <div className="register-left">
+            <div className="brand-content">
+              <h1>Tham gia cùng chúng tôi</h1>
+              <p>Trở thành một phần của cộng đồng tình nguyện viên ngay hôm nay.</p>
+            </div>
+          </div>
 
-          <Form.Item
-            label="Phone number"
-            name="phoneNumber"
-            rules={[{ required: true, message: "Please enter your phone" }]}
-          >
-            <Input placeholder="Enter your phone number" />
-          </Form.Item>
+          <div className="register-right">
+            <div className="register-header">
+              <Title level={2} style={{ color: "#3674B5", marginBottom: 8 }}>
+                Đăng ký
+              </Title>
+              <Text type="secondary">Tạo tài khoản mới</Text>
+            </div>
 
-          <Form.Item
-            label="Email"
-            name="email"
-            rules={[
-              { required: true, message: "Please enter your email" },
-              { type: "email", message: "Invalid email" },
-            ]}
-          >
-            <Input placeholder="Enter your email" />
-          </Form.Item>
+            <Form
+              layout="vertical"
+              onFinish={handleRegister}
+              size="large"
+              requiredMark={false}
+              className="register-form"
+            >
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label="Họ và tên"
+                    name="fullName"
+                    rules={[{ required: true, message: "Nhập họ tên" }]}
+                  >
+                    <Input
+                      prefix={<UserOutlined className="input-icon" />}
+                      placeholder="Nhập tên của bạn"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label="Số điện thoại"
+                    name="phoneNumber"
+                    rules={[{ required: true, message: "Nhập SĐT" }]}
+                  >
+                    <Input
+                      prefix={<PhoneOutlined className="input-icon" />}
+                      placeholder="Nhập SĐT của bạn"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-          <Form.Item
-            label="Password"
-            name="password"
-            rules={[
-              { required: true, message: "Please enter your password" },
-              { min: 6, message: "Password must be at least 6 characters" },
-            ]}
-          >
-            <Input.Password placeholder="Enter your password" />
-          </Form.Item>
+              <Form.Item
+                label="Email"
+                name="email"
+                rules={[
+                  { required: true, message: "Vui lòng nhập email" },
+                  { type: "email", message: "Email không hợp lệ" },
+                ]}
+              >
+                <Input
+                  prefix={<MailOutlined className="input-icon" />}
+                  placeholder="Nhâp email của bạn"
+                />
+              </Form.Item>
 
-          <Form.Item
-            label="Confirm Password"
-            name="confirmPassword"
-            dependencies={["password"]}
-            rules={[
-              { required: true, message: "Please confirm your password" },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue("password") === value) {
-                    return Promise.resolve();
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label="Mật khẩu"
+                    name="password"
+                    rules={[
+                      { required: true, message: "Nhập mật khẩu" },
+                      { min: 6, message: "Tối thiểu 6 ký tự" },
+                    ]}
+                  >
+                    <Input.Password
+                      prefix={<LockOutlined className="input-icon" />}
+                      placeholder="Mật khẩu"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label="Xác nhận mật khẩu"
+                    name="confirmPassword"
+                    dependencies={["password"]}
+                    rules={[
+                      { required: true, message: "Nhập lại mật khẩu" },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          if (!value || getFieldValue("password") === value) {
+                            return Promise.resolve();
+                          }
+                          return Promise.reject(
+                            new Error("Mật khẩu không khớp")
+                          );
+                        },
+                      }),
+                    ]}
+                  >
+                    <Input.Password
+                      prefix={<LockOutlined className="input-icon" />}
+                      placeholder="Xác nhận"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item
+                label="Vai trò"
+                name="role"
+                initialValue="Volunteer"
+                rules={[{ required: true, message: "Vui lòng chọn vai trò" }]}
+              >
+                <Select
+                  suffixIcon={
+                    <SafetyCertificateOutlined className="input-icon" />
                   }
-                  return Promise.reject(
-                    new Error("The two passwords do not match")
-                  );
-                },
-              }),
-            ]}
-          >
-            <Input.Password placeholder="Confirm your password" />
-          </Form.Item>
+                >
+                  <Option value="Volunteer">
+                    Tình nguyện viên (Volunteer)
+                  </Option>
+                  <Option value="Manager">
+                    Quản lý sự kiện (Manager)
+                  </Option>
+                </Select>
+              </Form.Item>
 
-          {/* NEW: Role select */}
-          <Form.Item
-            label="Role"
-            name="role"
-            initialValue="Volunteer"
-            rules={[{ required: true, message: "Please choose a role" }]}
-          >
-            <Select>
-              <Option value="Volunteer">Volunteer</Option>
-              <Option value="Manager">Manager</Option>
-            </Select>
-          </Form.Item>
+              <Form.Item style={{ marginTop: 16 }}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  loading={loading}
+                  className="register-btn"
+                >
+                  Đăng ký tài khoản
+                </Button>
+              </Form.Item>
+            </Form>
 
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>
-              Register
-            </Button>
-          </Form.Item>
-        </Form>
-        <div className="registerForm-options">
-          <div className="login-option">
-            Already have an account?{" "}
-            <span onClick={handleLoginOptionClicked}>Login</span>
+            <div className="form-footer">
+              Đã có tài khoản?
+              <span
+                onClick={handleLoginOptionClicked}
+                className="login-link"
+              >
+                Đăng nhập ngay
+              </span>
+            </div>
           </div>
         </div>
       </div>
