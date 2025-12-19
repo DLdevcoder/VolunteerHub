@@ -1,3 +1,4 @@
+import "./Events.css"; // Nhớ import CSS
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -9,7 +10,6 @@ import {
   Typography,
   DatePicker,
   Select,
-  Space,
 } from "antd";
 
 import EventCard from "../EventCard/EventCard";
@@ -37,7 +37,7 @@ const { Title } = Typography;
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
-const DEFAULT_LIMIT = 9;
+const DEFAULT_LIMIT = 10; // Tăng limit lên chút vì list view tốn ít chỗ dọc hơn
 
 const Events = () => {
   const dispatch = useDispatch();
@@ -66,12 +66,10 @@ const Events = () => {
     dispatch(fetchEventCategories());
   }, [dispatch]);
 
-  // 2) Build params (stable) so we can reuse in many places
+  // 2) Build params
   const params = useMemo(() => {
     const p = { page, limit: DEFAULT_LIMIT };
-
     if (categoryId) p.category_id = categoryId;
-
     if (dateRange && dateRange.length === 2) {
       const [start, end] = dateRange;
       if (start && end) {
@@ -79,22 +77,20 @@ const Events = () => {
         p.start_date_to = end.endOf("day").toISOString();
       }
     }
-
     return p;
   }, [page, categoryId, dateRange]);
 
-  // 3) Load events whenever params change
+  // 3) Load events
   useEffect(() => {
     dispatch(fetchActiveEvents(params));
   }, [dispatch, params]);
 
-  // 4) Show list error ONLY ONCE per distinct message (avoid replay on navigation)
+  // 4) Show list error
   const lastListErrorRef = useRef(null);
   useEffect(() => {
     if (!error) return;
-    if (lastListErrorRef.current === error) return; // prevent duplicates
+    if (lastListErrorRef.current === error) return;
     lastListErrorRef.current = error;
-
     messageApi.error(error);
   }, [error, messageApi]);
 
@@ -103,18 +99,12 @@ const Events = () => {
       messageApi.info("Bạn cần đăng nhập để đăng ký sự kiện.");
       return;
     }
-
     try {
       const result = await dispatch(registerForEventThunk(eventId)).unwrap();
       messageApi.success(result?.message || "Đăng ký sự kiện thành công");
-
-      // refresh list immediately (not relying on setPage(prev => prev))
       dispatch(fetchActiveEvents(params));
     } catch (err) {
-      const msg =
-        typeof err === "string"
-          ? err
-          : err?.message || "Không thể đăng ký sự kiện";
+      const msg = typeof err === "string" ? err : err?.message || "Lỗi đăng ký";
       messageApi.error(msg);
     }
   };
@@ -123,14 +113,9 @@ const Events = () => {
     try {
       const result = await dispatch(cancelRegistrationThunk(eventId)).unwrap();
       messageApi.success(result?.message || "Hủy đăng ký thành công");
-
-      // refresh list immediately
       dispatch(fetchActiveEvents(params));
     } catch (err) {
-      const msg =
-        typeof err === "string"
-          ? err
-          : err?.message || "Không thể hủy đăng ký sự kiện";
+      const msg = typeof err === "string" ? err : err?.message || "Lỗi hủy đăng ký";
       messageApi.error(msg);
     }
   };
@@ -146,27 +131,26 @@ const Events = () => {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={3} style={{ marginBottom: 16 }}>
-        Events
-      </Title>
+    <div className="events-page-wrapper">
+      <div className="events-header">
+        <Title level={2} style={{ color: "#3674B5", margin: 0 }}>
+          Danh sách sự kiện
+        </Title>
+        <p style={{ color: "#666" }}>Tìm kiếm cơ hội tình nguyện phù hợp với bạn</p>
+      </div>
 
-      <Space
-        style={{
-          marginBottom: 16,
-          display: "flex",
-          justifyContent: "space-between",
-        }}
-        wrap
-      >
-        <Space wrap>
+      {/* FILTER BAR */}
+      <div className="events-filter-bar">
+        <div className="filter-item">
+          <span className="filter-label">Danh mục:</span>
           <Select
-            style={{ minWidth: 200 }}
-            placeholder="Lọc theo danh mục"
+            style={{ width: 220 }}
+            placeholder="Tất cả danh mục"
             allowClear
             loading={categoriesLoading}
             value={categoryId || undefined}
             onChange={handleCategoryChange}
+            size="large"
           >
             {categories.map((cat) => (
               <Option key={cat.category_id} value={cat.category_id}>
@@ -174,60 +158,61 @@ const Events = () => {
               </Option>
             ))}
           </Select>
+        </div>
 
+        <div className="filter-item">
+          <span className="filter-label">Thời gian:</span>
           <RangePicker
             onChange={handleDateChange}
             value={dateRange}
             showTime={false}
             format="DD/MM/YYYY"
             placeholder={["Từ ngày", "Đến ngày"]}
+            size="large"
+            style={{ width: 280 }}
           />
-        </Space>
-      </Space>
-
-      {loading ? (
-        <div
-          style={{ display: "flex", justifyContent: "center", paddingTop: 40 }}
-        >
-          <Spin size="large" />
         </div>
-      ) : !items || items.length === 0 ? (
-        <Empty description="Không có sự kiện nào" />
-      ) : (
-        <>
-          <Row gutter={[16, 16]} align="stretch">
-            {items.map((ev) => (
-              <Col key={ev.event_id} xs={24} md={12} lg={8}>
-                <EventCard
-                  event={ev}
-                  onRegister={handleRegister}
-                  onCancel={handleCancel}
-                  registeringId={registeringId}
-                  userRole={userRole}
-                />
-              </Col>
-            ))}
-          </Row>
+      </div>
 
-          {pagination?.total > pagination?.limit && (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                marginTop: 16,
-              }}
-            >
-              <Pagination
-                current={pagination.page || page}
-                pageSize={pagination.limit || DEFAULT_LIMIT}
-                total={pagination.total}
-                onChange={(p) => setPage(p)}
-                showSizeChanger={false}
-              />
-            </div>
-          )}
-        </>
-      )}
+      {/* EVENTS LIST */}
+      <div className="events-list-container">
+        {loading ? (
+          <div className="loading-container">
+            <Spin size="large" />
+          </div>
+        ) : !items || items.length === 0 ? (
+          <Empty description="Hiện chưa có sự kiện nào" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        ) : (
+          <>
+            <Row gutter={[0, 16]}> {/* Gutter dọc 16px, ngang 0 */}
+              {items.map((ev) => (
+                // Quan trọng: span=24 để thẻ chiếm hết chiều ngang -> Hiển thị dạng List
+                <Col key={ev.event_id} span={24}>
+                  <EventCard
+                    event={ev}
+                    onRegister={handleRegister}
+                    onCancel={handleCancel}
+                    registeringId={registeringId}
+                    userRole={userRole}
+                  />
+                </Col>
+              ))}
+            </Row>
+
+            {pagination?.total > pagination?.limit && (
+              <div className="pagination-wrapper">
+                <Pagination
+                  current={pagination.page || page}
+                  pageSize={pagination.limit || DEFAULT_LIMIT}
+                  total={pagination.total}
+                  onChange={(p) => setPage(p)}
+                  showSizeChanger={false}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
