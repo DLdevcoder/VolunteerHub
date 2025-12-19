@@ -1,11 +1,11 @@
 // src/pages/EventDetail/EventParticipantsTab.jsx
+import "./EventDetail.css"; // IMPORT CSS
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Table,
   Button,
   Space,
-  Tag,
   Typography,
   Spin,
   Empty,
@@ -13,11 +13,11 @@ import {
   Modal,
   Input,
 } from "antd";
-import { 
-  CheckOutlined, 
-  CloseOutlined, 
-  CheckCircleOutlined, 
-  FilterOutlined 
+import {
+  CheckOutlined,
+  CloseOutlined,
+  CheckCircleOutlined,
+  FilterOutlined,
 } from "@ant-design/icons";
 
 import {
@@ -30,14 +30,6 @@ import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 
 const { Text } = Typography;
 const { TextArea } = Input;
-
-const statusColorMap = {
-  pending: "orange",
-  approved: "success",
-  rejected: "error",
-  cancelled: "default",
-  completed: "processing",
-};
 
 const statusLabelMap = {
   pending: "Chờ duyệt",
@@ -155,9 +147,10 @@ const EventParticipantsTab = ({ eventId }) => {
       key: "status",
       width: 140,
       render: (status) => (
-        <Tag color={statusColorMap[status] || "default"} style={{ fontWeight: 600 }}>
-          {statusLabelMap[status] || status.toUpperCase()}
-        </Tag>
+        // SỬA: Dùng thẻ span với class custom thay vì Antd Tag
+        <span className={`custom-status-tag tag-${status}`}>
+          {statusLabelMap[status] || status}
+        </span>
       ),
     },
     {
@@ -170,31 +163,31 @@ const EventParticipantsTab = ({ eventId }) => {
     {
       title: "Hành động",
       key: "actions",
-      width: 200,
+      width: 220,
       render: (_, record) => {
         const status = record.status;
         return (
           <Space>
             {status === "pending" && (
               <>
+                {/* Nút Duyệt: Outline Blue */}
                 <Button
-                  type="primary"
                   size="small"
                   icon={<CheckOutlined />}
                   onClick={() => handleApprove(record)}
                   loading={updatingId === record.registration_id}
-                  className="btn-action-approve" // Thêm class này
+                  className="btn-outline-action btn-approve" 
                 >
                   Duyệt
                 </Button>
+
+                {/* Nút Từ chối: Outline Red */}
                 <Button
-                  type="primary" // Dùng primary danger cho nổi bật
-                  danger
                   size="small"
                   icon={<CloseOutlined />}
                   onClick={() => openRejectModal(record)}
                   loading={updatingId === record.registration_id}
-                  className="btn-action-reject" // Thêm class này
+                  className="btn-outline-action btn-reject"
                 >
                   Từ chối
                 </Button>
@@ -202,21 +195,22 @@ const EventParticipantsTab = ({ eventId }) => {
             )}
 
             {status === "approved" && (
+              // Nút Hoàn thành: Outline Green
               <Button
                 size="small"
                 icon={<CheckCircleOutlined />}
                 onClick={() => handleComplete(record)}
                 loading={updatingId === record.registration_id}
-                className="btn-action-complete" // Thêm class này
+                className="btn-outline-action btn-complete"
               >
                 Hoàn thành
               </Button>
             )}
 
             {status === "completed" && (
-              <Tag color="blue" icon={<CheckCircleOutlined />}>
-                Đã hoàn thành
-              </Tag>
+              <span style={{ color: "#52c41a", fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>
+                <CheckCircleOutlined /> Đã hoàn thành
+              </span>
             )}
           </Space>
         );

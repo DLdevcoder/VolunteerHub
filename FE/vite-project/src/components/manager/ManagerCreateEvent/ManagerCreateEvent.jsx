@@ -1,4 +1,4 @@
-// src/components/manager/ManagerCreateEvent/ManagerCreateEvent.jsx
+import "./ManagerCreateEvent.css"; 
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -8,9 +8,20 @@ import {
   InputNumber,
   Select,
   DatePicker,
-  Card,
-  Space,
+  Row,
+  Col,
+  Typography
 } from "antd";
+import { 
+  FormOutlined,
+  AppstoreOutlined,
+  FileTextOutlined,
+  CalendarOutlined,
+  TeamOutlined,
+  EnvironmentOutlined,
+  SendOutlined
+} from "@ant-design/icons";
+
 import {
   fetchEventCategories,
   createEventThunk,
@@ -26,6 +37,7 @@ import useGlobalMessage from "../../../utils/hooks/useGlobalMessage";
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
+const { Title } = Typography;
 
 const ManagerCreateEvent = () => {
   const [form] = Form.useForm();
@@ -41,7 +53,6 @@ const ManagerCreateEvent = () => {
     dispatch(fetchEventCategories());
   }, [dispatch]);
 
-  // Show BE error via global message
   useEffect(() => {
     if (createError) {
       messageApi.error(createError);
@@ -51,13 +62,11 @@ const ManagerCreateEvent = () => {
 
   const handleSubmit = async (values) => {
     const [start, end] = values.timeRange || [];
-
     const payload = {
       title: values.title,
       description: values.description,
       target_participants: values.target_participants || 0,
       location: values.location,
-      // category now required, so send directly
       category_id: values.category_id,
       start_date: start?.format("YYYY-MM-DD HH:mm:ss"),
       end_date: end?.format("YYYY-MM-DD HH:mm:ss"),
@@ -65,109 +74,126 @@ const ManagerCreateEvent = () => {
 
     try {
       await dispatch(createEventThunk(payload)).unwrap();
-      messageApi.success("Tạo sự kiện thành công");
+      messageApi.success("Tạo sự kiện thành công!");
       form.resetFields();
       dispatch(resetCreateEventState());
     } catch (err) {
-      console.log("in manager create event submit:", err);
+      console.log(err);
     }
   };
 
+  const LabelWithIcon = ({ icon, text }) => (
+    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {icon} {text}
+    </span>
+  );
+
   return (
-    <Card title="Tạo sự kiện mới" bordered={false}>
+    <div className="create-event-container">
+      <div className="create-event-header">
+        <Title level={3} style={{ margin: 0 }}>
+          Tạo sự kiện mới
+        </Title>
+      </div>
+
       <Form
         layout="vertical"
         form={form}
         onFinish={handleSubmit}
-        initialValues={{
-          target_participants: 20,
-        }}
+        initialValues={{ target_participants: 20 }}
+        className="create-event-form"
+        requiredMark={false}
       >
-        <Form.Item
-          label="Tên sự kiện"
-          name="title"
-          rules={[{ required: true, message: "Vui lòng nhập tên sự kiện" }]}
-        >
-          <Input placeholder="Ví dụ: Dọn rác bờ hồ Hoàn Kiếm" />
-        </Form.Item>
+        <Row gutter={24}>
+          <Col xs={24} md={16}>
+            <Form.Item
+              label={<LabelWithIcon icon={<FormOutlined />} text="Tên sự kiện" />}
+              name="title"
+              className="custom-form-item"
+              rules={[{ required: true, message: "Hãy nhập tên sự kiện" }]}
+            >
+              <Input size="large" placeholder="VD: Chiến dịch Mùa Hè Xanh 2024..." />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item
+              label={<LabelWithIcon icon={<AppstoreOutlined />} text="Danh mục" />}
+              name="category_id"
+              className="custom-form-item"
+              rules={[{ required: true, message: "Danh mục" }]}
+            >
+              <Select size="large" loading={categoriesLoading} placeholder="Chọn loại danh mục">
+                {categories.map((c) => (
+                  <Select.Option key={c.category_id} value={c.category_id}>
+                    {c.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
 
         <Form.Item
-          label="Mô tả"
+          label={<LabelWithIcon icon={<FileTextOutlined />} text="Mô tả chi tiết" />}
           name="description"
-          rules={[{ required: true, message: "Vui lòng nhập mô tả" }]}
+          className="custom-form-item"
+          rules={[{ required: true, message: "Hãy nhập mô tả nội dung" }]}
         >
-          <TextArea rows={4} placeholder="Mô tả chi tiết nội dung sự kiện" />
+          <TextArea 
+            rows={5} 
+            placeholder="Mô tả mục đích, nội dung công việc và yêu cầu đối với tình nguyện viên..." 
+            showCount 
+            maxLength={2000}
+          />
         </Form.Item>
 
-        <Form.Item
-          label="Danh mục"
-          name="category_id"
-          rules={[
-            { required: true, message: "Vui lòng chọn danh mục cho sự kiện" },
-          ]}
-        >
-          <Select
-            loading={categoriesLoading}
-            placeholder="Chọn danh mục"
-            // bỏ allowClear để tránh gửi null
-          >
-            {categories.map((c) => (
-              <Select.Option key={c.category_id} value={c.category_id}>
-                {c.name}
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
+        <Row gutter={24}>
+          <Col xs={24} md={14}>
+            <Form.Item
+              label={<LabelWithIcon icon={<CalendarOutlined />} text="Thời gian diễn ra" />}
+              name="timeRange"
+              className="custom-form-item"
+              rules={[{ required: true, message: "Chọn thời gian bắt đầu & kết thúc" }]}
+            >
+              <RangePicker size="large" showTime format="DD/MM/YYYY HH:mm" style={{ width: "100%" }} />
+            </Form.Item>
+          </Col>
 
-        <Space size="large" style={{ width: "100%" }} wrap>
-          <Form.Item
-            label="Thời gian"
-            name="timeRange"
-            rules={[
-              {
-                required: true,
-                message: "Vui lòng chọn thời gian bắt đầu/kết thúc",
-              },
-            ]}
-          >
-            <RangePicker
-              showTime
-              format="DD/MM/YYYY HH:mm"
-              style={{ width: 320 }}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="Số lượng tình nguyện viên"
-            name="target_participants"
-            rules={[
-              {
-                type: "number",
-                min: 1,
-                max: 5000,
-                message: "Số lượng phải từ 1 đến 5000",
-              },
-            ]}
-          >
-            <InputNumber />
-          </Form.Item>
-        </Space>
+          <Col xs={24} md={10}>
+            <Form.Item
+              label={<LabelWithIcon icon={<TeamOutlined />} text="Số lượng tình nguyện viên" />}
+              name="target_participants"
+              className="custom-form-item"
+              rules={[{ type: "number", min: 1, message: "Tối thiểu 1 người" }]}
+            >
+              <InputNumber size="large" style={{ width: "100%" }} placeholder="Số lượng" />
+            </Form.Item>
+          </Col>
+        </Row>
 
         <Form.Item
-          label="Địa điểm"
+          label={<LabelWithIcon icon={<EnvironmentOutlined />} text="Địa điểm tổ chức" />}
           name="location"
-          rules={[{ required: true, message: "Vui lòng nhập địa điểm" }]}
+          className="custom-form-item"
+          rules={[{ required: true, message: "Hãy nhập địa điểm" }]}
         >
-          <Input placeholder="Ví dụ: Bờ hồ Hoàn Kiếm, Hà Nội" />
+          <Input size="large" placeholder="VD: Công viên Thống Nhất, Hai Bà Trưng, Hà Nội" />
         </Form.Item>
 
-        <Form.Item>
-          <Button type="primary" htmlType="submit" loading={createLoading}>
-            Tạo sự kiện
+        <Form.Item className="btn-submit-wrapper">
+          <Button 
+            type="primary" 
+            htmlType="submit" 
+            loading={createLoading}
+            block
+            className="btn-submit-event"
+            icon={<SendOutlined />}
+          >
+            TẠO SỰ KIỆN
           </Button>
         </Form.Item>
       </Form>
-    </Card>
+    </div>
   );
 };
 
