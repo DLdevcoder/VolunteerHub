@@ -65,21 +65,27 @@
 
 /* Role variants */
 .role-admin {
-  background: #eaf3ff !important;
-  color: #0958d9 !important;
+  background: #E6AF2E !important;
+  color: white !important;
   border-color: #cfe3ff !important;
+  width: 100px;
+  text-align: center;
 }
 
 .role-manager {
-  background: #e6fffb !important;
-  color: #006d75 !important;
+  background: #9C89B8 !important;
+  color: white !important;
   border-color: #b5f5ec !important;
+  width: 100px;
+  text-align: center;
 }
 
 .role-volunteer {
-  background: #f6ffed !important;
-  color: #237804 !important;
+  background: #4A6FA5 !important;
+  color: white !important;
   border-color: #d9f7be !important;
+  width: 100px;
+  text-align: center;
 }
 
 /* ===== Status pill (AntD Tag) =====

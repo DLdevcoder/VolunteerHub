@@ -294,7 +294,7 @@ const AdminUsers = () => {
               icon={<DownloadOutlined />}
               onClick={handleExportUsers}
               loading={exportingUsers}
-              style={{ borderRadius: 6 }}
+              style={{ borderRadius: 6, background: "#3674B5", color: "#fff" }}
             >
               Export CSV
             </Button>

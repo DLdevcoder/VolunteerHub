@@ -329,7 +329,7 @@ const AdminEventRequests = () => {
             icon={<DownloadOutlined />}
             onClick={handleExportEvents}
             loading={exportingEvents}
-            style={{ borderRadius: 6 }}
+            style={{borderRadius: 6, background: "#3674B5", color: "#fff"}}
           >
             Xuất Excel
           </Button>

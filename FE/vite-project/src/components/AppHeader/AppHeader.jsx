@@ -129,14 +129,13 @@ const AppHeader = () => {
                       ? JSON.parse(item.payload || "{}")
                       : item.payload || {};
                   notifMessage = payload.message || "";
-                } catch {}
+                } catch { }
               }
 
               return (
                 <List.Item
-                  className={`notif-item ${
-                    item.is_read ? "read" : "unread"
-                  }`}
+                  className={`notif-item ${item.is_read ? "read" : "unread"
+                    }`}
                   onClick={() => handleNotificationClick(item)}
                 >
                   <div className="notif-content">
@@ -174,6 +173,12 @@ const AppHeader = () => {
         className="appHeader-logo"
         onClick={() => navigate("/dashboard")}
       >
+        <img src="/images/volunteerhub_logo.svg" alt="VolunteerHub Logo" style={{
+          height: "40px",
+          width: "auto",
+          maxWidth: "40px",
+          marginRight: "12px"
+        }} />
         VolunteerHub
       </div>
 

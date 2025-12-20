@@ -264,7 +264,7 @@ const Profile = () => {
               </div>
 
               <div className="form-group">
-                <label>Email (Không thể thay đổi)</label>
+                <label>Email</label>
                 <Input
                   prefix={<MailOutlined className="input-icon" />}
                   value={user.email}
@@ -307,54 +307,59 @@ const Profile = () => {
                   size="large"
                 />
               </div>
-
-              <div className="form-group" style={{ marginTop: 30 }}>
-                <Button
-                  block
-                  icon={<LockOutlined />}
-                  onClick={() => navigate("/reset-password")}
-                  size="large"
-                  className="btn-change-pass"
-                >
-                  Đổi mật khẩu
-                </Button>
-              </div>
             </Col>
           </Row>
         </div>
-
-        {/* FOOTER */}
         <div className="profile-footer">
-          {!isEditing ? (
+          <div style={{ display: 'flex', gap: '16px', width: '100%', alignItems: 'center' }}>
             <Button
-              type="primary"
-              onClick={handleEditButtonClick}
+              icon={<LockOutlined />}
+              onClick={() => navigate("/reset-password")}
               size="large"
-              className="btn-primary-custom"
+              className="btn-change-pass"
+              style={{
+                height: '40px',
+                padding: '0 24px',
+                marginLeft: 'auto'
+              }}
             >
-              Chỉnh sửa hồ sơ
+              Đổi mật khẩu
             </Button>
-          ) : (
-            <Space size="middle">
-              <Button
-                onClick={handleCancelButtonClick}
-                disabled={updatingMe}
-                size="large"
-                className="btn-cancel"
-              >
-                Hủy bỏ
-              </Button>
-              <Button
-                type="primary"
-                onClick={handleAcceptButtonClick}
-                loading={updatingMe}
-                size="large"
-                className="btn-save"
-              >
-                Lưu thay đổi
-              </Button>
-            </Space>
-          )}
+
+            {/* Các nút chỉnh sửa bên phải */}
+            <div>
+              {!isEditing ? (
+                <Button
+                  type="primary"
+                  onClick={handleEditButtonClick}
+                  size="large"
+                  className="btn-primary-custom"
+                >
+                  Chỉnh sửa hồ sơ
+                </Button>
+              ) : (
+                <Space size="middle">
+                  <Button
+                    onClick={handleCancelButtonClick}
+                    disabled={updatingMe}
+                    size="large"
+                    className="btn-cancel"
+                  >
+                    Hủy bỏ
+                  </Button>
+                  <Button
+                    type="primary"
+                    onClick={handleAcceptButtonClick}
+                    loading={updatingMe}
+                    size="large"
+                    className="btn-save"
+                  >
+                    Lưu thay đổi
+                  </Button>
+                </Space>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

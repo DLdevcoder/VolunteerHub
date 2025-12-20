@@ -44,6 +44,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -212,11 +213,12 @@
   font-weight: 700;
   display: inline-block;
   padding-bottom: 0;
-  border-bottom: none; /* ✅ remove underline */
+  border-bottom: none;
+  /* ✅ remove underline */
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-top: 0px;
 }
 
 .form-group label {
@@ -224,7 +226,8 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
-  margin-bottom: 8px;
+  margin-top: 16px;
+  margin-bottom: 7px;
 }
 
 .input-icon {
@@ -282,10 +285,11 @@
 }
 
 .btn-change-pass {
-  border-color: var(--light-blue);
-  color: var(--primary-blue);
+  background-color: var(--primary-blue);
+  border-color: var(--primary-blue);
+  color: white;
+  font-weight: 600;
   border-radius: 8px;
-  font-weight: 500;
 }
 
 .btn-change-pass:hover {
