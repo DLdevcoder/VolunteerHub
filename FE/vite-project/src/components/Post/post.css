@@ -67,7 +67,7 @@
   text-decoration: none;
 }
 .post-author-name:hover {
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .post-time {

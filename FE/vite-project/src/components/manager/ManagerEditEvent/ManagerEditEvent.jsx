@@ -1,4 +1,4 @@
-import "../ManagerCreateEvent/ManagerCreateEvent.css"; 
+import "../ManagerCreateEvent/ManagerCreateEvent.css";
 import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
@@ -15,9 +15,9 @@ import {
   Alert,
   Row,
   Col,
-  Typography
+  Typography,
 } from "antd";
-import { 
+import {
   FormOutlined,
   AppstoreOutlined,
   FileTextOutlined,
@@ -25,7 +25,7 @@ import {
   TeamOutlined,
   EnvironmentOutlined,
   SendOutlined,
-  DeleteOutlined
+  DeleteOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 
@@ -47,10 +47,18 @@ import {
 } from "../../../redux/selectors/eventSelectors";
 
 import useGlobalMessage from "../../../utils/hooks/useGlobalMessage";
+import "./ManagerEditEvent.css";
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 const { Title } = Typography;
+
+const LabelWithIcon = ({ icon, text }) => (
+  <span className="label-with-icon">
+    {icon}
+    <span>{text}</span>
+  </span>
+);
 
 const ManagerEditEvent = () => {
   const { event_id } = useParams();
@@ -120,6 +128,7 @@ const ManagerEditEvent = () => {
 
   const handleSubmit = async (values) => {
     if (!event_id) return;
+
     let payload;
     if (restrictedMode) {
       payload = {
@@ -140,12 +149,7 @@ const ManagerEditEvent = () => {
     }
 
     try {
-      await dispatch(
-        updateEventThunk({
-          eventId: event_id,
-          payload,
-        })
-      ).unwrap();
+      await dispatch(updateEventThunk({ eventId: event_id, payload })).unwrap();
       await dispatch(fetchManagerEvents({ page: 1, limit: 10 }));
       messageApi.success("Cập nhật sự kiện thành công");
       navigate("/manager/events");
@@ -166,12 +170,6 @@ const ManagerEditEvent = () => {
     }
   };
 
-  const LabelWithIcon = ({ icon, text }) => (
-    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      {icon} {text}
-    </span>
-  );
-
   if (detailLoading && !event) {
     return (
       <div style={{ textAlign: "center", padding: 40 }}>
@@ -182,151 +180,194 @@ const ManagerEditEvent = () => {
 
   if (!event) {
     return (
-      <div className="create-event-container">
-        <Title level={3}>Không tìm thấy sự kiện.</Title>
+      <div className="manager-edit-event-page">
+        <div className="manager-edit-event-container">
+          <Title level={3} style={{ margin: 0 }}>
+            Không tìm thấy sự kiện.
+          </Title>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="create-event-container">
-      <div className="create-event-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Chỉnh sửa sự kiện
-        </Title>
-        <Popconfirm
-          title="Xóa sự kiện?"
-          description="Sự kiện sẽ bị xóa và TNV sẽ nhận được thông báo."
-          okText="Xóa"
-          cancelText="Hủy"
-          onConfirm={handleDelete}
+    <div className="manager-edit-event-page">
+      <div className="manager-edit-event-container">
+        <div
+          className="manager-edit-event-header"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+          }}
         >
-          <Button danger icon={<DeleteOutlined />} loading={deleting}>
-            Xóa sự kiện
-          </Button>
-        </Popconfirm>
-      </div>
+          <Title level={3} style={{ margin: 0 }}>
+            Chỉnh sửa sự kiện
+          </Title>
 
-      {restrictedMode && (
-        <Alert
-          style={{ marginBottom: 24, borderRadius: 12 }}
-          type="warning"
-          showIcon
-          message="Chế độ giới hạn chỉnh sửa"
-          description={`Vì ${restrictedReason}, bạn chỉ được sửa Mô tả và Địa điểm.`}
-        />
-      )}
+          <Popconfirm
+            title="Xóa sự kiện?"
+            description="Sự kiện sẽ bị xóa và TNV sẽ nhận được thông báo."
+            okText="Xóa"
+            cancelText="Hủy"
+            onConfirm={handleDelete}
+          >
+            <Button danger icon={<DeleteOutlined />} loading={deleting}>
+              Xóa sự kiện
+            </Button>
+          </Popconfirm>
+        </div>
 
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        className="create-event-form"
-        requiredMark={false}
-      >
-        <Row gutter={24}>
-          <Col xs={24} md={16}>
-            <Form.Item
-              name="title"
-              label={<LabelWithIcon icon={<FormOutlined />} text="Tên sự kiện" />}
-              className="custom-form-item"
-              rules={[{ required: true, message: "Vui lòng nhập tên sự kiện" }]}
-            >
-              <Input size="large" disabled={restrictedMode} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={8}>
-            <Form.Item
-              name="category_id"
-              label={<LabelWithIcon icon={<AppstoreOutlined />} text="Danh mục" />}
-              className="custom-form-item"
-              rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
-            >
-              <Select
-                size="large"
-                disabled={restrictedMode}
-                loading={categoriesLoading}
-                placeholder="Chọn danh mục"
+        {restrictedMode && (
+          <Alert
+            className="manager-edit-event-alert"
+            type="warning"
+            showIcon
+            message="Chế độ giới hạn chỉnh sửa"
+            description={`Vì ${restrictedReason}, bạn chỉ được sửa Mô tả và Địa điểm.`}
+          />
+        )}
+
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          className="manager-edit-event-form"
+          requiredMark={false}
+        >
+          <Row gutter={24}>
+            <Col xs={24} md={16}>
+              <Form.Item
+                name="title"
+                label={
+                  <LabelWithIcon icon={<FormOutlined />} text="Tên sự kiện" />
+                }
+                className="custom-form-item"
+                rules={[
+                  { required: true, message: "Vui lòng nhập tên sự kiện" },
+                ]}
               >
-                {(categories || []).map((cat) => (
-                  <Select.Option key={cat.category_id} value={cat.category_id}>
-                    {cat.name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-        </Row>
+                <Input size="large" disabled={restrictedMode} />
+              </Form.Item>
+            </Col>
 
-        <Form.Item 
-          name="description" 
-          label={<LabelWithIcon icon={<FileTextOutlined />} text="Mô tả" />}
-          className="custom-form-item"
-        >
-          <TextArea rows={5} showCount maxLength={2000} />
-        </Form.Item>
+            <Col xs={24} md={8}>
+              <Form.Item
+                name="category_id"
+                label={
+                  <LabelWithIcon icon={<AppstoreOutlined />} text="Danh mục" />
+                }
+                className="custom-form-item"
+                rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
+              >
+                <Select
+                  size="large"
+                  disabled={restrictedMode}
+                  loading={categoriesLoading}
+                  placeholder="Chọn danh mục"
+                >
+                  {(categories || []).map((cat) => (
+                    <Select.Option
+                      key={cat.category_id}
+                      value={cat.category_id}
+                    >
+                      {cat.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
-        <Row gutter={24}>
-          <Col xs={24} md={14}>
-            <Form.Item
-              name="dateRange"
-              label={<LabelWithIcon icon={<CalendarOutlined />} text="Thời gian diễn ra" />}
-              className="custom-form-item"
-              rules={[{ required: true, message: "Vui lòng chọn thời gian" }]}
-            >
-              <RangePicker
+          <Form.Item
+            name="description"
+            label={<LabelWithIcon icon={<FileTextOutlined />} text="Mô tả" />}
+            className="custom-form-item"
+          >
+            <TextArea rows={5} showCount maxLength={2000} />
+          </Form.Item>
+
+          <Row gutter={24}>
+            <Col xs={24} md={14}>
+              <Form.Item
+                name="dateRange"
+                label={
+                  <LabelWithIcon
+                    icon={<CalendarOutlined />}
+                    text="Thời gian diễn ra"
+                  />
+                }
+                className="custom-form-item"
+                rules={[{ required: true, message: "Vui lòng chọn thời gian" }]}
+              >
+                <RangePicker
+                  size="large"
+                  disabled={restrictedMode}
+                  showTime
+                  style={{ width: "100%" }}
+                  format="DD/MM/YYYY HH:mm"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} md={10}>
+              <Form.Item
+                name="target_participants"
+                label={
+                  <LabelWithIcon
+                    icon={<TeamOutlined />}
+                    text="Số lượng tình nguyện viên"
+                  />
+                }
+                className="custom-form-item"
+                rules={[{ required: true, message: "Vui lòng nhập số lượng" }]}
+              >
+                <InputNumber
+                  size="large"
+                  disabled={restrictedMode}
+                  min={1}
+                  style={{ width: "100%" }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="location"
+            label={
+              <LabelWithIcon icon={<EnvironmentOutlined />} text="Địa điểm" />
+            }
+            className="custom-form-item"
+            rules={[{ required: true, message: "Vui lòng nhập địa điểm" }]}
+          >
+            <Input size="large" />
+          </Form.Item>
+
+          <Form.Item className="btn-submit-wrapper">
+            <Space style={{ width: "100%", justifyContent: "flex-end" }}>
+              <Button
+                onClick={() => navigate("/manager/events")}
                 size="large"
-                disabled={restrictedMode}
-                showTime
-                style={{ width: "100%" }}
-                format="DD/MM/YYYY HH:mm"
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={10}>
-            <Form.Item
-              name="target_participants"
-              label={<LabelWithIcon icon={<TeamOutlined />} text="Số lượng tình nguyện viên" />}
-              className="custom-form-item"
-              rules={[{ required: true, message: "Vui lòng nhập số lượng" }]}
-            >
-              <InputNumber
-                size="large"
-                disabled={restrictedMode}
-                min={1}
-                style={{ width: "100%" }}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
+                style={{ borderRadius: 12 }}
+              >
+                Hủy bỏ
+              </Button>
 
-        <Form.Item
-          name="location"
-          label={<LabelWithIcon icon={<EnvironmentOutlined />} text="Địa điểm" />}
-          className="custom-form-item"
-          rules={[{ required: true, message: "Vui lòng nhập địa điểm" }]}
-        >
-          <Input size="large" />
-        </Form.Item>
-
-        <Form.Item className="btn-submit-wrapper">
-          <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-            <Button onClick={() => navigate("/manager/events")} size="large" style={{ borderRadius: 12 }}>
-              Hủy bỏ
-            </Button>
-            <Button 
-              type="primary" 
-              htmlType="submit" 
-              loading={updating}
-              className="btn-submit-event"
-              icon={<SendOutlined />}
-              style={{ minWidth: 160 }}
-            >
-              LƯU THAY ĐỔI
-            </Button>
-          </Space>
-        </Form.Item>
-      </Form>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={updating}
+                className="btn-submit-event"
+                icon={<SendOutlined />}
+                style={{ minWidth: 160 }}
+              >
+                LƯU THAY ĐỔI
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </div>
     </div>
   );
 };

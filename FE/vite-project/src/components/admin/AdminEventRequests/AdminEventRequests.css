@@ -20,29 +20,55 @@
   color: #666;
 }
 
+/* Modal title */
 .reject-modal-title {
   color: #ff4d4f;
   font-weight: 600;
 }
 
-.btn-admin-approve {
-  border-color: #3674B5 !important;
-  color: #3674B5 !important;
-  background: #fff !important;
+/* ✅ Status Tag styling (less rounded + consistent size) */
+.status-tag {
+  border-radius: 6px !important;
+  padding: 2px 10px !important;
+  font-weight: 600;
+  line-height: 20px;
+  font-size: 13px;
 }
-.btn-admin-approve:hover {
-  background: #3674B5 !important;
+
+/* ✅ Fix: add space so showCount doesn't touch footer buttons */
+.reject-modal .ant-modal-body {
+  padding-bottom: 24px; /* creates breathing room above footer */
+}
+
+.reject-reason-textarea {
+  margin-bottom: 14px; /* pushes textarea + count away from footer */
+}
+
+/* (Optional) a tiny extra gap under footer */
+.reject-modal .ant-modal-footer {
+  margin-top: 6px;
+}
+
+/* === Fix: primary buttons inside the shared table must look primary === */
+.shared-event-table .ant-btn-primary {
+  background: var(--ant-color-primary, #1677ff) !important;
+  border-color: var(--ant-color-primary, #1677ff) !important;
   color: #fff !important;
 }
 
-.btn-admin-reject {
-  border-color: #ff4d4f !important;
-  color: #ff4d4f !important;
-  background: #fff !important;
-}
-.btn-admin-reject:hover {
-  background: #ff4d4f !important;
+.shared-event-table .ant-btn-primary:hover,
+.shared-event-table .ant-btn-primary:focus {
+  background: var(--ant-color-primary-hover, #4096ff) !important;
+  border-color: var(--ant-color-primary-hover, #4096ff) !important;
   color: #fff !important;
+}
+
+/* disabled primary should remain disabled */
+.shared-event-table .ant-btn-primary[disabled],
+.shared-event-table .ant-btn-primary.ant-btn-disabled {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  color: rgba(0, 0, 0, 0.25) !important;
 }
 
 @media (max-width: 768px) {

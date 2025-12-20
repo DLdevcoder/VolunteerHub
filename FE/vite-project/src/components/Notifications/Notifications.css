@@ -1,17 +1,41 @@
+/* =========================
+   Notifications.css
+   - Fix white background not covering scroll (remove height:100%)
+   - Responsive paddings & typography by breakpoints
+   ========================= */
+
 .notifications-page-wrapper {
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 24px 32px;
-  max-width: 1000px;
+  /* scoped variables */
+  --ntf-pad-y: 24px;
+  --ntf-pad-x: 32px;
+
+  --ntf-title-size: 22px;
+  --ntf-item-title: 16px;
+  --ntf-item-body: 14px;
+  --ntf-item-time: 12px;
+
+  --ntf-item-pad-y: 16px;
+  --ntf-item-pad-x: 20px;
+
+  width: 100%;
   margin: 0 auto;
+  min-height: 100%;
+
+  background: #ffffff;
   border: 1px solid #f0f0f0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+
+  box-sizing: border-box;
+
+  padding: var(--ntf-pad-y) var(--ntf-pad-x);
 }
 
 .ntf-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 1px solid #f0f0f0;
@@ -19,35 +43,56 @@
 
 .ntf-title {
   margin: 0 !important;
-  color: #3674B5 !important; 
+  color: #3674b5 !important;
   display: flex;
   align-items: center;
   gap: 10px;
+  font-size: var(--ntf-title-size) !important;
+  font-weight: 700 !important;
 }
 
 .ntf-actions {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.ntf-btn-refresh {
-  border-radius: 6px;
-}
+.ntf-btn-refresh,
 .ntf-btn-mark-all {
   border-radius: 6px;
-  background-color: #3674B5;
-  border-color: #3674B5;
-}
-.ntf-btn-mark-all:hover {
-  background-color: #578FCA !important;
-  border-color: #578FCA !important;
 }
 
+.ntf-btn-mark-all {
+  background-color: #3674b5;
+  border-color: #3674b5;
+}
+.ntf-btn-mark-all:hover {
+  background-color: #578fca !important;
+  border-color: #578fca !important;
+}
+
+.ntf-body {
+  /* keep layout stable */
+  width: 100%;
+}
+
+.ntf-loading {
+  text-align: center;
+  padding: 60px 0;
+}
+
+/* LIST ITEM */
 .ntf-list-item {
-  border-radius: 8px;
+  border-radius: 10px;
   margin-bottom: 12px;
-  padding: 16px 20px !important; 
-  transition: all 0.2s ease;
+
+  padding: var(--ntf-item-pad-y) var(--ntf-item-pad-x) !important;
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
   border: 1px solid transparent;
   position: relative;
 }
@@ -58,71 +103,140 @@
 }
 
 .ntf-item-unread {
-  background-color: #f0f9ff; 
-  border-left: 4px solid #3674B5; 
+  background-color: #f0f9ff;
+  border-left: 4px solid #3674b5;
 }
 
 .ntf-item-read {
   background-color: #ffffff;
   border: 1px solid #f0f0f0;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 .ntf-item-read:hover {
   border-color: #d9d9d9;
 }
 
+/* title row */
 .ntf-item-title {
-  font-size: 16px;
-  color: #333;
-  margin-bottom: 4px;
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 4px;
 }
 
+.ntf-item-title-text {
+  font-size: var(--ntf-item-title) !important;
+  font-weight: 700 !important; /* max 700 */
+  color: #333;
+}
+
+/* tag */
+.ntf-tag-new {
+  margin-left: 6px !important;
+  border-radius: 8px !important;
+  padding: 0 8px !important;
+  line-height: 20px !important;
+  font-size: 12px !important;
+  color: #3674b5 !important;
+  background: #eaf3ff !important;
+  border: 1px solid #cfe3ff !important;
+}
+
+/* body */
 .ntf-item-body {
   color: #555;
-  font-size: 14px;
+  font-size: var(--ntf-item-body);
   line-height: 1.5;
   white-space: pre-line;
 }
 
 .ntf-item-time {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: var(--ntf-item-time);
   color: #999;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
+/* delete btn */
 .ntf-btn-delete {
   color: #ff4d4f;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  opacity: 0.65;
+  transition: opacity 0.15s ease;
 }
 .ntf-list-item:hover .ntf-btn-delete {
   opacity: 1;
 }
 
+/* pagination */
 .ntf-pagination-wrapper {
-  margin-top: 24px;
+  margin-top: 18px;
   text-align: right;
   padding-top: 16px;
   border-top: 1px solid #f0f0f0;
 }
 
-@media (max-width: 768px) {
+/* ===== BREAKPOINTS ===== */
+
+/* <= 1199px (lg down) */
+@media (max-width: 1199px) {
   .notifications-page-wrapper {
-    padding: 16px;
+    --ntf-pad-y: 20px;
+    --ntf-pad-x: 24px;
+    --ntf-title-size: 20px;
   }
+}
+
+/* <= 991px (md down) */
+@media (max-width: 991px) {
+  .notifications-page-wrapper {
+    --ntf-pad-y: 18px;
+    --ntf-pad-x: 18px;
+    --ntf-item-pad-y: 14px;
+    --ntf-item-pad-x: 16px;
+    --ntf-item-title: 15px;
+  }
+
+  .ntf-header {
+    align-items: flex-start;
+  }
+}
+
+/* <= 767px (sm down) */
+@media (max-width: 767px) {
+  .notifications-page-wrapper {
+    --ntf-pad-y: 16px;
+    --ntf-pad-x: 14px;
+    --ntf-title-size: 18px;
+    --ntf-item-title: 14px;
+    --ntf-item-body: 13px;
+  }
+
   .ntf-header {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    gap: 10px;
   }
+
   .ntf-actions {
     width: 100%;
-    justify-content: flex-end;
+    justify-content: flex-start;
+  }
+
+  .ntf-pagination-wrapper {
+    text-align: left;
+  }
+}
+
+/* <= 575px (xs) */
+@media (max-width: 575px) {
+  .notifications-page-wrapper {
+    --ntf-pad-y: 14px;
+    --ntf-pad-x: 12px;
+  }
+
+  /* make the "mark all" button not overflow */
+  .ntf-btn-mark-all {
+    width: 100%;
   }
 }

@@ -1,8 +1,30 @@
+/* AppSider.css (or wherever you put sider styles) */
+
 .app-sider-container {
-  width: 25%;
+  height: 100%;
+  border-right: 1px solid #f0f0f0;
 }
 
-.ant-menu-item-selected {
+/* Remove your old width:25% rule — it breaks collapse */
+.app-sider-container {
+  width: auto;
+}
+
+/* Selected menu item style */
+.app-sider-container .ant-menu-item-selected {
   background-color: #e6f7ff !important;
   font-weight: 600;
+}
+
+/* Make trigger look clean */
+.app-sider-container .ant-layout-sider-trigger {
+  border-top: 1px solid #f0f0f0;
+  background: #fff;
+}
+
+/* Optional: reduce padding on small screens */
+@media (max-width: 576px) {
+  .app-sider-container .ant-menu-title-content {
+    font-size: 13px;
+  }
 }
