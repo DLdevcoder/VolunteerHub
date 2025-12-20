@@ -1,12 +1,18 @@
+
+<div align="center">
+
 # VolunteerHub – Volunteer Connection Platform
+
+</div>
 
 **VolunteerHub** is a comprehensive volunteer management and connection system.  
 The application enables **Volunteers** to discover and register for events, **Event Managers** to coordinate activities, and **Administrators** to oversee the entire system in a transparent and efficient manner.
 
----
+<div align="center">
 
-## Table of Contents
 [Installation & Running the Project](#installation--running-the-project) . [Tech Stack](#tech-stack) . [System Requirements](#system-requirements) . [Core Business Flows](#core-business-flows) . [Support](#support)
+
+</div>
 
 ---
 
