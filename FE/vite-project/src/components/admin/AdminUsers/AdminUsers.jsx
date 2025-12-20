@@ -1,20 +1,25 @@
-import "../../../../public/style/EventTableShared.css"; 
+import "../../../../public/style/EventTableShared.css";
 import "./AdminUsers.css";
 
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Table, Tag, Select, Button, Space, Typography, Tooltip } from "antd";
 import { useNavigate } from "react-router-dom";
-import { 
-  DownloadOutlined, 
-  PlusOutlined, 
-  UserOutlined, 
+import {
+  DownloadOutlined,
+  PlusOutlined,
+  UserOutlined,
   MailOutlined,
   SafetyCertificateOutlined,
   LockOutlined,
   UnlockOutlined,
   UserSwitchOutlined,
-  FilterOutlined
+  FilterOutlined,
+} from "@ant-design/icons";
+import {
+  CrownOutlined,
+  SolutionOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 
 import {
@@ -66,12 +71,18 @@ const AdminUsers = () => {
   const handleExportUsers = async () => {
     try {
       setExportingUsers(true);
-      messageApi.loading({ content: "Đang xuất danh sách...", key: "exportUserMsg" });
+      messageApi.loading({
+        content: "Đang xuất danh sách...",
+        key: "exportUserMsg",
+      });
       const response = await exportApi.exportUsers("csv");
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `users_report_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.setAttribute(
+        "download",
+        `users_report_${new Date().toISOString().slice(0, 10)}.csv`
+      );
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
@@ -88,8 +99,12 @@ const AdminUsers = () => {
     const newStatus = user.status === "Active" ? "Locked" : "Active";
     try {
       setRowLoadingId(user.user_id);
-      await dispatch(updateUserStatusThunk({ userId: user.user_id, status: newStatus })).unwrap();
-      messageApi.success(newStatus === "Locked" ? "Đã khóa tài khoản" : "Đã mở khóa tài khoản");
+      await dispatch(
+        updateUserStatusThunk({ userId: user.user_id, status: newStatus })
+      ).unwrap();
+      messageApi.success(
+        newStatus === "Locked" ? "Đã khóa tài khoản" : "Đã mở khóa tài khoản"
+      );
     } catch (err) {
       messageApi.error(err || "Không thể cập nhật trạng thái");
     } finally {
@@ -100,7 +115,9 @@ const AdminUsers = () => {
   const changeRole = async (user, newRole) => {
     try {
       setRowLoadingId(user.user_id);
-      await dispatch(updateUserRoleThunk({ userId: user.user_id, role_name: newRole })).unwrap();
+      await dispatch(
+        updateUserRoleThunk({ userId: user.user_id, role_name: newRole })
+      ).unwrap();
       messageApi.success(`Đã chuyển quyền thành ${newRole}`);
     } catch (err) {
       messageApi.error(err || "Không thể cập nhật quyền");
@@ -111,11 +128,42 @@ const AdminUsers = () => {
 
   // Helper render role tag
   const renderRoleTag = (role) => {
-    let className = "role-tag";
-    if (role === "Admin") className += " role-admin";
-    else if (role === "Manager") className += " role-manager";
-    else className += " role-volunteer";
-    return <Tag className={className}>{role}</Tag>;
+    const map = {
+      Admin: {
+        color: "blue",
+        icon: <CrownOutlined />,
+        label: "Admin",
+        cls: "role-pill role-admin",
+      },
+      Manager: {
+        color: "cyan",
+        icon: <SolutionOutlined />,
+        label: "Manager",
+        cls: "role-pill role-manager",
+      },
+      Volunteer: {
+        color: "green",
+        icon: <TeamOutlined />,
+        label: "Volunteer",
+        cls: "role-pill role-volunteer",
+      },
+    };
+
+    const cfg = map[role] || {
+      color: "default",
+      icon: <TeamOutlined />,
+      label: role,
+      cls: "role-pill",
+    };
+
+    return (
+      <Tag className={cfg.cls}>
+        <span className="role-pill__inner">
+          <span className="role-pill__icon">{cfg.icon}</span>
+          <span className="role-pill__text">{cfg.label}</span>
+        </span>
+      </Tag>
+    );
   };
 
   const columns = [
@@ -158,9 +206,9 @@ const AdminUsers = () => {
       render: (status) => {
         const isLocked = status === "Locked";
         return (
-          <span className={isLocked ? "user-status-locked" : "user-status-active"}>
+          <Tag className="status-pill" color={isLocked ? "red" : "green"}>
             {isLocked ? "Blocked" : "Active"}
-          </span>
+          </Tag>
         );
       },
     },
@@ -227,14 +275,20 @@ const AdminUsers = () => {
   return (
     <div className="event-table-container">
       {/* HEADER */}
-      <div className="event-table-header" style={{ display: 'block' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="event-table-header" style={{ display: "block" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <div>
             <Title level={3} style={{ color: "#3674B5", margin: 0 }}>
               Quản lý người dùng
             </Title>
           </div>
-          
+
           <Space>
             <Button
               icon={<DownloadOutlined />}

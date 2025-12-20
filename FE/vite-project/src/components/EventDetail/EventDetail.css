@@ -1,277 +1,337 @@
 :root {
-  --primary-blue: #3674B5;
-  --secondary-blue: #578FCA;
-  --light-blue: #A1E3F9;
-  --pale-mint: #D1F8EF;
-  --text-primary: #333;
-  --text-secondary: #666;
-  --bg-main: #f4f6f8;
+  --ed-primary: #2f6fb3;
+  --ed-primary-2: #3674b5;
+  --ed-bg: #f6f8fb;
+  --ed-card: #ffffff;
+
+  --ed-text: #1f2a37;
+  --ed-subtext: #6b7280;
+
+  --ed-border: rgba(15, 23, 42, 0.08);
+  --ed-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+
+  /* smaller radius */
+  --ed-radius-lg: 12px;
+  --ed-radius-md: 10px;
+  --ed-radius-sm: 8px;
+
+  --ed-tag-radius: 8px;
 }
 
+/* ===== Page ===== */
 .event-detail-page {
   padding: 24px;
-  background-color: var(--bg-main);
+  background: var(--ed-bg);
   min-height: calc(100vh - 64px);
   max-width: 1200px;
   margin: 0 auto;
 }
 
+/* ===== Cards ===== */
 .info-card {
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  margin-bottom: 24px;
-  background: #fff;
+  border-radius: var(--ed-radius-lg);
+  background: var(--ed-card);
+  box-shadow: var(--ed-shadow);
+  border: 1px solid var(--ed-border);
   overflow: hidden;
+  margin-bottom: 18px;
 }
 
+.content-card {
+  border-radius: var(--ed-radius-lg);
+  background: var(--ed-card);
+  box-shadow: var(--ed-shadow);
+  border: 1px solid var(--ed-border);
+  min-height: 300px;
+}
+
+/* ===== Loading ===== */
 .loading-box {
   text-align: center;
-  padding: 40px;
+  padding: 48px 16px;
+}
+
+/* ===== Header ===== */
+.event-detail-wrapper {
+  padding: 20px 22px 18px;
 }
 
 .event-header {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
+.header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* Title: max 700 */
 .event-title {
-  margin: 0 ;
-  color: var(--primary-blue) ;
-  font-weight: 700;
+  margin: 0 !important;
+  color: var(--ed-text) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.2px;
+  line-height: 1.15;
 }
 
+.divider-soft {
+  margin: 14px 0 !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* ===== Status Tag (NOT wide + less rounded + max 700) ===== */
 .status-badge {
-  margin-top: 8px;
-  padding: 4px 12px;
-  font-weight: 600;
-  border-radius: 20px;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+
+  width: fit-content !important;
+  max-width: 100%;
+  padding: 4px 10px !important;
+
+  border-radius: var(--ed-tag-radius) !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.25px;
+
+  border: 1px solid transparent !important;
+  white-space: nowrap;
 }
 
+.status-badge .anticon {
+  font-size: 14px;
+}
+
+/* make sure AntD Tag never becomes full width */
+.header-left .ant-tag {
+  align-self: flex-start;
+}
+
+.status-pending {
+  color: #9a5b00 !important;
+  background: rgba(255, 197, 61, 0.16) !important;
+  border-color: rgba(255, 197, 61, 0.32) !important;
+}
+
+.status-approved {
+  color: #117a37 !important;
+  background: rgba(82, 196, 26, 0.12) !important;
+  border-color: rgba(82, 196, 26, 0.26) !important;
+}
+
+.status-rejected {
+  color: #b42318 !important;
+  background: rgba(255, 77, 79, 0.12) !important;
+  border-color: rgba(255, 77, 79, 0.26) !important;
+}
+
+.status-cancelled {
+  color: #475569 !important;
+  background: rgba(148, 163, 184, 0.16) !important;
+  border-color: rgba(148, 163, 184, 0.26) !important;
+}
+
+/* ===== Meta Cards ===== */
 .meta-info-row {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
+/* IMPORTANT: no “blue block” look on hover */
 .meta-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
+
+  padding: 14px;
+  border-radius: var(--ed-radius-md);
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
   height: 100%;
-  transition: all 0.3s;
 }
 
+/* hover = only lift + shadow, NO background tint */
 .meta-item:hover {
-  background-color: var(--pale-mint);
+  transform: translateY(-1px);
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
+}
+
+.meta-item-accent:hover {
+  border-color: rgba(16, 185, 129, 0.28);
+  box-shadow: 0 10px 22px rgba(16, 185, 129, 0.12);
+}
+
+.meta-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 }
 
 .meta-icon {
-  font-size: 24px;
-  color: var(--secondary-blue);
-  background: #fff;
-  padding: 8px;
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  font-size: 20px;
+  color: var(--ed-primary-2);
+}
+
+.meta-text {
+  min-width: 0;
 }
 
 .meta-label {
   font-size: 12px;
-  color: #888;
+  color: var(--ed-subtext);
   text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 600; /* <= 700 */
+  letter-spacing: 0.35px;
   margin-bottom: 2px;
 }
 
 .meta-value {
   font-size: 15px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--ed-text);
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .meta-value.highlight {
-  color: var(--primary-blue);
-  font-weight: 700;
+  color: var(--ed-primary);
+  font-weight: 700; /* max 700 */
   font-size: 16px;
 }
 
+.meta-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ed-subtext);
+}
+
+/* ===== Description ===== */
 .description-box {
-  background-color: #fff;
-  border: 1px solid #eee;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
+  margin-top: 8px;
+  padding: 16px;
+  border-radius: var(--ed-radius-md);
+  background: rgba(47, 111, 179, 0.04);
+  border: 1px solid rgba(47, 111, 179, 0.1);
 }
 
 .desc-label {
   font-weight: 700;
-  color: var(--text-secondary);
+  color: rgba(31, 42, 55, 0.85);
   margin-bottom: 8px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .desc-content {
-  color: #444;
-  line-height: 1.6;
-  margin-bottom: 0 ;
+  color: rgba(31, 42, 55, 0.9);
+  line-height: 1.65;
+  margin-bottom: 0 !important;
+  font-weight: 400;
 }
 
+/* ===== Actions ===== */
 .action-area {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
   margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px dashed #eee;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(15, 23, 42, 0.12);
 }
 
 .action-btn {
-  border-radius: 6px;
-  padding: 0 24px;
-  font-weight: 600;
+  border-radius: var(--ed-radius-sm) !important;
+  padding: 0 22px !important;
+  height: 42px !important;
+  font-weight: 600 !important; /* <= 700 */
+  letter-spacing: 0.15px;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
 }
 
-.register-btn {
-  background-color: var(--primary-blue);
-  border-color: var(--primary-blue);
+.action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.14);
 }
 
-.register-btn:hover {
-  background-color: var(--secondary-blue);
-  border-color: var(--secondary-blue);
+.action-btn-primary {
+  background: var(--ed-primary-2) !important;
+  border-color: var(--ed-primary-2) !important;
 }
 
-.content-card {
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  min-height: 300px;
+.action-btn-primary:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+
+.action-btn-danger:hover:not(:disabled) {
+  filter: brightness(0.98);
+}
+
+/* ===== Tabs ===== */
+.tabs-section {
+  margin-top: 14px;
 }
 
 .ant-tabs-nav::before {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
 }
 
 .ant-tabs-tab {
-  font-size: 16px;
-  padding: 12px 0;
+  font-size: 15px !important;
+  padding: 12px 0 !important;
+  font-weight: 500;
 }
 
 .ant-tabs-tab-active .ant-tabs-tab-btn {
-  color: var(--primary-blue) ;
-  font-weight: 600;
+  color: var(--ed-primary-2) !important;
+  font-weight: 600 !important;
 }
 
 .ant-tabs-ink-bar {
-  background: var(--primary-blue) ;
-  height: 3px ;
-  border-radius: 3px;
+  background: var(--ed-primary-2) !important;
+  height: 3px !important;
+  border-radius: 3px !important;
 }
 
-.custom-status-tag {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: capitalize;
-  text-align: center;
-  min-width: 90px;
-  border: 1px solid transparent;
-}
-
-.tag-pending {
-  background-color: #D1F8EF;
-  color: #3674B5;
-  border-color: #D1F8EF;
-}
-
-.tag-approved {
-  background-color: #A1E3F9;
-  color: #1e4b7a;
-  border-color: #A1E3F9;
-}
-
-.tag-rejected {
-  background-color: #fff1f0;
-  color: #f5222d;
-  border-color: #ffa39e;
-}
-
-.tag-completed {
-  background-color: #f6ffed;
-  color: #52c41a;
-  border-color: #b7eb8f;
-}
-
-.tag-cancelled {
-  background-color: #f5f5f5;
-  color: #999;
-  border-color: #d9d9d9;
-}
-
-.btn-outline-action {
-  border-radius: 6px ;
-  font-weight: 600 ;
-  box-shadow: none ;
-  background-color: #fff ;
-  border: 1px solid ;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.2s ease;
-}
-
-.btn-outline-action:hover {
-  transform: translateY(-1px);
-}
-
-.btn-approve {
-  border-color: #3674B5 ;
-  color: #3674B5 ;
-}
-
-.btn-approve:hover {
-  background-color: #3674B5 ;
-  color: #fff ;
-}
-
-.btn-reject {
-  border-color: #ff4d4f ;
-  color: #ff4d4f ;
-}
-
-.btn-reject:hover {
-  background-color: #ff4d4f ;
-  color: #fff ;
-}
-
-.btn-complete {
-  border-color: #52c41a ;
-  color: #52c41a ;
-}
-
-.btn-complete:hover {
-  background-color: #52c41a ;
-  color: #fff ;
-}
-
+/* ===== Responsive ===== */
 @media (max-width: 768px) {
   .event-detail-page {
     padding: 12px;
   }
-  .event-header {
-    flex-direction: column;
+
+  .event-detail-wrapper {
+    padding: 16px;
   }
-  .meta-item {
-    padding: 10px;
-  }
+
   .action-area {
     flex-direction: column;
   }
+
   .action-btn {
     width: 100%;
+  }
+
+  .status-badge {
+    white-space: normal;
   }
 }

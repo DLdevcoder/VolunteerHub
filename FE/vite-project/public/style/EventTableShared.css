@@ -1,93 +1,222 @@
-/* src/styles/EventTableShared.css */
+/* =========================
+   EventTableShared.css (FIXED)
+   - No overlap pagination
+   - White background never disappears
+   - Page scroll (not table-body scroll)
+   ========================= */
 
+/* ===== Responsive typography variables ===== */
 :root {
-  --primary-color: #3674B5;
-  --bg-mint: #D1F8EF;
-  --bg-pale-blue: #A1E3F9;
+  --t-title: 22px;
+  --t-sub: 13px;
+  --t-th: 13px;
+  --t-td: 13px;
+  --t-btn: 13px;
 }
 
-/* --- 1. CONTAINER CHUNG --- */
+@media (min-width: 992px) {
+  :root {
+    --t-title: 26px;
+    --t-sub: 14px;
+    --t-th: 14px;
+    --t-td: 14px;
+    --t-btn: 14px;
+  }
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --t-title: 30px;
+    --t-sub: 15px;
+    --t-th: 14.5px;
+    --t-td: 14.5px;
+    --t-btn: 14.5px;
+  }
+}
+
+/* ===== Page wrapper ===== */
+.event-table-page {
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  display: block;
+
+  /* IMPORTANT: keep page background stable */
+  background: #fff;
+}
+
+/* ===== Container ===== */
 .event-table-container {
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 32px;
-  max-width: 1200px;
-  margin: 0 auto;
-  border: 1px solid #f0f0f0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+
+  margin: 0;
+  padding: 18px 24px 28px;
+
+  background: #fff; /* ✅ always white */
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
+/* ===== Header ===== */
 .event-table-header {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f5f5f5;
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
 }
 
-/* --- 2. TABLE STYLES --- */
-.shared-event-table .ant-table-thead > tr > th {
-  background-color: #F7FBFF !important; /* Header nền xanh siêu nhạt */
-  color: #3674B5 !important;           /* Chữ xanh chủ đạo */
-  font-weight: 700 !important;
-  border-bottom: 2px solid #f0f0f0;
+.event-table-title {
+  color: #0659b2 !important;
+  letter-spacing: -0.2px;
+  line-height: 1.2;
+  font-size: var(--t-title) !important;
+  margin: 0 !important;
 }
 
-.shared-event-table .ant-table-tbody > tr > td {
-  padding: 16px 16px;
-  font-size: 14px;
+.event-table-subtitle {
+  font-size: var(--t-sub);
 }
 
-/* Hiệu ứng hover dòng */
-.shared-event-table .ant-table-tbody > tr:hover > td {
-  background-color: #f0f7ff !important;
-  cursor: pointer;
+/* =========================
+   TABLE (CRITICAL FIX)
+   Stop forcing height:100% / flex layouts that clip background.
+   Let AntD table grow naturally. Page will scroll normally.
+   ========================= */
+
+.shared-event-table,
+.shared-event-table * {
+  background-color: transparent;
 }
 
-/* --- 3. STATUS TAGS (Đồng bộ toàn hệ thống) --- */
-.status-tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  min-width: 100px;
-  text-transform: capitalize;
-  border: 1px solid transparent;
+/* Make sure the table itself stays white */
+.ant-table-wrapper.shared-event-table,
+.ant-table-wrapper.shared-event-table .ant-table,
+.ant-table-wrapper.shared-event-table .ant-table-container,
+.ant-table-wrapper.shared-event-table .ant-table-content {
+  background: #fff !important;
 }
 
-/* Các màu sắc */
-.tag-pending { background-color: #D1F8EF; color: #3674B5; border-color: #D1F8EF; }
-.tag-approved { background-color: #A1E3F9; color: #1e4b7a; border-color: #A1E3F9; }
-.tag-completed { background-color: #f6ffed; color: #52c41a; border-color: #b7eb8f; }
-.tag-rejected { background-color: #fff1f0; color: #ff4d4f; border-color: #ffa39e; }
-.tag-cancelled, .tag-default { background-color: #f5f5f5; color: #999; border-color: #d9d9d9; }
+/* ✅ HARD OVERRIDE: pagination must NOT be sticky/absolute (prevents overlap) */
+.ant-table-wrapper.shared-event-table .ant-table-pagination {
+  position: static !important;
+  bottom: auto !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  inset: auto !important;
 
-/* --- 4. ACTION BUTTONS (Outline) --- */
-.btn-outline-edit {
-  border-radius: 6px !important;
-  font-weight: 600 !important;
-  background-color: #fff !important;
-  border: 1px solid #3674B5 !important;
-  color: #3674B5 !important;
-  box-shadow: none !important;
+  float: none !important;
+  transform: none !important;
+
+  margin: 16px 0 0 !important;
+  padding: 0 0 6px !important;
+
+  background: #fff !important;
+  z-index: auto !important;
+}
+
+/* If some global css forces sticky, kill it too */
+.ant-table-wrapper.shared-event-table .ant-pagination {
+  position: static !important;
+}
+
+/* Header cells (NOT bold) */
+.ant-table-wrapper.shared-event-table .ant-table-thead > tr > th {
+  background: #f7fbff !important;
+  color: #004b9b;
+  font-weight: 500 !important;
+  font-size: var(--t-th);
+}
+
+.ant-table-wrapper.shared-event-table
+  .ant-table-thead
+  th
+  .ant-table-column-title {
+  font-weight: 500 !important;
+}
+
+/* Body cells */
+.ant-table-wrapper.shared-event-table .ant-table-tbody > tr > td {
+  font-size: var(--t-td);
+  color: #3b3b3b;
+  background: #fff; /* ✅ keeps white when scrolling */
+}
+
+.ant-table-wrapper.shared-event-table .ant-table-tbody > tr:hover > td {
+  background: #f7fbff !important;
+}
+
+/* ===== Helpers ===== */
+.evt-title {
+  font-size: calc(var(--t-td) + 1px);
+  color: #333;
+}
+
+.evt-title-ellipsis {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.evt-loc {
+  color: #555;
+  font-size: var(--t-td);
+}
+
+.evt-loc-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+/* Compact rows on short-height screens */
+@media (max-height: 820px) {
+  .ant-table-wrapper.shared-event-table .ant-table-thead > tr > th,
+  .ant-table-wrapper.shared-event-table .ant-table-tbody > tr > td {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .evt-loc-clamp {
+    -webkit-line-clamp: 1;
+  }
+}
+
+/* ===== TIME responsive (unchanged) ===== */
+.evt-time-responsive {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
+  flex-direction: column;
+  line-height: 1.25;
 }
 
-.btn-outline-edit:hover {
-  background-color: #3674B5 !important;
-  color: #fff !important;
-  transform: translateY(-1px);
+.evt-time-start,
+.evt-time-end {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .event-table-container { padding: 16px; }
-  .event-table-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+.evt-time-sep {
+  display: none;
+}
+
+@media (min-width: 1400px) {
+  .evt-time-responsive {
+    flex-direction: row;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .evt-time-sep {
+    display: inline;
+  }
 }
