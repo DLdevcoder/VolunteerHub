@@ -59,6 +59,8 @@ cd FE/vite-project
 npm install
 npm run dev
 ```
+---
+
 ## Tech Stack
 
 ### Backend (Node.js)
@@ -74,6 +76,7 @@ npm run dev
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+
 ---
 
 ## System Requirements
@@ -113,6 +116,8 @@ Optional but recommended:
 - **User Management:** View, lock, or unlock user accounts.
 - **Data Management:** Export event and user reports in CSV or JSON format.
 - **System Overview:** Monitor overall system trends and activities.
+
+---
 
 ##  Support
 If you find this project useful, please consider giving it a star on GitHub.
