@@ -36,6 +36,71 @@ import {
 
 const { Title, Text } = Typography;
 
+const escapeRegExp = (s = "") => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Xóa duplicate "Lý do: X" trong dòng đầu nếu dòng sau đã có "Lý do: X"
+const normalizeReasonDuplicate = (text) => {
+  if (!text || typeof text !== "string") return text;
+
+  // support body có <br> từ BE
+  const t = text.replace(/<br\s*\/?>/gi, "\n").trim();
+
+  const lines = t
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) return t;
+
+  const last = lines[lines.length - 1];
+
+  // match "Lý do:" hoặc "Ly do:"
+  const m = last.match(/^L[ýy]\s*do:\s*(.+)$/i);
+  if (!m) return t;
+
+  const reason = (m[1] || "").trim();
+  if (!reason) return t;
+
+  const reasonEsc = escapeRegExp(reason);
+
+  // tìm 1 dòng trước đó có chứa "Lý do: reason"
+  const idx = lines.findIndex(
+    (l, i) =>
+      i < lines.length - 1 &&
+      new RegExp(`L[ýy]\\s*do:\\s*${reasonEsc}\\s*$`, "i").test(l)
+  );
+
+  if (idx === -1) {
+    // có thể "Lý do: reason" nằm giữa câu
+    const idx2 = lines.findIndex(
+      (l, i) =>
+        i < lines.length - 1 &&
+        new RegExp(`L[ýy]\\s*do:\\s*${reasonEsc}`, "i").test(l)
+    );
+    if (idx2 === -1) return t;
+
+    lines[idx2] = lines[idx2]
+      .replace(
+        new RegExp(`\\s*\\.?\\s*L[ýy]\\s*do:\\s*${reasonEsc}\\s*`, "i"),
+        ""
+      )
+      .trim();
+  } else {
+    lines[idx] = lines[idx]
+      .replace(
+        new RegExp(`\\s*\\.?\\s*L[ýy]\\s*do:\\s*${reasonEsc}\\s*$`, "i"),
+        ""
+      )
+      .trim();
+  }
+
+  // tidy: nếu dòng đầu mất dấu chấm thì thêm lại (optional)
+  lines[0] = lines[0].replace(/\s+$/, "");
+  if (lines[0] && !/[.!?]$/.test(lines[0])) lines[0] += ".";
+
+  return lines.join("\n");
+};
+
 const Notifications = () => {
   const dispatch = useDispatch();
 
@@ -114,26 +179,33 @@ const Notifications = () => {
   };
 
   const getBodyText = (item) => {
-    if (item.body) return item.body;
-    const rawPayload = item.payload;
-    if (!rawPayload) return "";
-    if (typeof rawPayload === "string") {
-      try {
-        const obj = JSON.parse(rawPayload);
-        if (obj?.message) return obj.message;
-      } catch {
-        return rawPayload;
+    let text = "";
+
+    if (item.body) {
+      text = item.body;
+    } else {
+      const rawPayload = item.payload;
+      if (!rawPayload) return "";
+
+      if (typeof rawPayload === "string") {
+        try {
+          const obj = JSON.parse(rawPayload);
+          text = obj?.message ? obj.message : rawPayload;
+        } catch {
+          text = rawPayload;
+        }
+      } else if (typeof rawPayload === "object") {
+        if (rawPayload.message) text = rawPayload.message;
+        else text = JSON.stringify(rawPayload);
       }
-    } else if (typeof rawPayload === "object") {
-      if (rawPayload.message) return rawPayload.message;
-      return JSON.stringify(rawPayload);
     }
-    return "";
+
+    // ✅ remove duplicate reason
+    return normalizeReasonDuplicate(text);
   };
 
   return (
     <div className="notifications-page-wrapper">
-      {/* HEADER */}
       <div className="ntf-header">
         <Title level={3} className="ntf-title">
           <BellOutlined /> Tất cả thông báo
@@ -159,7 +231,6 @@ const Notifications = () => {
         </div>
       </div>
 
-      {/* BODY */}
       <div className="ntf-body">
         {loading ? (
           <div className="ntf-loading">
