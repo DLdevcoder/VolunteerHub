@@ -2,27 +2,13 @@ import "../../../public/style/EventTableShared.css";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Table, Spin, Empty, Typography, Space } from "antd";
-import { 
-  CalendarOutlined, 
-  EnvironmentOutlined, 
-  FieldTimeOutlined 
-} from "@ant-design/icons";
+import { Table, Spin, Empty, Typography, Tag } from "antd";
+import { FieldTimeOutlined } from "@ant-design/icons";
 
 import eventApi from "../../../apis/eventApi";
 import useGlobalMessage from "../../utils/hooks/useGlobalMessage";
 
 const { Title, Text } = Typography;
-const getStatusConfig = (status) => {
-  switch (status) {
-    case "pending": return { className: "tag-pending", label: "Chờ duyệt" };
-    case "approved": return { className: "tag-approved", label: "Đã tham gia" };
-    case "completed": return { className: "tag-completed", label: "Hoàn thành" };
-    case "rejected": return { className: "tag-rejected", label: "Từ chối" };
-    case "cancelled": return { className: "tag-cancelled", label: "Đã hủy" };
-    default: return { className: "tag-default", label: status };
-  }
-};
 
 const formatDateTime = (dateStr) => {
   if (!dateStr) return "";
@@ -33,6 +19,24 @@ const formatDateTime = (dateStr) => {
     hour: "2-digit",
     minute: "2-digit",
   });
+};
+
+// ✅ AntD Tag config
+const getStatusTag = (statusKey) => {
+  switch (statusKey) {
+    case "approved":
+      return { color: "green", label: "Đã tham gia" };
+    case "pending":
+      return { color: "orange", label: "Chờ duyệt" };
+    case "rejected":
+      return { color: "red", label: "Từ chối" };
+    case "completed":
+      return { color: "blue", label: "Hoàn thành" };
+    case "cancelled":
+      return { color: "default", label: "Đã hủy" };
+    default:
+      return { color: "default", label: statusKey || "Nháp" };
+  }
 };
 
 const History = () => {
@@ -55,6 +59,7 @@ const History = () => {
           messageApi.error(res?.message || "Không tải được lịch sử sự kiện");
           return;
         }
+
         setHistory(res.data || []);
       } catch (err) {
         console.error("Get history error:", err);
@@ -64,31 +69,24 @@ const History = () => {
       }
     };
 
-    if (authUser && role === "Volunteer") {
-      fetchHistory();
-    }
+    if (authUser && role === "Volunteer") fetchHistory();
   }, [authUser, role, messageApi]);
 
-  if (!authUser || role !== "Volunteer") {
-    return (
-      // SỬA: Dùng class chung
-      <div className="event-table-container">
-        <Empty description="Vui lòng đăng nhập tài khoản Tình nguyện viên." />
-      </div>
-    );
-  }
-
   const getStatusFromRecord = (record) =>
-    record.status || record.registration_status || record.reg_status || "pending";
+    record.status ||
+    record.registration_status ||
+    record.reg_status ||
+    "pending";
 
   const columns = [
     {
       title: "Sự kiện",
       dataIndex: "title",
       key: "title",
-      width: 250,
+      width: "30%",
+      ellipsis: true,
       render: (_, record) => (
-        <Text strong style={{ fontSize: 15, color: "#333" }}>
+        <Text strong className="evt-title evt-title-ellipsis">
           {record.title || record.event_title}
         </Text>
       ),
@@ -96,18 +94,18 @@ const History = () => {
     {
       title: "Thời gian diễn ra",
       key: "time",
-      width: 320, 
+      width: "18%",
+      // ✅ IMPORTANT: do NOT set ellipsis:true here
       render: (_, record) => {
         const start = record.start_date || record.event_start_date;
         const end = record.end_date || record.event_end_date;
         if (!start || !end) return "--";
 
         return (
-          <div style={{ color: "#555", fontSize: 13, display: "flex", alignItems: "flex-start" }}>
-            <CalendarOutlined style={{ marginRight: 8, marginTop: 3, color: "#3674B5", flexShrink: 0 }} />
-            <span>
-              {formatDateTime(start)} - {formatDateTime(end)}
-            </span>
+          <div className="evt-time-responsive">
+            <span className="evt-time-start">{formatDateTime(start)}</span>
+            <span className="evt-time-sep"> - </span>
+            <span className="evt-time-end">{formatDateTime(end)}</span>
           </div>
         );
       },
@@ -116,18 +114,15 @@ const History = () => {
       title: "Địa điểm",
       dataIndex: "location",
       key: "location",
-      render: (loc) => (
-        <span style={{ color: "#555" }}>
-          <EnvironmentOutlined style={{ marginRight: 6, color: "#3674B5" }} />
-          {loc}
-        </span>
-      )
+      width: "28%",
+      ellipsis: true,
+      render: (loc) => <span className="evt-loc evt-loc-clamp">{loc}</span>,
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 150,
+      width: "12%",
       filters: [
         { text: "Chờ duyệt", value: "pending" },
         { text: "Đã tham gia", value: "approved" },
@@ -137,22 +132,22 @@ const History = () => {
       onFilter: (value, record) => getStatusFromRecord(record) === value,
       render: (_, record) => {
         const statusKey = getStatusFromRecord(record);
-        const { className, label } = getStatusConfig(statusKey);
-        // SỬA: Dùng class "status-tag" chung
-        return <span className={`status-tag ${className}`}>{label}</span>;
+        const { color, label } = getStatusTag(statusKey);
+        return <Tag className="status-tag" color={color}>{label}</Tag>;
       },
     },
     {
       title: "Ngày đăng ký",
       dataIndex: "registration_date",
       key: "registration_date",
-      width: 160,
+      width: "12%",
       align: "right",
+      ellipsis: true,
       render: (val, record) => {
         const date = val || record.reg_date;
         return (
-          <span style={{ color: "#888", fontSize: 13 }}>
-            <FieldTimeOutlined style={{ marginRight: 4 }} />
+          <span className="evt-reg evt-reg-nowrap">
+            {/* <FieldTimeOutlined style={{ marginRight: 6 }} /> */}
             {date ? new Date(date).toLocaleDateString("vi-VN") : "-"}
           </span>
         );
@@ -160,40 +155,51 @@ const History = () => {
     },
   ];
 
+  if (!authUser || role !== "Volunteer") {
+    return (
+      <div className="event-table-page">
+        <div className="event-table-container">
+          <Empty description="Vui lòng đăng nhập tài khoản Tình nguyện viên." />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    // SỬA: Dùng class container chung
-    <div className="event-table-container">
-      {/* SỬA: Dùng class header chung */}
-      <div className="event-table-header">
-        <div>
-          <Title level={3} style={{ color: "#3674B5", margin: 0 }}>
+    <div className="event-table-page">
+      <div className="event-table-container">
+        <div className="event-table-header">
+          <Title className="event-table-title" level={3} style={{ margin: 0 }}>
             Lịch sử
           </Title>
         </div>
-      </div>
 
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 40 }}>
-          <Spin size="large" />
-        </div>
-      ) : !history.length ? (
-        <Empty description="Bạn chưa tham gia sự kiện nào." image={Empty.PRESENTED_IMAGE_SIMPLE} />
-      ) : (
-        <Table
-          // SỬA: Dùng class table chung
-          className="shared-event-table"
-          rowKey={(record) => record.registration_id || record.event_id}
-          columns={columns}
-          dataSource={history}
-          pagination={{ pageSize: 10 }}
-          onRow={(record) => ({
-            onClick: () => {
-              const eventId = record.event_id;
-              if (eventId) navigate(`/events/${eventId}`);
-            },
-          })}
-        />
-      )}
+        {loading ? (
+          <div className="event-table-loading">
+            <Spin size="large" />
+          </div>
+        ) : !history.length ? (
+          <Empty
+            description="Bạn chưa tham gia sự kiện nào."
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        ) : (
+          <Table
+            className="shared-event-table"
+            tableLayout="fixed"
+            rowKey={(record) => record.registration_id || record.event_id}
+            columns={columns}
+            dataSource={history}
+            pagination={{ pageSize: 10, showSizeChanger: true }}
+            onRow={(record) => ({
+              onClick: () => {
+                const eventId = record.event_id;
+                if (eventId) navigate(`/events/${eventId}`);
+              },
+            })}
+          />
+        )}
+      </div>
     </div>
   );
 };

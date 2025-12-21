@@ -1,3 +1,31 @@
 .app-layout-container {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-layout-container {
+  height: 100vh; /* ✅ use height, not min-height */
+  display: flex;
+  flex-direction: column;
+}
+
+/* the 2nd Layout (Sider + Content) should take remaining height */
+.app-layout-container > .ant-layout {
+  flex: 1;
+  min-height: 0;
+}
+
+/* AppLayout.css */
+.app-layout-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: #f5f7fb;
+}
+
+/* ✅ make the Outlet root always fill the scroll viewport */
+.app-layout-content > * {
+  min-height: 100%;
+  box-sizing: border-box;
 }

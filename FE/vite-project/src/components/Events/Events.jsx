@@ -115,7 +115,8 @@ const Events = () => {
       messageApi.success(result?.message || "Hủy đăng ký thành công");
       dispatch(fetchActiveEvents(params));
     } catch (err) {
-      const msg = typeof err === "string" ? err : err?.message || "Lỗi hủy đăng ký";
+      const msg =
+        typeof err === "string" ? err : err?.message || "Lỗi hủy đăng ký";
       messageApi.error(msg);
     }
   };
@@ -141,7 +142,7 @@ const Events = () => {
       {/* FILTER BAR */}
       <div className="events-filter-bar">
         <div className="filter-item">
-          <span className="filter-label">Danh mục:</span>
+          <span className="filter-label">Danh mục</span>
           <Select
             style={{ width: 220 }}
             placeholder="Tất cả danh mục"
@@ -160,7 +161,7 @@ const Events = () => {
         </div>
 
         <div className="filter-item">
-          <span className="filter-label">Thời gian:</span>
+          <span className="filter-label">Thời gian</span>
           <RangePicker
             onChange={handleDateChange}
             value={dateRange}
@@ -180,10 +181,15 @@ const Events = () => {
             <Spin size="large" />
           </div>
         ) : !items || items.length === 0 ? (
-          <Empty description="Hiện chưa có sự kiện nào" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <Empty
+            description="Hiện chưa có sự kiện nào"
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
         ) : (
           <>
-            <Row gutter={[0, 16]}> {/* Gutter dọc 16px, ngang 0 */}
+            <Row gutter={[0, 16]}>
+              {" "}
+              {/* Gutter dọc 16px, ngang 0 */}
               {items.map((ev) => (
                 // Quan trọng: span=24 để thẻ chiếm hết chiều ngang -> Hiển thị dạng List
                 <Col key={ev.event_id} span={24}>

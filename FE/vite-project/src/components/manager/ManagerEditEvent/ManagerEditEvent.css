@@ -1,0 +1,103 @@
+.manager-edit-event-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  /* give bottom breathing room here instead of margin-bottom on the card */
+  padding: 28px 18px 28px;
+
+  box-sizing: border-box;
+  background: #f6f7fb;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+.manager-edit-event-container {
+  width: 100%;
+  max-width: 920px;
+
+  /* IMPORTANT: no bottom margin */
+  margin: 20px auto 0;
+
+  background: #ffffff;
+  border-radius: 20px;
+
+  /* add bottom spacing inside the card */
+  padding: 36px 40px 48px;
+
+  border: 1px solid #eef0f5;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Header */
+.manager-edit-event-header {
+  margin-bottom: 22px;
+}
+
+/* Title style */
+.manager-edit-event-header .ant-typography {
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  background: linear-gradient(135deg, #3674b5 0%, #0050a5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Warning alert spacing */
+.manager-edit-event-alert {
+  margin-bottom: 24px;
+  border-radius: 12px;
+}
+
+/* Form behavior */
+.manager-edit-event-form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Keep your existing shared classes working (from ManagerCreateEvent.css) */
+.label-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.manager-edit-event-page .btn-submit-wrapper {
+  margin: 0;
+}
+
+/* SHORT HEIGHT screens (laptops) */
+@media (max-height: 820px) {
+  .manager-edit-event-container {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 768px) {
+  .manager-edit-event-page {
+    padding: 18px 12px 44px;
+  }
+
+  .manager-edit-event-container {
+    padding: 22px 18px 36px;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .manager-edit-event-container {
+    padding: 18px 14px 28px;
+    border-radius: 14px;
+  }
+}

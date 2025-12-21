@@ -1,13 +1,13 @@
 import { Button } from "antd";
 import { CalendarOutlined } from "@ant-design/icons"; // Thêm icon mới
 import { FaLocationDot } from "react-icons/fa6";
-import { 
-  FaUserFriends, 
-  FaBookReader,        
-  FaLeaf,              
-  FaHandsHelping,      
-  FaShapes             
-} from "react-icons/fa"; 
+import {
+  FaUserFriends,
+  FaBookReader,
+  FaLeaf,
+  FaHandsHelping,
+  FaShapes,
+} from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import "./EventCard.css";
 
@@ -25,13 +25,25 @@ const formatFullDateTime = (start, end) => {
 const getCategoryInfo = (name) => {
   const lowerName = name?.toLowerCase() || "";
   if (lowerName.includes("giáo dục")) {
-    return { icon: <FaBookReader />, colorClass: "ec-cat-edu", label: "Giáo dục" };
+    return {
+      icon: <FaBookReader />,
+      colorClass: "ec-cat-edu",
+      label: "Giáo dục",
+    };
   } else if (lowerName.includes("môi trường")) {
     return { icon: <FaLeaf />, colorClass: "ec-cat-env", label: "Môi trường" };
   } else if (lowerName.includes("xã hội")) {
-    return { icon: <FaHandsHelping />, colorClass: "ec-cat-soc", label: "Xã hội" };
+    return {
+      icon: <FaHandsHelping />,
+      colorClass: "ec-cat-soc",
+      label: "Xã hội",
+    };
   } else {
-    return { icon: <FaShapes />, colorClass: "ec-cat-default", label: name || "Khác" };
+    return {
+      icon: <FaShapes />,
+      colorClass: "ec-cat-default",
+      label: name || "Khác",
+    };
   }
 };
 
@@ -53,7 +65,7 @@ const EventCard = ({ event, onRegister, registeringId, userRole }) => {
 
   const { icon, colorClass, label } = getCategoryInfo(category_name);
   const fullTimeDisplay = formatFullDateTime(start_date, end_date);
-  
+
   const participantsText =
     target_participants > 0
       ? `${current_participants}/${target_participants}`
@@ -63,7 +75,7 @@ const EventCard = ({ event, onRegister, registeringId, userRole }) => {
   const hasStarted = start_date && new Date(start_date) <= now;
   let buttonText = "Đăng ký";
   let disabled = false;
-  let btnClass = "ec-btn-default"; 
+  let btnClass = "ec-btn-default";
 
   if (hasStarted) {
     buttonText = "Đã kết thúc";
@@ -71,20 +83,20 @@ const EventCard = ({ event, onRegister, registeringId, userRole }) => {
     btnClass = "ec-btn-disabled";
   } else {
     switch (user_registration_status) {
-      case "pending": 
-        buttonText = "Chờ duyệt"; 
-        disabled = true; 
+      case "pending":
+        buttonText = "Chờ duyệt";
+        disabled = true;
         btnClass = "ec-btn-pending";
         break;
-      case "approved": 
-        buttonText = "Đã tham gia"; 
-        disabled = true; 
+      case "approved":
+        buttonText = "Đã tham gia";
+        disabled = true;
         btnClass = "ec-btn-approved";
         break;
-      case "completed": 
-        buttonText = "Hoàn thành"; 
-        disabled = true; 
-        btnClass = "ec-btn-success"; 
+      case "completed":
+        buttonText = "Hoàn thành";
+        disabled = true;
+        btnClass = "ec-btn-success";
         break;
       case "rejected":
       case "cancelled":
@@ -99,37 +111,50 @@ const EventCard = ({ event, onRegister, registeringId, userRole }) => {
   }
 
   const showButton = !userRole || userRole === "Volunteer";
-  
-  const handleRegisterClick = (e) => { 
-    e.stopPropagation(); 
-    if (!disabled && onRegister) onRegister(event_id); 
+
+  const handleRegisterClick = (e) => {
+    e.stopPropagation();
+    if (!disabled && onRegister) onRegister(event_id);
   };
 
   return (
-    <div id={`ec-card-${event_id}`} className="ec-item-wrapper" onClick={() => navigate(`/events/${event_id}`)}>
+    <div
+      id={`ec-card-${event_id}`}
+      className="ec-item-wrapper"
+      onClick={() => navigate(`/events/${event_id}`)}
+    >
       <div className={`ec-category-box ${colorClass}`}>
         <div className="ec-cat-icon-large">{icon}</div>
         <span className="ec-cat-label">{label}</span>
       </div>
 
       <div className="ec-info-section">
-        <h3 className="ec-title" title={title}>{title}</h3>
+        <h3 className="ec-title" title={title}>
+          {title}
+        </h3>
         <div className="ec-meta-column">
           <div className="ec-meta-item">
-            <div className="ec-meta-icon-wrapper"><CalendarOutlined /></div> {/* Đã đổi icon ở đây */}
+            <div className="ec-meta-icon-wrapper">
+              <CalendarOutlined />
+            </div>{" "}
+            {/* Đã đổi icon ở đây */}
             <span className="ec-meta-text">{fullTimeDisplay}</span>
           </div>
           <div className="ec-meta-item">
-            <div className="ec-meta-icon-wrapper"><FaLocationDot /></div>
-            <span className="ec-meta-text ec-location-text" title={location}>{location}</span>
+            <div className="ec-meta-icon-wrapper">
+              <FaLocationDot />
+            </div>
+            <span className="ec-meta-text ec-location-text" title={location}>
+              {location}
+            </span>
           </div>
         </div>
       </div>
 
       <div className="ec-action-section">
         <div className="ec-participants-badge">
-          <FaUserFriends style={{ fontSize: 14, color: '#999' }} /> 
-          <span>{participantsText} người</span>
+          <FaUserFriends style={{ fontSize: 14, color: "#999" }} />
+          <span>{participantsText} </span>
         </div>
 
         {showButton && (

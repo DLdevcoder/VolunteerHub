@@ -1,131 +1,437 @@
-.create-event-container {
-  background-color: #ffffff;
-  border-radius: 20px;
-  padding: 40px;
-  max-width: 900px;
-  margin: 0 auto;
-  box-shadow: 0 10px 40px rgba(54, 116, 181, 0.08);
-  border: 1px solid #f0f5ff;
+/* =========================
+   ManagerCreateEvent.css
+   (FULL - space-between layout + responsive typography)
+   Updated: title/labels not bold + smaller radius
+   ========================= */
+
+.create-event-page {
+  /* remove vertical centering */
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  justify-content: center; /* keep horizontal center */
+  align-items: flex-start; /* IMPORTANT: start from top */
+  padding: 28px 18px;
+  box-sizing: border-box;
+  background: #f6f7fb;
+
+  overflow: auto; /* page scrolls if needed */
 }
 
+/* Main card */
+.create-event-container {
+  width: 100%;
+  max-width: 920px;
+
+  /* you set to 95% */
+  height: 95%;
+  /* max-height: 95%; */
+  margin: 20px auto;
+
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 36px 40px;
+  border: 1px solid #eef0f5;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
 .create-event-header {
-  margin-bottom: 32px;
+  margin-bottom: 22px;
   text-align: center;
 }
 
+/* ✅ Title not bold anymore */
 .create-event-header h3 {
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #3674B5 0%, #578FCA 100%);
+  font-weight: 600; /* was 800 */
+  letter-spacing: -0.4px;
+  background: linear-gradient(135deg, #3674b5 0%, #0050a5 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  font-size: 22px; /* base */
 }
 
-.create-event-subtitle {
-  color: #8898aa;
-  font-size: 15px;
+/* Label icon */
+.label-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
+/* ✅ Label not bold anymore */
 .custom-form-item .ant-form-item-label > label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #3674B5;
+  font-weight: 600; /* was 700 */
+  color: #0b5bb0;
   display: flex;
   align-items: center;
   gap: 6px;
+  font-size: 13px; /* base */
 }
 
-.create-event-form .ant-input,
-.create-event-form .ant-input-number,
-.create-event-form .ant-select-selector,
-.create-event-form .ant-picker,
-.create-event-form .ant-input-textarea-show-count {
-  background-color: #F7FBFF !important;
-  border: 1px solid transparent !important;
-  border-radius: 12px !important;
-  transition: all 0.3s ease;
-  font-weight: 500;
-  color: #333;
+/* =========================
+   FORM: SPACE-BETWEEN VERTICAL
+   ========================= */
+.create-event-form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* remove bottom margins so space-between can work nicely */
+.create-event-form .ant-form-item {
+  margin-bottom: 0;
+}
+
+/* spacing between grouped rows */
+.create-event-form .ant-row {
+  margin-bottom: 12px;
+}
+
+/* Submit wrapper stays at bottom cleanly */
+.btn-submit-wrapper {
+  margin-top: 0;
+  padding-top: 10px;
+}
+
+/* =========================
+   CONTROL SIZING + LOOK
+   ========================= */
+:root {
+  --control-h: 42px;
+
+  /* ✅ smaller border radius */
+  --radius: 8px; /* was 12px */
+
+  /* nearly-white background */
+  --bg: #fbfcfe;
+  --bg-hover: #f4f6f9;
+
+  --border: #e5e7eb;
+  --border-hover: #cfd5df;
+  --border-focus: #3674b5;
+}
+
+/* Input (single line) */
+.create-event-form input.ant-input {
+  height: var(--control-h);
+  padding: 0 14px;
+  background: var(--bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
   box-shadow: none !important;
+  font-weight: 400;
+  font-size: 13px;
 }
 
+/* InputNumber outer */
+.create-event-form .ant-input-number {
+  height: var(--control-h) !important;
+  background: var(--bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: none !important;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-weight: 400;
+  font-size: 13px;
+}
+
+/* InputNumber inner input */
+.create-event-form .ant-input-number-input {
+  height: calc(var(--control-h) - 2px) !important;
+  line-height: calc(var(--control-h) - 2px) !important;
+  font-weight: 400 !important;
+  font-size: 13px !important;
+}
+
+/* Select */
+.create-event-form .ant-select-single .ant-select-selector {
+  height: var(--control-h) !important;
+  background: var(--bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: none !important;
+  display: flex;
+  align-items: center;
+  padding: 0 12px !important;
+  font-size: 13px;
+}
+
+.create-event-form
+  .ant-select-single
+  .ant-select-selector
+  .ant-select-selection-item,
+.create-event-form
+  .ant-select-single
+  .ant-select-selector
+  .ant-select-selection-placeholder {
+  line-height: calc(var(--control-h) - 2px) !important;
+  font-weight: 400 !important;
+  font-size: 13px !important;
+}
+
+/* DatePicker / RangePicker */
+.create-event-form .ant-picker {
+  height: var(--control-h) !important;
+  background: var(--bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: none !important;
+  display: flex;
+  align-items: center;
+  padding: 0 12px !important;
+}
+
+.create-event-form .ant-picker .ant-picker-input > input {
+  height: calc(var(--control-h) - 2px) !important;
+  font-weight: 400 !important;
+  font-size: 13px !important;
+}
+
+/* TextArea wrapper (showCount adds wrapper) */
+.create-event-form .ant-input-textarea-show-count {
+  background: var(--bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: none !important;
+  padding: 10px 14px !important;
+}
+
+/* TextArea itself */
 .create-event-form textarea.ant-input {
-  background-color: transparent !important;
+  height: auto !important;
+  min-height: 120px;
+  background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 12px !important;
+  padding: 0 !important;
+  resize: vertical;
+  font-weight: 400 !important;
+  line-height: 1.5;
+  font-size: 13px;
 }
 
-.create-event-form .ant-input:hover,
+/* Hover */
+.create-event-form input.ant-input:hover,
 .create-event-form .ant-input-number:hover,
 .create-event-form .ant-select:hover .ant-select-selector,
 .create-event-form .ant-picker:hover,
 .create-event-form .ant-input-textarea-show-count:hover {
-  background-color: #eef6ff !important;
-  border-color: #A1E3F9 !important;
+  background: var(--bg-hover) !important;
+  border-color: var(--border-hover) !important;
 }
 
-.create-event-form .ant-input:focus,
-.create-event-form .ant-input-focused,
+/* Focus */
+.create-event-form input.ant-input:focus,
 .create-event-form .ant-input-number-focused,
 .create-event-form .ant-select-focused .ant-select-selector,
 .create-event-form .ant-picker-focused,
 .create-event-form .ant-input-textarea-show-count:focus-within {
-  background-color: #fff !important;
-  border-color: #3674B5 !important;
-  box-shadow: 0 4px 12px rgba(54, 116, 181, 0.15) !important;
+  background: #ffffff !important;
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 6px 16px rgba(54, 116, 181, 0.14) !important;
 }
 
-.create-event-form .ant-select-single .ant-select-selector,
-.create-event-form .ant-picker {
-  height: 48px !important;
-  display: flex;
-  align-items: center;
+/* Placeholders (smaller, not bold) */
+.create-event-form input.ant-input::placeholder,
+.create-event-form textarea.ant-input::placeholder,
+.create-event-form .ant-input-number-input::placeholder,
+.create-event-form .ant-select-selection-placeholder,
+.create-event-form .ant-picker-input > input::placeholder {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  color: #9aa3af;
 }
 
-.create-event-form .ant-input-number-input {
-  height: 46px;
-}
-
-.btn-submit-wrapper {
-  margin-top: 32px;
-}
-
+/* =========================
+   BUTTON
+   ========================= */
 .btn-submit-event {
-  background-color: #3674B5;
+  background-color: #3674b5;
   border: none;
-  height: 35px;
-  width: 100%;
-  border-radius: 12px;
+  height: 44px;
+  border-radius: 10px; /* slightly smaller than before */
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: #fff;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(54, 116, 181, 0.2);
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 6px 18px rgba(54, 116, 181, 0.22);
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.1s ease;
 }
 
 .btn-submit-event:hover {
   background-color: #2d639e;
-  box-shadow: 0 6px 20px rgba(54, 116, 181, 0.3);
+  box-shadow: 0 8px 22px rgba(54, 116, 181, 0.28);
 }
 
 .btn-submit-event:active {
   background-color: #255282;
   transform: translateY(1px);
-  transition: 0.1s;
 }
 
 .btn-submit-event.ant-btn-loading {
-  opacity: 0.8;
+  opacity: 0.9;
   pointer-events: none;
 }
 
-@media (max-width: 768px) {
+/* =========================
+   RESPONSIVE TYPOGRAPHY
+   ========================= */
+@media (min-width: 992px) {
+  .create-event-header h3 {
+    font-size: 28px;
+  }
+
+  .custom-form-item .ant-form-item-label > label {
+    font-size: 14px;
+  }
+
+  .create-event-form input.ant-input,
+  .create-event-form .ant-select-single .ant-select-selector,
+  .create-event-form .ant-input-number,
+  .create-event-form .ant-picker,
+  .create-event-form textarea.ant-input {
+    font-size: 14px;
+  }
+
+  .create-event-form input.ant-input::placeholder,
+  .create-event-form textarea.ant-input::placeholder,
+  .create-event-form .ant-input-number-input::placeholder,
+  .create-event-form .ant-select-selection-placeholder,
+  .create-event-form .ant-picker-input > input::placeholder {
+    font-size: 12.5px !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .create-event-header h3 {
+    font-size: 32px;
+  }
+
+  .custom-form-item .ant-form-item-label > label {
+    font-size: 15px;
+  }
+
+  .create-event-form input.ant-input,
+  .create-event-form .ant-select-single .ant-select-selector,
+  .create-event-form .ant-input-number,
+  .create-event-form .ant-picker,
+  .create-event-form textarea.ant-input {
+    font-size: 15px;
+  }
+
+  .btn-submit-event {
+    font-size: 15px;
+  }
+
+  .create-event-form input.ant-input::placeholder,
+  .create-event-form textarea.ant-input::placeholder,
+  .create-event-form .ant-input-number-input::placeholder,
+  .create-event-form .ant-select-selection-placeholder,
+  .create-event-form .ant-picker-input > input::placeholder {
+    font-size: 13px !important;
+  }
+}
+
+/* =========================
+   RESPONSIVE LAYOUT
+   ========================= */
+@media (max-width: 992px) {
   .create-event-container {
-    padding: 24px;
+    max-width: 860px;
+    padding: 30px 28px;
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .create-event-page {
+    padding: 18px 12px;
+  }
+
+  .create-event-container {
+    height: auto;
+    max-height: none;
+    padding: 22px 18px;
     border-radius: 16px;
+  }
+
+  .create-event-form {
+    justify-content: flex-start;
+    gap: 14px;
+  }
+
+  .create-event-form .ant-row {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .create-event-container {
+    padding: 18px 14px;
+    border-radius: 14px;
+  }
+
+  .create-event-header {
+    margin-bottom: 18px;
+  }
+
+  .create-event-header h3 {
+    font-size: 20px;
+  }
+
+  .custom-form-item .ant-form-item-label > label {
+    font-size: 12.5px;
+  }
+
+  .create-event-form input.ant-input,
+  .create-event-form .ant-select-single .ant-select-selector,
+  .create-event-form .ant-input-number,
+  .create-event-form .ant-picker,
+  .create-event-form textarea.ant-input {
+    font-size: 12.5px;
+  }
+
+  .create-event-form input.ant-input::placeholder,
+  .create-event-form textarea.ant-input::placeholder,
+  .create-event-form .ant-input-number-input::placeholder,
+  .create-event-form .ant-select-selection-placeholder,
+  .create-event-form .ant-picker-input > input::placeholder {
+    font-size: 11.5px !important;
+  }
+}
+
+/* =========================
+   SHORT HEIGHT SCREENS (laptops)
+   ========================= */
+@media (max-height: 820px) {
+  .create-event-container {
+    height: auto;
+    max-height: 720px;
+    overflow: auto;
+  }
+
+  .create-event-header h3 {
+    font-size: 26px;
+  }
+
+  .create-event-form textarea.ant-input {
+    min-height: 96px;
+  }
+
+  .create-event-form {
+    justify-content: flex-start;
+    gap: 14px;
   }
 }

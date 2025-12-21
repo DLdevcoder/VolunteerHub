@@ -7,16 +7,15 @@ import {
   Button,
   Spin,
   Pagination,
-  Space,
   Popconfirm,
-  Tooltip
+  Tooltip,
 } from "antd";
-import { 
-  BellOutlined, 
-  CheckCircleOutlined, 
-  ReloadOutlined, 
-  DeleteOutlined, 
-  ClockCircleOutlined 
+import {
+  BellOutlined,
+  CheckCircleOutlined,
+  ReloadOutlined,
+  DeleteOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -40,8 +39,8 @@ const { Title, Text } = Typography;
 const Notifications = () => {
   const dispatch = useDispatch();
 
-  const notifications = useSelector(notificationsSelector);
-  const pagination = useSelector(notificationsPaginationSelector);
+  const notifications = useSelector(notificationsSelector) || [];
+  const pagination = useSelector(notificationsPaginationSelector) || {};
   const loading = useSelector(loadingNotificationsSelector);
 
   const currentPageFromStore = pagination?.page || pagination?.currentPage || 1;
@@ -87,8 +86,7 @@ const Notifications = () => {
   };
 
   const handleDelete = (item, e) => {
-    // Ngăn chặn sự kiện click lan ra item (tránh trigger markRead khi đang xóa)
-    e?.stopPropagation(); 
+    e?.stopPropagation();
     dispatch(deleteNotificationThunk(item.notification_id)).then(() => {
       syncHeaderNotifications();
     });
@@ -104,7 +102,11 @@ const Notifications = () => {
     if (!iso) return null;
     try {
       return new Date(iso).toLocaleString("vi-VN", {
-        hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric"
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
       });
     } catch {
       return iso;
@@ -131,7 +133,7 @@ const Notifications = () => {
 
   return (
     <div className="notifications-page-wrapper">
-      {/* HEADER SECTION */}
+      {/* HEADER */}
       <div className="ntf-header">
         <Title level={3} className="ntf-title">
           <BellOutlined /> Tất cả thông báo
@@ -139,15 +141,16 @@ const Notifications = () => {
 
         <div className="ntf-actions">
           <Tooltip title="Tải lại danh sách">
-            <Button 
-              icon={<ReloadOutlined />} 
-              onClick={handleRefresh} 
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={handleRefresh}
               className="ntf-btn-refresh"
             />
           </Tooltip>
-          <Button 
-            type="primary" 
-            icon={<CheckCircleOutlined />} 
+
+          <Button
+            type="primary"
+            icon={<CheckCircleOutlined />}
             onClick={handleMarkAllRead}
             className="ntf-btn-mark-all"
           >
@@ -156,83 +159,91 @@ const Notifications = () => {
         </div>
       </div>
 
-      {/* CONTENT SECTION */}
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "60px 0" }}>
-          <Spin size="large" />
-        </div>
-      ) : (
-        <>
-          <List
-            className="ntf-list"
-            itemLayout="horizontal"
-            dataSource={notifications}
-            locale={{ emptyText: "Bạn chưa có thông báo nào." }}
-            renderItem={(item) => {
-              const title = item.title || item.type || "Thông báo hệ thống";
-              const mainText = getBodyText(item);
-              const isRead = item.is_read;
+      {/* BODY */}
+      <div className="ntf-body">
+        {loading ? (
+          <div className="ntf-loading">
+            <Spin size="large" />
+          </div>
+        ) : (
+          <>
+            <List
+              className="ntf-list"
+              itemLayout="horizontal"
+              dataSource={notifications}
+              locale={{ emptyText: "Bạn chưa có thông báo nào." }}
+              renderItem={(item) => {
+                const title = item.title || item.type || "Thông báo hệ thống";
+                const mainText = getBodyText(item);
+                const isRead = item.is_read;
 
-              return (
-                <List.Item
-                  className={`ntf-list-item ${isRead ? "ntf-item-read" : "ntf-item-unread"}`}
-                  onClick={() => handleMarkRead(item)}
-                  actions={[
-                    <Popconfirm
-                      key="delete"
-                      title="Bạn có chắc chắn muốn xóa thông báo này?"
-                      okText="Xóa"
-                      cancelText="Hủy"
-                      okButtonProps={{ danger: true }}
-                      onConfirm={(e) => handleDelete(item, e)}
-                      onCancel={(e) => e?.stopPropagation()}
-                    >
-                      <Button 
-                        type="text" 
-                        danger 
-                        icon={<DeleteOutlined />} 
-                        className="ntf-btn-delete"
-                        onClick={(e) => e.stopPropagation()} // Ngăn click nhầm vào item
-                      />
-                    </Popconfirm>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={
-                      <div className="ntf-item-title">
-                        <Text strong>{title}</Text>
-                        {!isRead && <Tag color="#3674B5" style={{ marginLeft: 8, borderRadius: 10 }}>Mới</Tag>}
-                      </div>
-                    }
-                    description={
-                      <>
-                        {mainText && <div className="ntf-item-body">{mainText}</div>}
-                        <div className="ntf-item-time">
-                          <ClockCircleOutlined /> {renderTime(item.created_at)}
+                return (
+                  <List.Item
+                    className={`ntf-list-item ${
+                      isRead ? "ntf-item-read" : "ntf-item-unread"
+                    }`}
+                    onClick={() => handleMarkRead(item)}
+                    actions={[
+                      <Popconfirm
+                        key="delete"
+                        title="Bạn có chắc chắn muốn xóa thông báo này?"
+                        okText="Xóa"
+                        cancelText="Hủy"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={(e) => handleDelete(item, e)}
+                        onCancel={(e) => e?.stopPropagation()}
+                      >
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined />}
+                          className="ntf-btn-delete"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </Popconfirm>,
+                    ]}
+                  >
+                    <List.Item.Meta
+                      title={
+                        <div className="ntf-item-title">
+                          <Text strong className="ntf-item-title-text">
+                            {title}
+                          </Text>
+                          {!isRead && <Tag className="ntf-tag-new">Mới</Tag>}
                         </div>
-                      </>
-                    }
-                  />
-                </List.Item>
-              );
-            }}
-          />
+                      }
+                      description={
+                        <>
+                          {mainText && (
+                            <div className="ntf-item-body">{mainText}</div>
+                          )}
+                          <div className="ntf-item-time">
+                            <ClockCircleOutlined />{" "}
+                            {renderTime(item.created_at)}
+                          </div>
+                        </>
+                      }
+                    />
+                  </List.Item>
+                );
+              }}
+            />
 
-          {/* PAGINATION SECTION */}
-          {totalFromStore > 0 && (
-            <div className="ntf-pagination-wrapper">
-              <Pagination
-                current={page}
-                pageSize={pageSize}
-                total={totalFromStore}
-                showSizeChanger
-                onChange={handlePageChange}
-                onShowSizeChange={handlePageChange}
-              />
-            </div>
-          )}
-        </>
-      )}
+            {totalFromStore > 0 && (
+              <div className="ntf-pagination-wrapper">
+                <Pagination
+                  current={page}
+                  pageSize={pageSize}
+                  total={totalFromStore}
+                  showSizeChanger
+                  onChange={handlePageChange}
+                  onShowSizeChange={handlePageChange}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };

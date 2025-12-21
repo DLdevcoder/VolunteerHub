@@ -2,16 +2,7 @@ import "./Profile.css";
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, useNavigate } from "react-router-dom";
-import {
-  Button,
-  Input,
-  Spin,
-  Space,
-  message,
-  Tag,
-  Row,
-  Col,
-} from "antd";
+import { Button, Input, Spin, Space, message, Tag, Row, Col } from "antd";
 import {
   UserOutlined,
   PhoneOutlined,
@@ -19,8 +10,10 @@ import {
   CalendarOutlined,
   CameraOutlined,
   LockOutlined,
-  SafetyCertificateOutlined,
   ClockCircleOutlined,
+  CrownOutlined,
+  SolutionOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 
 import { fetchMeThunk, updateMeThunk } from "../../redux/slices/userSlice";
@@ -38,11 +31,9 @@ import {
 const Profile = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
-  // Ref để xử lý click vào icon máy ảnh thì mở input file
+
   const fileInputRef = useRef(null);
 
-  // local editable state
   const [isEditing, setIsEditing] = useState(false);
   const [formValues, setFormValues] = useState({
     full_name: "",
@@ -51,24 +42,18 @@ const Profile = () => {
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [, setAvatarFile] = useState(null);
 
-  // auth slice via selectors
   const token = useSelector(authTokenSelector);
   const isAuthenticated = useSelector(authIsAuthenticatedSelector);
 
-  // user slice via selectors
   const me = useSelector(meSelector);
   const loadingMe = useSelector(loadingMeSelector);
   const errorMe = useSelector(errorMeSelector);
   const updatingMe = useSelector(updatingMeSelector);
 
-  // Fetch /users/me if needed
   useEffect(() => {
-    if (token) {
-      dispatch(fetchMeThunk());
-    }
+    if (token) dispatch(fetchMeThunk());
   }, [dispatch, token]);
 
-  // Route guards
   if (!token) return <Navigate to="/login" replace />;
 
   if (loadingMe && !me) {
@@ -79,9 +64,7 @@ const Profile = () => {
     );
   }
 
-  if (!me && isAuthenticated === false) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!me && isAuthenticated === false) return <Navigate to="/login" replace />;
 
   if (!me && !loadingMe) {
     return (
@@ -91,13 +74,56 @@ const Profile = () => {
     );
   }
 
-  // from here, me exists
   const user = me;
-  
-  // Logic kiểm tra status (không phân biệt hoa thường) để tô màu
-  const isUserActive = user.status?.toLowerCase() === "active";
 
-  /* ========= Handlers (LOGIC GIỮ NGUYÊN) ========= */
+  const isUserActive = String(user.status || "").toLowerCase() === "active";
+  const role = user.role_name || "USER";
+
+  const renderRoleTag = (roleName) => {
+    const map = {
+      Admin: {
+        cls: "role-pill role-admin",
+        icon: <CrownOutlined />,
+        label: "Admin",
+      },
+      Manager: {
+        cls: "role-pill role-manager",
+        icon: <SolutionOutlined />,
+        label: "Manager",
+      },
+      Volunteer: {
+        cls: "role-pill role-volunteer",
+        icon: <TeamOutlined />,
+        label: "Volunteer",
+      },
+    };
+
+    const cfg = map[roleName] || {
+      cls: "role-pill",
+      icon: <TeamOutlined />,
+      label: roleName,
+    };
+
+    return (
+      <Tag className={cfg.cls}>
+        <span className="role-pill__inner">
+          <span className="role-pill__icon">{cfg.icon}</span>
+          <span className="role-pill__text">{cfg.label}</span>
+        </span>
+      </Tag>
+    );
+  };
+
+  const renderStatusTag = () => {
+    const label = isUserActive ? "ACTIVE" : "BLOCKED";
+    return (
+      <Tag
+        className={`status-pill ${isUserActive ? "status-active" : "status-blocked"}`}
+      >
+        {label}
+      </Tag>
+    );
+  };
 
   const handleEditButtonClick = () => {
     setFormValues({
@@ -152,22 +178,18 @@ const Profile = () => {
     if (!file) return;
 
     setAvatarFile(file);
-
     const url = URL.createObjectURL(file);
     setAvatarPreview(url);
   };
 
-  // Helper trigger input file
   const triggerFileInput = () => {
-    fileInputRef.current.click();
+    fileInputRef.current?.click();
   };
 
-  /* ========= JSX GIAO DIỆN MỚI ========= */
   return (
     <div className="profile-container">
       <div className="profile-card">
-        
-        {/* --- HEADER: Avatar & Name --- */}
+        {/* HEADER */}
         <div className="profile-header">
           <div className="avatar-section">
             <div className={`avatar-wrapper ${isEditing ? "editable" : ""}`}>
@@ -183,15 +205,13 @@ const Profile = () => {
                 </div>
               )}
 
-              {/* Overlay hiển thị khi edit để bấm vào thay ảnh */}
               {isEditing && (
                 <div className="avatar-overlay" onClick={triggerFileInput}>
                   <CameraOutlined style={{ color: "#fff", fontSize: 24 }} />
                 </div>
               )}
             </div>
-            
-            {/* Input file bị ẩn đi để giao diện đẹp hơn */}
+
             <input
               type="file"
               accept="image/*"
@@ -202,41 +222,23 @@ const Profile = () => {
           </div>
 
           <div className="identity-section">
-            <h1 className="user-name">{user.full_name || "Chưa cập nhật tên"}</h1>
-            
-            <div className="tags-row">
-              {/* Role Tag */}
-              <Tag
-                icon={<SafetyCertificateOutlined />}
-                color="#3674B5"
-                className="custom-tag"
-              >
-                {user.role_name || "USER"}
-              </Tag>
+            <h1 className="user-name">
+              {user.full_name || "Chưa cập nhật tên"}
+            </h1>
 
-              {/* Status Tag (Màu #A1E3F9) */}
-              <Tag
-                className="custom-tag"
-                style={{
-                  backgroundColor: isUserActive ? "#A1E3F9" : "#ffccc7",
-                  color: isUserActive ? "#2b5a8f" : "#a8071a",
-                  border: "none",
-                  textTransform: "uppercase",
-                }}
-              >
-                {user.status || "UNKNOWN"}
-              </Tag>
+            <div className="tags-row">
+              {renderRoleTag(role)}
+              {renderStatusTag()}
             </div>
           </div>
         </div>
 
-        {/* --- BODY: Form Fields --- */}
+        {/* BODY */}
         <div className="profile-body">
           <Row gutter={[40, 24]}>
-            {/* Cột Trái: Thông tin cá nhân */}
             <Col xs={24} md={12}>
               <h3 className="section-title">Thông tin cá nhân</h3>
-              
+
               <div className="form-group">
                 <label>Họ và tên</label>
                 <Input
@@ -262,7 +264,7 @@ const Profile = () => {
               </div>
 
               <div className="form-group">
-                <label>Email (Không thể thay đổi)</label>
+                <label>Email</label>
                 <Input
                   prefix={<MailOutlined className="input-icon" />}
                   value={user.email}
@@ -273,15 +275,18 @@ const Profile = () => {
               </div>
             </Col>
 
-            {/* Cột Phải: Thông tin hệ thống */}
             <Col xs={24} md={12}>
               <h3 className="section-title">Thông tin hệ thống</h3>
-              
+
               <div className="form-group">
                 <label>Ngày tham gia</label>
                 <Input
                   prefix={<CalendarOutlined className="input-icon" />}
-                  value={user.created_at ? new Date(user.created_at).toLocaleDateString("vi-VN") : "N/A"}
+                  value={
+                    user.created_at
+                      ? new Date(user.created_at).toLocaleDateString("vi-VN")
+                      : "N/A"
+                  }
                   disabled
                   className="input-disabled-custom"
                   size="large"
@@ -292,62 +297,70 @@ const Profile = () => {
                 <label>Cập nhật lần cuối</label>
                 <Input
                   prefix={<ClockCircleOutlined className="input-icon" />}
-                  value={user.updated_at ? new Date(user.updated_at).toLocaleDateString("vi-VN") : "N/A"}
+                  value={
+                    user.updated_at
+                      ? new Date(user.updated_at).toLocaleDateString("vi-VN")
+                      : "N/A"
+                  }
                   disabled
                   className="input-disabled-custom"
                   size="large"
                 />
               </div>
-
-              <div className="form-group" style={{ marginTop: 30 }}>
-                <Button 
-                  block 
-                  icon={<LockOutlined />} 
-                  onClick={() => navigate("/reset-password")}
-                  size="large"
-                  className="btn-change-pass"
-                >
-                  Đổi mật khẩu
-                </Button>
-              </div>
             </Col>
           </Row>
         </div>
-
-        {/* --- FOOTER: Buttons --- */}
         <div className="profile-footer">
-          {!isEditing ? (
-            <Button 
-              type="primary" 
-              onClick={handleEditButtonClick} 
+          <div style={{ display: 'flex', gap: '16px', width: '100%', alignItems: 'center' }}>
+            <Button
+              icon={<LockOutlined />}
+              onClick={() => navigate("/reset-password")}
               size="large"
-              className="btn-primary-custom"
+              className="btn-change-pass"
+              style={{
+                height: '40px',
+                padding: '0 24px',
+                marginLeft: 'auto'
+              }}
             >
-              Chỉnh sửa hồ sơ
+              Đổi mật khẩu
             </Button>
-          ) : (
-            <Space size="middle">
-              <Button 
-                onClick={handleCancelButtonClick} 
-                disabled={updatingMe}
-                size="large"
-                className="btn-cancel"
-              >
-                Hủy bỏ
-              </Button>
-              <Button 
-                type="primary" 
-                onClick={handleAcceptButtonClick} 
-                loading={updatingMe}
-                size="large"
-                className="btn-save"
-              >
-                Lưu thay đổi
-              </Button>
-            </Space>
-          )}
-        </div>
 
+            {/* Các nút chỉnh sửa bên phải */}
+            <div>
+              {!isEditing ? (
+                <Button
+                  type="primary"
+                  onClick={handleEditButtonClick}
+                  size="large"
+                  className="btn-primary-custom"
+                >
+                  Chỉnh sửa hồ sơ
+                </Button>
+              ) : (
+                <Space size="middle">
+                  <Button
+                    onClick={handleCancelButtonClick}
+                    disabled={updatingMe}
+                    size="large"
+                    className="btn-cancel"
+                  >
+                    Hủy bỏ
+                  </Button>
+                  <Button
+                    type="primary"
+                    onClick={handleAcceptButtonClick}
+                    loading={updatingMe}
+                    size="large"
+                    className="btn-save"
+                  >
+                    Lưu thay đổi
+                  </Button>
+                </Space>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

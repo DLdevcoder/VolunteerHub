@@ -1,15 +1,17 @@
-import "../../../../public/style/EventTableShared.css"; 
-import { useEffect, useState } from "react";
+import "../../../../public/style/EventTableShared.css";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Table, message, Button, Typography, Space } from "antd";
 import {
-  CalendarOutlined,
-  EnvironmentOutlined,
-  TeamOutlined,
-  EditOutlined,
-  PlusOutlined
-} from "@ant-design/icons";
+  Table,
+  message,
+  Button,
+  Typography,
+  Space,
+  Tag,
+  DatePicker,
+} from "antd";
+import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 
 import { fetchManagerEvents } from "../../../redux/slices/eventSlice";
 import {
@@ -20,16 +22,7 @@ import {
 } from "../../../redux/selectors/eventSelectors";
 
 const { Title, Text } = Typography;
-
-const getStatusConfig = (status) => {
-  switch (status) {
-    case "approved": return { className: "tag-approved", label: "Đã duyệt" };
-    case "pending": return { className: "tag-pending", label: "Chờ duyệt" };
-    case "rejected": return { className: "tag-rejected", label: "Từ chối" };
-    case "completed": return { className: "tag-completed", label: "Hoàn thành" };
-    default: return { className: "tag-default", label: status || "Nháp" };
-  }
-};
+const { RangePicker } = DatePicker;
 
 const formatDateTime = (dateStr) => {
   if (!dateStr) return "";
@@ -42,16 +35,43 @@ const formatDateTime = (dateStr) => {
   });
 };
 
+const getStatusTag = (status) => {
+  switch (status) {
+    case "approved":
+      return { color: "green", label: "Đã duyệt" };
+    case "pending":
+      return { color: "orange", label: "Chờ duyệt" };
+    case "rejected":
+      return { color: "red", label: "Từ chối" };
+    default:
+      return { color: "default", label: status || "Nháp" };
+  }
+};
+
+// record intersects filter range
+const overlapsRange = (recordStart, recordEnd, filterStart, filterEnd) => {
+  if (!filterStart || !filterEnd) return true;
+  const rs = recordStart ? new Date(recordStart).getTime() : 0;
+  const re = recordEnd ? new Date(recordEnd).getTime() : 0;
+  const fs = filterStart.getTime();
+  const fe = filterEnd.getTime();
+  return rs <= fe && re >= fs;
+};
+
 const ManagerMyEvents = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const events = useSelector(managerEventsSelector);
+  const events = useSelector(managerEventsSelector) || [];
   const pagination = useSelector(managerEventsPaginationSelector);
   const loading = useSelector(managerEventsLoadingSelector);
   const error = useSelector(managerEventsErrorSelector);
 
   const [pageSize, setPageSize] = useState(10);
+
+  // ===== Column filter states (controlled) =====
+  const [statusFiltered, setStatusFiltered] = useState(null); // ["approved"] | ["pending"] | ["rejected"] | null
+  const [timeFiltered, setTimeFiltered] = useState(null); // [Date, Date] | null
 
   const loadData = (page = 1, limit = pageSize) => {
     dispatch(fetchManagerEvents({ page, limit }));
@@ -66,84 +86,185 @@ const ManagerMyEvents = () => {
     if (error) message.error(error);
   }, [error]);
 
-  const handleTableChange = (pag) => {
+  const handleTableChange = (pag, filters /* , sorter */) => {
     setPageSize(pag.pageSize);
+
+    // capture status filter from table
+    // filters.approval_status will be array or null
+    if ("approval_status" in filters) {
+      setStatusFiltered(filters.approval_status || null);
+    }
+
+    // pagination still server-driven
     loadData(pag.current, pag.pageSize);
   };
 
+  // ===== Client-side filtered data (for header filters) =====
+  const filteredEvents = useMemo(() => {
+    let list = events;
+
+    // status
+    if (statusFiltered && statusFiltered.length > 0) {
+      list = list.filter((e) => statusFiltered.includes(e.approval_status));
+    }
+
+    // time range
+    if (timeFiltered && timeFiltered.length === 2) {
+      const [s, e] = timeFiltered;
+      list = list.filter((ev) =>
+        overlapsRange(ev.start_date, ev.end_date, s, e)
+      );
+    }
+
+    return list;
+  }, [events, statusFiltered, timeFiltered]);
+
+  // ===== Column defs =====
   const columns = [
     {
       title: "Tên sự kiện",
       dataIndex: "title",
       key: "title",
-      width: 250,
+      width: 280,
       render: (text) => (
-        <Text strong style={{ fontSize: 15, color: "#333" }}>{text}</Text>
+        <Text strong className="evt-title">
+          {text}
+        </Text>
       ),
     },
+
+    // TIME column filter: custom dropdown (RangePicker) -> funnel icon appears automatically
     {
       title: "Thời gian",
       key: "time",
-      width: 300,
-      render: (_, record) => {
-        const start = record.start_date;
-        const end = record.end_date;
-        
-        // Hiển thị đầy đủ: Ngày Giờ Bắt đầu - Ngày Giờ Kết thúc
+      width: 330,
+      render: (_, record) => (
+        <div className="evt-time">
+          <span>
+            {formatDateTime(record.start_date)} -{" "}
+            {formatDateTime(record.end_date)}
+          </span>
+        </div>
+      ),
+      filteredValue: timeFiltered ? ["1"] : null, // just to show filter state
+      filterDropdown: ({ confirm, clearFilters }) => {
         return (
-          <div style={{ color: "#555", fontSize: 13, display: "flex", alignItems: "flex-start" }}>
-            <CalendarOutlined style={{ marginRight: 8, marginTop: 3, color: "#3674B5", flexShrink: 0 }} />
-            <span>
-              {formatDateTime(start)} - {formatDateTime(end)}
-            </span>
+          <div style={{ padding: 12, width: 280 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>
+              Lọc theo ngày
+            </div>
+
+            <RangePicker
+              style={{ width: "100%" }}
+              format="DD/MM/YYYY"
+              value={
+                timeFiltered
+                  ? [
+                      // AntD RangePicker expects dayjs by default, but it can accept Date in many cases.
+                      // If your AntD version forces dayjs, tell me, I’ll convert properly.
+                      timeFiltered[0],
+                      timeFiltered[1],
+                    ]
+                  : null
+              }
+              onChange={(val) => {
+                if (!val || val.length !== 2) {
+                  setTimeFiltered(null);
+                  return;
+                }
+                // val may be dayjs -> convert to Date
+                const start = val[0]?.toDate ? val[0].toDate() : val[0];
+                const end = val[1]?.toDate ? val[1].toDate() : val[1];
+                setTimeFiltered([start, end]);
+              }}
+              allowClear
+            />
+
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                marginTop: 10,
+                justifyContent: "flex-end",
+              }}
+            >
+              <Button
+                size="small"
+                onClick={() => {
+                  setTimeFiltered(null);
+                  clearFilters?.();
+                  confirm();
+                }}
+              >
+                Xoá
+              </Button>
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => {
+                  confirm();
+                }}
+              >
+                Áp dụng
+              </Button>
+            </div>
           </div>
         );
       },
     },
+
     {
       title: "Địa điểm",
       dataIndex: "location",
       key: "location",
-      width: 250,
-      render: (loc) => (
-        <span style={{ color: "#555" }}>
-          <EnvironmentOutlined style={{ marginRight: 6, color: "#3674B5" }} />
-          {loc}
-        </span>
-      ),
+      width: 300,
+      render: (loc) => <span className="evt-loc">{loc}</span>,
     },
     {
       title: "Số lượng",
       key: "participants",
       align: "center",
+      width: 120,
       render: (_, record) => (
-        <Space style={{ color: "#666" }}>
-          <TeamOutlined style={{ color: "#3674B5" }} />
+        <Space className="evt-qty">
           <span>
             <b>{record.current_participants}</b> / {record.target_participants}
           </span>
         </Space>
       ),
     },
+
+    // STATUS column filter: built-in filters -> funnel icon appears automatically
     {
       title: "Trạng thái",
       dataIndex: "approval_status",
       key: "approval_status",
       align: "center",
+      width: 140,
+      filters: [
+        { text: "Đã duyệt", value: "approved" },
+        { text: "Chờ duyệt", value: "pending" },
+        { text: "Từ chối", value: "rejected" },
+      ],
+      filteredValue: statusFiltered || null,
+      // return true/false per row
+      onFilter: (value, record) => record.approval_status === value,
       render: (status) => {
-        const { className, label } = getStatusConfig(status);
-        return <span className={`status-tag ${className}`}>{label}</span>;
+        const { color, label } = getStatusTag(status);
+        return <Tag className="status-tag" color={color}>{label}</Tag>;
       },
     },
+
     {
       title: "Hành động",
       key: "actions",
       align: "center",
+      width: 120,
       render: (_, record) => (
         <Button
           size="small"
           icon={<EditOutlined />}
-          className="btn-outline-edit" // Sử dụng class từ file CSS chung
+          className="btn-outline-edit"
           onClick={(e) => {
             e.stopPropagation();
             navigate(`/manager/events/${record.event_id}/edit`);
@@ -158,42 +279,65 @@ const ManagerMyEvents = () => {
   const pag = pagination || {};
 
   return (
-    <div className="event-table-container">
-      <div className="event-table-header">
-        <div>
-          <Title level={3} style={{ color: "#3674B5", margin: 0 }}>
-            Sự kiện của tôi
-          </Title>
-          <Text type="secondary">Quản lý các sự kiện bạn đã tạo</Text>
-        </div>
-        
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />}
-          style={{ background: "#3674B5", borderRadius: 6, fontWeight: 600 }}
-          onClick={() => navigate("/manager/events/create")}
-        >
-          Tạo mới
-        </Button>
-      </div>
+    <div className="event-table-page">
+      <div className="event-table-container">
+        <div className="event-table-header">
+          <div>
+            <Title
+              className="event-table-title"
+              level={3}
+              style={{ margin: 0 }}
+            >
+              Sự kiện của tôi
+            </Title>
+            <Text className="event-table-subtitle" type="secondary">
+              Quản lý các sự kiện bạn đã tạo
+            </Text>
+          </div>
 
-      <Table
-        className="shared-event-table"
-        rowKey="event_id"
-        loading={loading}
-        columns={columns}
-        dataSource={events}
-        pagination={{
-          current: pag.page || 1,
-          pageSize,
-          total: pag.total || 0,
-          showSizeChanger: true,
-        }}
-        onChange={handleTableChange}
-        onRow={(record) => ({
-          onClick: () => navigate(`/events/${record.event_id}`),
-        })}
-      />
+          <Space>
+            {/* optional: quick reset filters button */}
+            <Button
+              onClick={() => {
+                setStatusFiltered(null);
+                setTimeFiltered(null);
+              }}
+            >
+              Xoá lọc
+            </Button>
+
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              className="btn-create"
+              onClick={() => navigate("/manager/events/create")}
+            >
+              Tạo mới
+            </Button>
+          </Space>
+        </div>
+
+        <Table
+          className="shared-event-table"
+          rowKey="event_id"
+          loading={loading}
+          columns={columns}
+          dataSource={filteredEvents}
+          pagination={{
+            current: pag.page || 1,
+            pageSize,
+            // If you want correct totals with client filtering:
+            // total: filteredEvents.length,
+            // But if pagination is server-driven, keep backend total:
+            total: pag.total || 0,
+            showSizeChanger: true,
+          }}
+          onChange={handleTableChange}
+          onRow={(record) => ({
+            onClick: () => navigate(`/events/${record.event_id}`),
+          })}
+        />
+      </div>
     </div>
   );
 };

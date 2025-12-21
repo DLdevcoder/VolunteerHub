@@ -1,17 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import {
-  Avatar,
-  Spin,
-  message,
-  Modal,
-  Popover,
-  Button,
-} from "antd";
-import {
-  UserOutlined,
-  SendOutlined,
-} from "@ant-design/icons";
+import { Avatar, Spin, message, Modal, Popover, Button } from "antd";
+import { UserOutlined, SendOutlined } from "@ant-design/icons";
 import { AiOutlineLike } from "react-icons/ai";
 import { FaRegCommentAlt, FaGlobeAmericas } from "react-icons/fa";
 
@@ -31,7 +21,7 @@ const formatPostTime = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
   const now = new Date();
-  
+
   const seconds = Math.floor((now - date) / 1000);
 
   if (seconds < 60) return "Vừa xong";
@@ -77,7 +67,12 @@ const CommentItem = ({ cmt }) => {
           {content}{" "}
           <span
             onClick={() => setIsExpanded(false)}
-            style={{ fontWeight: 600, cursor: "pointer", color: "#65676b", marginLeft: 5 }}
+            style={{
+              fontWeight: 600,
+              cursor: "pointer",
+              color: "#65676b",
+              marginLeft: 5,
+            }}
           >
             Thu gọn
           </span>
@@ -91,7 +86,12 @@ const CommentItem = ({ cmt }) => {
         {shortContent}...{" "}
         <span
           onClick={() => setIsExpanded(true)}
-          style={{ fontWeight: 600, cursor: "pointer", color: "#65676b", marginLeft: 5 }}
+          style={{
+            fontWeight: 600,
+            cursor: "pointer",
+            color: "#65676b",
+            marginLeft: 5,
+          }}
         >
           Xem thêm
         </span>
@@ -108,7 +108,9 @@ const CommentItem = ({ cmt }) => {
         style={{ marginTop: 4 }}
       />
       <div className="comment-bubble">
-        <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap" }}>
+        <div
+          style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap" }}
+        >
           <Link to="#" className="comment-username" style={{ marginRight: 8 }}>
             {cmt.full_name}
           </Link>
@@ -117,7 +119,7 @@ const CommentItem = ({ cmt }) => {
             {formatPostTime(cmt.created_at)}
           </span>
         </div>
-        
+
         {renderCommentContent()}
       </div>
     </div>
@@ -126,13 +128,17 @@ const CommentItem = ({ cmt }) => {
 
 // --- 3. COMPONENT CHÍNH: POST CARD ---
 const PostCard = ({ post, currentUser }) => {
-  const [currentReaction, setCurrentReaction] = useState(post.current_reaction || null);
-  const [reactionCount, setReactionCount] = useState(parseInt(post.like_count) || 0);
+  const [currentReaction, setCurrentReaction] = useState(
+    post.current_reaction || null
+  );
+  const [reactionCount, setReactionCount] = useState(
+    parseInt(post.like_count) || 0
+  );
   const [reactionStats, setReactionStats] = useState(post.reaction_stats || {});
 
   const [isReactionModalOpen, setIsReactionModalOpen] = useState(false);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
-  
+
   // State Xem thêm/Thu gọn cho nội dung bài viết chính
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -180,7 +186,9 @@ const PostCard = ({ post, currentUser }) => {
   };
 
   const getTopReactions = () => {
-    let types = Object.keys(reactionStats).filter((type) => reactionStats[type] > 0);
+    let types = Object.keys(reactionStats).filter(
+      (type) => reactionStats[type] > 0
+    );
     if (types.length === 0 && reactionCount > 0) {
       types = [currentReaction || "like"];
     }
@@ -214,8 +222,9 @@ const PostCard = ({ post, currentUser }) => {
       if (res.success) {
         const newComment = res.data.comment || res.data;
         // Giả lập thêm created_at nếu API trả về thiếu, để hiển thị ngay lập tức là "Vừa xong"
-        if (!newComment.created_at) newComment.created_at = new Date().toISOString();
-        
+        if (!newComment.created_at)
+          newComment.created_at = new Date().toISOString();
+
         setComments((prev) => [...prev, newComment]);
         setCommentText("");
       }
@@ -224,7 +233,9 @@ const PostCard = ({ post, currentUser }) => {
     }
   };
 
-  const totalComments = commentsLoaded ? comments.length : parseInt(post.comment_count) || 0;
+  const totalComments = commentsLoaded
+    ? comments.length
+    : parseInt(post.comment_count) || 0;
 
   // --- COMPONENTS CON ---
   const PostHeader = () => (
@@ -235,6 +246,7 @@ const PostCard = ({ post, currentUser }) => {
           size={40}
           icon={<UserOutlined />}
           className="post-avatar-img"
+          style={{ marginRight: "5px" }}
         />
       </Link>
       <div className="post-info">
@@ -269,17 +281,28 @@ const PostCard = ({ post, currentUser }) => {
 
   const ActionBar = ({ isInModal = false }) => (
     <div className={isInModal ? "modal-actions-bar" : "post-actions-bar"}>
-      <Popover content={ReactionMenu} trigger="hover" overlayClassName="reaction-popover">
+      <Popover
+        content={ReactionMenu}
+        trigger="hover"
+        overlayClassName="reaction-popover"
+      >
         <div
           className={`action-button ${currentReaction ? "active" : ""}`}
           onClick={() => handleReaction(currentReaction || "like")}
         >
-          {currentReaction ? getReactionIcon(currentReaction) : <AiOutlineLike size={20} />}
+          {currentReaction ? (
+            getReactionIcon(currentReaction)
+          ) : (
+            <AiOutlineLike size={20} />
+          )}
           <span>{getReactionLabel(currentReaction)}</span>
         </div>
       </Popover>
 
-      <div className={`action-button ${isInModal ? "disabled" : ""}`} onClick={!isInModal ? openCommentModal : undefined}>
+      <div
+        className={`action-button ${isInModal ? "disabled" : ""}`}
+        onClick={!isInModal ? openCommentModal : undefined}
+      >
         <FaRegCommentAlt size={18} /> <span>Bình luận</span>
       </div>
     </div>
@@ -287,14 +310,21 @@ const PostCard = ({ post, currentUser }) => {
 
   const renderStatsBar = () => (
     <div className="post-stats-bar">
-      <div className="reaction-summary" onClick={() => setIsReactionModalOpen(true)}>
+      <div
+        className="reaction-summary"
+        onClick={() => setIsReactionModalOpen(true)}
+      >
         {reactionCount > 0 && (
           <>
             <div className="reaction-icons-stack">
               {topReactions.map((type, index) => {
                 const IconComp = REACTION_ICONS[type];
                 return IconComp ? (
-                  <div key={type} className="reaction-icon-stack-item" style={{ zIndex: 3 - index }}>
+                  <div
+                    key={type}
+                    className="reaction-icon-stack-item"
+                    style={{ zIndex: 3 - index }}
+                  >
                     <IconComp size={10} color={getReactionColor(type)} />
                   </div>
                 ) : null;
@@ -306,7 +336,9 @@ const PostCard = ({ post, currentUser }) => {
       </div>
 
       <div className="post-stats-right">
-        {totalComments > 0 && <span onClick={openCommentModal}>{totalComments} bình luận</span>}
+        {totalComments > 0 && (
+          <span onClick={openCommentModal}>{totalComments} bình luận</span>
+        )}
       </div>
     </div>
   );
@@ -326,7 +358,12 @@ const PostCard = ({ post, currentUser }) => {
           {content}{" "}
           <span
             onClick={() => setIsExpanded(false)}
-            style={{ fontWeight: 600, cursor: "pointer", color: "#65676b", marginLeft: 5 }}
+            style={{
+              fontWeight: 600,
+              cursor: "pointer",
+              color: "#65676b",
+              marginLeft: 5,
+            }}
           >
             Thu gọn
           </span>
@@ -340,7 +377,12 @@ const PostCard = ({ post, currentUser }) => {
         {shortContent}...{" "}
         <span
           onClick={() => setIsExpanded(true)}
-          style={{ fontWeight: 600, cursor: "pointer", color: "#65676b", marginLeft: 5 }}
+          style={{
+            fontWeight: 600,
+            cursor: "pointer",
+            color: "#65676b",
+            marginLeft: 5,
+          }}
         >
           Xem thêm
         </span>
@@ -353,7 +395,7 @@ const PostCard = ({ post, currentUser }) => {
       {/* ================= CARD BÀI VIẾT ================= */}
       <div className="fb-card">
         <PostHeader />
-        
+
         {renderPostContent()}
 
         {renderStatsBar()}
@@ -383,7 +425,12 @@ const PostCard = ({ post, currentUser }) => {
         centered
         className="fb-post-modal"
         styles={{
-          body: { padding: 0, height: "70vh", display: "flex", flexDirection: "column" },
+          body: {
+            padding: 0,
+            height: "70vh",
+            display: "flex",
+            flexDirection: "column",
+          },
         }}
       >
         <div className="fb-post-modal-scroll">
@@ -407,7 +454,9 @@ const PostCard = ({ post, currentUser }) => {
             )}
 
             {!commentsLoading && comments.length === 0 && (
-              <div style={{ textAlign: "center", color: "#65676b", padding: 20 }}>
+              <div
+                style={{ textAlign: "center", color: "#65676b", padding: 20 }}
+              >
                 Chưa có bình luận nào.
               </div>
             )}
@@ -423,7 +472,11 @@ const PostCard = ({ post, currentUser }) => {
         {/* Footer Input */}
         <div className="fb-post-modal-footer">
           <div className="comment-input-area">
-            <Avatar src={currentUser?.avatar_url} icon={<UserOutlined />} size={32} />
+            <Avatar
+              src={currentUser?.avatar_url}
+              icon={<UserOutlined />}
+              size={32}
+            />
             <div className="comment-input-pill" style={{ width: "100%" }}>
               <input
                 className="comment-input-real"
@@ -439,7 +492,11 @@ const PostCard = ({ post, currentUser }) => {
               />
               <Button
                 type="text"
-                icon={<SendOutlined style={{ color: commentText.trim() ? "#1877f2" : "#ccc" }} />}
+                icon={
+                  <SendOutlined
+                    style={{ color: commentText.trim() ? "#1877f2" : "#ccc" }}
+                  />
+                }
                 onClick={handleSendComment}
               />
             </div>
