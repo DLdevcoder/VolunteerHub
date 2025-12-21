@@ -298,7 +298,7 @@ const AdminEventRequests = () => {
                 loading={isRowLoading}
                 onClick={() => openRejectModal(record)}
               >
-                Hủy
+                Từ chối
               </Button>
             </Tooltip>
           </Space>
