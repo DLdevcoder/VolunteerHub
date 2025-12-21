@@ -251,7 +251,7 @@ const ManagerMyEvents = () => {
       onFilter: (value, record) => record.approval_status === value,
       render: (status) => {
         const { color, label } = getStatusTag(status);
-        return <Tag color={color}>{label}</Tag>;
+        return <Tag className="status-tag" color={color}>{label}</Tag>;
       },
     },
 

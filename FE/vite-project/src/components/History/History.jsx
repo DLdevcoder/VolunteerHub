@@ -133,7 +133,7 @@ const History = () => {
       render: (_, record) => {
         const statusKey = getStatusFromRecord(record);
         const { color, label } = getStatusTag(statusKey);
-        return <Tag color={color}>{label}</Tag>;
+        return <Tag className="status-tag" color={color}>{label}</Tag>;
       },
     },
     {

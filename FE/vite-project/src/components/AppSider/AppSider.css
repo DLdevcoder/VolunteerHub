@@ -1,28 +1,55 @@
-/* AppSider.css (or wherever you put sider styles) */
+/* AppSider.css - Roboto weight 600 (Semi-bold) */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@600&display=swap');
+
+.app-sider-container * {
+  font-family: 'Roboto', sans-serif !important;
+  font-weight: 600 !important; /* Semi-bold */
+}
 
 .app-sider-container {
   height: 100%;
   border-right: 1px solid #f0f0f0;
-}
-
-/* Remove your old width:25% rule — it breaks collapse */
-.app-sider-container {
   width: auto;
 }
 
-/* Selected menu item style */
+/* Menu items - thêm transition */
+.app-sider-container .ant-menu-item,
+.app-sider-container .ant-menu-submenu-title {
+  transition: color 0.2s ease-in-out !important;
+}
+
+/* Selected item */
 .app-sider-container .ant-menu-item-selected {
   background-color: #e6f7ff !important;
-  font-weight: 600;
+  font-weight: 700 !important; /* Bold cho selected */
 }
 
-/* Make trigger look clean */
+/* HOVER EFFECT - đổi màu chữ khi hover */
+.app-sider-container .ant-menu-item:hover,
+.app-sider-container .ant-menu-submenu-title:hover,
+.app-sider-container .ant-menu-item:hover .ant-menu-title-content,
+.app-sider-container .ant-menu-submenu-title:hover .ant-menu-title-content {
+  color: #0659b2 !important; /* Màu xanh khi hover */
+}
+
+/* Submenu titles */
+.app-sider-container .ant-menu-submenu-title {
+  font-weight: 600 !important;
+}
+
 .app-sider-container .ant-layout-sider-trigger {
-  border-top: 1px solid #f0f0f0;
   background: #fff;
+  font-family: 'Roboto', sans-serif !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
 }
 
-/* Optional: reduce padding on small screens */
+.app-sider-container {
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
 @media (max-width: 576px) {
   .app-sider-container .ant-menu-title-content {
     font-size: 13px;

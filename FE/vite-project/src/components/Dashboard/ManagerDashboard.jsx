@@ -436,7 +436,7 @@ const ManagerDashboard = () => {
 
         <div className="stats-card-modern card-theme-4">
           <div className="stats-left">
-            <span className="stats-title">Đang diễn ra</span>
+            <span className="stats-title">Đang chạy</span>
             <span className="stats-number">
               {data?.stats?.total_running ?? 0}
             </span>

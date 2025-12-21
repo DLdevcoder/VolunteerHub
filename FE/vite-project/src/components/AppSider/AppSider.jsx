@@ -12,6 +12,7 @@ import {
 } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
+import './AppSider.css';
 
 const { Sider } = Layout;
 

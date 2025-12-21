@@ -41,7 +41,7 @@
 ======================= */
 .stats-grid-container {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 30px;
 }
@@ -135,6 +135,12 @@
 }
 .card-theme-4 .stats-icon-bg {
   background: #fff1f0;
+}
+.card-theme-5 {
+  border-left-color: #73AF6F;
+}
+.card-theme-5 .stats-icon-bg {
+  background: rgba(115, 175, 111, 0.2);
 }
 
 /* =======================
@@ -597,7 +603,7 @@
 
 @media (max-width: 1400px) {
   .manager-dashboard .manager-stats-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 

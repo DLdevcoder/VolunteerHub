@@ -163,6 +163,7 @@ const EventParticipantsTab = ({ eventId }) => {
     {
       title: "Hành động",
       key: "actions",
+      align: "center",
       width: 220,
       render: (_, record) => {
         const status = record.status;
@@ -176,7 +177,30 @@ const EventParticipantsTab = ({ eventId }) => {
                   icon={<CheckOutlined />}
                   onClick={() => handleApprove(record)}
                   loading={updatingId === record.registration_id}
-                  className="btn-outline-action btn-approve" 
+                  style={{
+                    backgroundColor: '#52c41a',
+                    borderColor: '#52c41a',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontFamily: "'Roboto', sans-serif",
+                    fontSize: '14px',
+                    padding: '0 12px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    transition: 'all 0.3s',
+                    width: '90px',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#73d13d';
+                    e.currentTarget.style.borderColor = '#73d13d';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#52c41a';
+                    e.currentTarget.style.borderColor = '#52c41a';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                  className="btn-outline-action btn-approve"
                 >
                   Duyệt
                 </Button>
@@ -187,6 +211,29 @@ const EventParticipantsTab = ({ eventId }) => {
                   icon={<CloseOutlined />}
                   onClick={() => openRejectModal(record)}
                   loading={updatingId === record.registration_id}
+                  style={{
+                    backgroundColor: '#ff4d4f',
+                    borderColor: '#ff4d4f',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontFamily: "'Roboto', sans-serif",
+                    fontSize: '14px',
+                    padding: '0 12px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    transition: 'all 0.3s',
+                    width: '90px',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#ff7875';
+                    e.currentTarget.style.borderColor = '#ff7875';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#ff4d4f';
+                    e.currentTarget.style.borderColor = '#ff4d4f';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
                   className="btn-outline-action btn-reject"
                 >
                   Từ chối
@@ -245,7 +292,7 @@ const EventParticipantsTab = ({ eventId }) => {
             ]}
           />
         </Space>
-        
+
         <div style={{ marginLeft: "auto", color: "#888" }}>
           Tổng số: <strong>{filteredItems.length}</strong>
         </div>
@@ -265,12 +312,32 @@ const EventParticipantsTab = ({ eventId }) => {
         open={rejectModalVisible}
         title="Từ chối đăng ký"
         onCancel={handleCancelRejectModal}
-        footer={[
-          <Button key="cancel" onClick={handleCancelRejectModal}>Hủy</Button>,
-          <Button key="reject" type="primary" danger loading={rejectSubmitting} onClick={handleConfirmReject}>
-            Xác nhận từ chối
-          </Button>,
-        ]}
+        footer={
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            marginTop: '24px',
+            paddingTop: '16px',
+            borderTop: '1px solid #f0f0f0'
+          }}>
+            <Button
+              onClick={handleCancelRejectModal}
+              style={{ minWidth: '80px' }}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="primary"
+              danger
+              loading={rejectSubmitting}
+              onClick={handleConfirmReject}
+              style={{ minWidth: '140px' }}
+            >
+              Xác nhận từ chối
+            </Button>
+          </div>
+        }
         destroyOnClose
       >
         <p>Lý do từ chối <strong>{rejectTarget?.full_name}</strong>:</p>
