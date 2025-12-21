@@ -16,6 +16,8 @@ import {
   RiseOutlined,
   StarFilled,
   TeamOutlined,
+  LikeOutlined,
+  CommentOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
