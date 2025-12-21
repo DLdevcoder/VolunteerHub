@@ -445,6 +445,7 @@ const AdminDashboard = () => {
         cancelText="Hủy"
         confirmLoading={rejectLoading}
         okButtonProps={{ danger: true }}
+        bodyStyle={{ paddingBottom: "14px" }}
       >
         <p>Lý do từ chối:</p>
         <Input.TextArea
