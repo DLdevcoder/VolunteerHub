@@ -23,6 +23,8 @@ import {
   StarFilled,
   RiseOutlined,
   FileTextOutlined,
+  LikeOutlined,
+  CommentOutlined
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
@@ -258,6 +260,13 @@ const AdminDashboard = () => {
                <div style={{ fontSize: 13, color: "#3674B5", fontWeight: 600 }}>
                  <FileTextOutlined /> +{ev.new_posts_24h} bài đăng
                </div>
+            <div style={{ fontSize: 13, color: "#3f9bacff", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+              <LikeOutlined /> <span>+{ev.new_likes_24h} tương tác</span>
+            </div>
+
+            <div style={{ fontSize: 13, color: "#50a0a1ff", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+              <CommentOutlined /> <span>+{ev.new_comments_24h} bình luận</span>
+            </div>
              </div>
            </div>
 

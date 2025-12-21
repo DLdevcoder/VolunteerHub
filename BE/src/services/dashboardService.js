@@ -48,20 +48,33 @@ class DashboardService {
       );
 
       const trendingEvents = await sequelize.query(
-        `SELECT 
-            e.event_id, e.title, e.location, e.current_participants, e.target_participants,
-            (SELECT COUNT(*) FROM Posts p WHERE p.event_id = e.event_id) as total_posts,
-            (SELECT COUNT(*) FROM PostReactions pr JOIN Posts p ON pr.post_id = p.post_id WHERE p.event_id = e.event_id) as total_reactions,
-            (SELECT COUNT(*) FROM Comments c JOIN Posts p ON c.post_id = p.post_id WHERE p.event_id = e.event_id) as total_comments,
-            (SELECT COUNT(*) FROM Registrations WHERE event_id = e.event_id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_participants_24h,
-            (SELECT COUNT(*) FROM Posts WHERE event_id = e.event_id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_posts_24h,
-            (SELECT COUNT(*) FROM Comments c JOIN Posts p ON c.post_id = p.post_id WHERE p.event_id = e.event_id AND c.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_comments_24h,
-            (SELECT COUNT(*) FROM PostReactions pr JOIN Posts p ON pr.post_id = p.post_id WHERE p.event_id = e.event_id AND pr.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_likes_24h,
-            (e.current_participants * 2 + (SELECT COUNT(*) FROM Posts WHERE event_id=e.event_id) * 3) as engagement_score
-         FROM Events e
-         WHERE e.approval_status = 'approved' AND e.is_deleted = FALSE AND e.start_date > NOW()
-           AND e.event_id NOT IN (SELECT event_id FROM Registrations WHERE user_id = ? AND status IN ('approved', 'pending'))
-         ORDER BY engagement_score DESC LIMIT 5`,
+  `SELECT 
+      e.event_id, e.title, e.location, e.current_participants, e.target_participants,
+      
+      -- 1. THÔNG SỐ TỔNG (Total Stats)
+      (SELECT COUNT(*) FROM Posts p WHERE p.event_id = e.event_id) as total_posts,
+      (SELECT COUNT(*) FROM PostReactions pr JOIN Posts p ON pr.post_id = p.post_id WHERE p.event_id = e.event_id) as total_reactions,
+      (SELECT COUNT(*) FROM Comments c JOIN Posts p ON c.post_id = p.post_id WHERE p.event_id = e.event_id) as total_comments,
+
+      -- 2. TĂNG TRƯỞNG 24H (24h Trends)
+      -- Fix: Dùng registration_date thay vì created_at
+      (SELECT COUNT(*) FROM Registrations WHERE event_id = e.event_id AND registration_date >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_participants_24h,
+      (SELECT COUNT(*) FROM Posts WHERE event_id = e.event_id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_posts_24h,
+      (SELECT COUNT(*) FROM Comments c JOIN Posts p ON c.post_id = p.post_id WHERE p.event_id = e.event_id AND c.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_comments_24h,
+      (SELECT COUNT(*) FROM PostReactions pr JOIN Posts p ON pr.post_id = p.post_id WHERE p.event_id = e.event_id AND pr.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_likes_24h,
+
+      -- 3. ĐIỂM TƯƠNG TÁC (Engagement Score)
+      (
+        e.current_participants * 2 + 
+        (SELECT COUNT(*) FROM Posts WHERE event_id=e.event_id) * 3 + 
+        (SELECT COUNT(*) FROM PostReactions pr JOIN Posts p ON pr.post_id = p.post_id WHERE p.event_id = e.event_id)
+      ) as engagement_score
+
+   FROM Events e
+   WHERE e.approval_status = 'approved' AND e.is_deleted = FALSE 
+     AND e.start_date > NOW() -- Chỉ lấy sự kiện chưa diễn ra
+     AND e.event_id NOT IN (SELECT event_id FROM Registrations WHERE user_id = ? AND status IN ('approved', 'pending')) -- Loại trừ sự kiện đã tham gia
+   ORDER BY engagement_score DESC LIMIT 5`,
         {
           replacements: [user_id],
           type: QueryTypes.SELECT,
@@ -146,19 +159,28 @@ class DashboardService {
 
       const trendingEvents = await sequelize.query(
         `SELECT 
-            e.event_id, e.title, e.location, e.start_date, e.current_participants, e.target_participants,
-            (SELECT COUNT(*) FROM Registrations WHERE event_id = e.event_id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_participants_24h,
-            (SELECT COUNT(*) FROM Posts WHERE event_id = e.event_id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_posts_24h,
-            (SELECT COUNT(*) FROM PostReactions pr JOIN Posts p ON pr.post_id = p.post_id WHERE p.event_id = e.event_id AND pr.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_likes_24h,
-            (SELECT COUNT(*) FROM Comments c JOIN Posts p ON c.post_id = p.post_id WHERE p.event_id = e.event_id AND c.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_comments_24h,
-            (
-                e.current_participants * 2 + 
-                (SELECT COUNT(*) FROM Posts WHERE event_id=e.event_id) * 3 + 
-                (SELECT COUNT(*) FROM PostReactions pr JOIN Posts p ON pr.post_id = p.post_id WHERE p.event_id = e.event_id)
-            ) as engagement_score
-         FROM Events e
-         WHERE e.manager_id = ? AND e.approval_status = 'approved' AND e.is_deleted = FALSE
-         ORDER BY engagement_score DESC LIMIT 5`,
+      e.event_id, e.title, e.location, e.start_date, e.current_participants, e.target_participants,
+      
+      -- Total Stats
+      (SELECT COUNT(*) FROM Posts p WHERE p.event_id = e.event_id) as total_posts,
+      (SELECT COUNT(*) FROM PostReactions pr JOIN Posts p ON pr.post_id = p.post_id WHERE p.event_id = e.event_id) as total_reactions,
+      (SELECT COUNT(*) FROM Comments c JOIN Posts p ON c.post_id = p.post_id WHERE p.event_id = e.event_id) as total_comments,
+
+      -- 24h Trends
+      (SELECT COUNT(*) FROM Registrations WHERE event_id = e.event_id AND registration_date >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_participants_24h,
+      (SELECT COUNT(*) FROM Posts WHERE event_id = e.event_id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_posts_24h,
+      (SELECT COUNT(*) FROM PostReactions pr JOIN Posts p ON pr.post_id = p.post_id WHERE p.event_id = e.event_id AND pr.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_likes_24h,
+      (SELECT COUNT(*) FROM Comments c JOIN Posts p ON c.post_id = p.post_id WHERE p.event_id = e.event_id AND c.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as new_comments_24h,
+
+      -- Engagement Score
+      (
+          e.current_participants * 2 + 
+          (SELECT COUNT(*) FROM Posts WHERE event_id = e.event_id) * 3 + 
+          (SELECT COUNT(*) FROM PostReactions pr JOIN Posts p ON pr.post_id = p.post_id WHERE p.event_id = e.event_id)
+      ) as engagement_score
+   FROM Events e
+   WHERE e.manager_id = ? AND e.approval_status = 'approved' AND e.is_deleted = FALSE
+   ORDER BY engagement_score DESC LIMIT 5`,
         {
           replacements: [user_id],
           type: QueryTypes.SELECT,

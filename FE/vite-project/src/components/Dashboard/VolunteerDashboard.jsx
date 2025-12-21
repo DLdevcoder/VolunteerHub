@@ -152,10 +152,10 @@ const VolunteerDashboard = () => {
                   <FileTextOutlined style={{color: "#3674B5", marginRight: 6}} /> <b>{ev.total_posts}</b> bài
                </div>
                <div style={{fontSize: 13, color: "#666"}}>
-                  <LikeOutlined style={{color: "#ff4d4f", marginRight: 6}} /> <b>{ev.total_reactions}</b> tương tác
+                  <LikeOutlined style={{color: "#3f9bacff", marginRight: 6}} /> <b>{ev.total_reactions}</b> tương tác
                </div>
                <div style={{fontSize: 13, color: "#666"}}>
-                  <CommentOutlined style={{color: "#faad14", marginRight: 6}} /> <b>{ev.total_comments}</b> bình luận
+                  <CommentOutlined style={{color: "#50a0a1ff", marginRight: 6}} /> <b>{ev.total_comments}</b> bình luận
                </div>
             </div>
           </div>
@@ -258,6 +258,13 @@ const VolunteerDashboard = () => {
                  <div style={{ fontSize: 11, fontWeight: "bold", color: "#888", marginBottom: 2 }}><RiseOutlined /> TĂNG TRƯỞNG 24H</div>
                  <div style={{ fontSize: 13, color: "#389e0d", fontWeight: 600 }}><ArrowUpOutlined style={{ marginRight: 6 }} /> +{ev.new_participants_24h} người</div>
                  <div style={{ fontSize: 13, color: "#3674B5", fontWeight: 600 }}><FileTextOutlined style={{ marginRight: 6 }} /> +{ev.new_posts_24h} bài đăng</div>
+                 <div style={{ fontSize: 13, color: "#3f9bacff", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                               <LikeOutlined /> <span>+{ev.new_likes_24h} tương tác</span>
+                             </div>
+                 
+                             <div style={{ fontSize: 13, color: "#50a0a1ff", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                               <CommentOutlined /> <span>+{ev.new_comments_24h} bình luận</span>
+                             </div>
               </div>
             </div>
 
