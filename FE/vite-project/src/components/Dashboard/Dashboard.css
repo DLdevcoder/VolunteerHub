@@ -5,6 +5,8 @@
   --color-light-blue: #a1e3f9;
   --color-pale-mint: #d1f8ef;
   --growth-green: #389e0d;
+  --growth-red: #ff4d4f; 
+  --growth-orange: #faad14;
   --text-gray: #666;
   --border-color: #eee;
   --bg-main: #f4f6f8;
@@ -427,6 +429,18 @@
 .trending-growth-post {
   font-size: 13px;
   color: var(--primary-blue);
+  font-weight: 600;
+}
+
+.trending-growth-react {
+  font-size: 13px;
+  color: var(--growth-red);
+  font-weight: 600;
+}
+
+.trending-growth-cmt {
+  font-size: 13px;
+  color: var(--growth-orange);
   font-weight: 600;
 }
 

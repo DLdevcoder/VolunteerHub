@@ -349,6 +349,12 @@ const ManagerDashboard = () => {
                       <div className="trending-growth-post">
                         <FileTextOutlined /> +{ev.new_posts_24h} bài đăng
                       </div>
+                      <div className="trending-growth-react">
+                        <LikeOutlined /> <span>+{ev.new_likes_24h} likes</span>
+                      </div>
+                      <div className="trending-growth-cmt">
+                          <CommentOutlined /> <span>+{ev.new_comments_24h} cmt</span>
+                      </div>
                     </div>
                   </div>
 
